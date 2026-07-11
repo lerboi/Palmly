@@ -1,0 +1,57 @@
+# ── Secrets & environment ─────────────────────────────────────────────
+# NEVER commit real keys. Only .env.example (placeholders) is tracked.
+.env
+.env.*
+!.env.example
+*.local
+# Store-signing material
+*.p8
+*.p12
+*.keystore
+*.jks
+google-play-service-account*.json
+apple-asc-api-key*.p8
+
+# ── Node / JS ─────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# ── Expo / React Native ───────────────────────────────────────────────
+.expo/
+.expo-shared/
+web-build/
+*.orig.*
+app-example/
+# Native build outputs (managed workflow — prebuild-generated dirs)
+/app/ios/
+/app/android/
+!/modules/palm-landmarks/android/
+!/modules/palm-landmarks/ios/
+
+# ── Supabase ──────────────────────────────────────────────────────────
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+
+# ── OS / editor ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ── Eval / private data (consented palm photos live outside git) ──────
+eval/data/
+docs/checkpoints/**/*.jpg
+docs/checkpoints/**/*.jpeg
+docs/checkpoints/**/*.mp4
+docs/checkpoints/**/*.mov
