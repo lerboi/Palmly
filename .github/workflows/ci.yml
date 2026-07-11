@@ -1,0 +1,78 @@
+name: CI
+
+# P1.T5 — app CI. On PR + push to main: lint, typecheck, unit tests, expo-doctor.
+# On push to main only: trigger an EAS preview build behind a manual-approval gate
+# (the `preview-build` GitHub Environment — add required reviewers there). Backend §12.
+# Backend/Supabase CI (migration dry-run + function deploy) is added later in P3.T5.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: app
+
+jobs:
+  quality:
+    name: Lint · Typecheck · Test · Doctor
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:ci
+
+      - name: Expo Doctor
+        run: npx --yes expo-doctor@latest
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+  eas-preview:
+    name: EAS preview build (manual approval)
+    needs: quality
+    # Only on merges to main, and only when the EXPO_TOKEN secret exists.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Manual-approval gate: configure required reviewers on this Environment in repo settings.
+    environment: preview-build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Trigger EAS preview build (Android)
+        run: eas build --platform android --profile preview --non-interactive --no-wait
