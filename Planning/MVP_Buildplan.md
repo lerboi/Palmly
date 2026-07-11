@@ -12,13 +12,13 @@ This document is designed to be executed **on a loop** — by Claude Code sessio
 
 | Field | Value |
 |---|---|
-| **Current phase** | P0 (agent ∥ work), P1 next |
-| **Next task** | P1.T1 (∥ scaffold) — blocked human: P0.T1–T5 |
+| **Current phase** | P1 (agent ∥ work in progress) |
+| **Next task** | P1.T2 (∥ design system / theme) |
 | **Blocked on** | — (P0.T1–T5 are HUMAN, see "Waiting on human") |
 | **Waiting on human** | **P0.T1–T5 (accounts/keys).** See "Notes for next run" for the exact checklist. |
 | **Last run (date, by whom)** | 2026-07-11, agent |
-| **Last completed task** | P0.T6 (env docs + .env.example) |
-| **Notes for next run** | Local git repo initialized (`main`). Agent ∥ path: P0.T6 ✅ done. Next ∥ agent tasks are P1.T1→T3 (scaffold/theme/nav) — proceed with those while the human tasks below are pending. **HUMAN must do before P0.G / P1.T4–T6 / P3+ can proceed:** (1) **P0.T1** create private GitHub repo `palmly` + `git remote add origin` + push access; (2) **P0.T2** Supabase org + `palmly-staging` & `palmly-prod` (region ap-southeast-1), put URLs/anon+service keys in `.env.staging`/`.env.prod`; (3) **P0.T3** paid-tier `GEMINI_API_KEY` → Supabase Vault (staging) + local env; (4) **P0.T4** Apple Developer + Google Play accounts, register bundle id `com.palmly.app`; (5) **P0.T5** Expo/EAS `EXPO_TOKEN`, RevenueCat (iOS+Android apps), AppsFlyer Zero (+ask the 2 D1 questions), PostHog, Sentry, domain `palmly.app` + DNS/Cloudflare Turnstile. Fill values into `.env.*` per `docs/ENVIRONMENT.md`. |
+| **Last completed task** | P1.T1 (Expo SDK 56 scaffold + monorepo) |
+| **Notes for next run** | Local git repo initialized (`main`). Agent ∥ path: P0.T6 ✅ done. Next ∥ agent tasks are P1.T1→T3 (scaffold/theme/nav) — proceed with those while the human tasks below are pending. Next agent ∥ tasks: P1.T2 (theme) then P1.T3 (nav shell) — both buildable now, no keys needed. P1.T4–T6 (EAS build, CI, analytics) need human keys (EXPO_TOKEN / GitHub repo / PostHog+Sentry). **HUMAN must do before P0.G / P1.T4–T6 / P3+ can proceed:** (1) **P0.T1** create private GitHub repo `palmly` + `git remote add origin` + push access; (2) **P0.T2** Supabase org + `palmly-staging` & `palmly-prod` (region ap-southeast-1), put URLs/anon+service keys in `.env.staging`/`.env.prod`; (3) **P0.T3** paid-tier `GEMINI_API_KEY` → Supabase Vault (staging) + local env; (4) **P0.T4** Apple Developer + Google Play accounts, register bundle id `com.palmly.app`; (5) **P0.T5** Expo/EAS `EXPO_TOKEN`, RevenueCat (iOS+Android apps), AppsFlyer Zero (+ask the 2 D1 questions), PostHog, Sentry, domain `palmly.app` + DNS/Cloudflare Turnstile. Fill values into `.env.*` per `docs/ENVIRONMENT.md`. **App structure note:** routes live in `app/src/app/` (template convention), path alias `@/*`→`./src/*`. |
 
 ---
 
@@ -97,14 +97,14 @@ Dependency logic: P2 runs before backend depth because it is the one plausible p
 
 ## P1 — Repo, app skeleton, CI (M0)
 
-- [ ] **P1.T1** 🤖 ∥ Scaffold monorepo:
+- [x] **P1.T1** 🤖 ∥ Scaffold monorepo:
   ```
   app/                     # Expo app (SDK 56, TypeScript, Expo Router)
   modules/palm-landmarks/  # custom native module (P2)
   supabase/{migrations,functions,seed,tests}/
   prompts/  kb/  eval/  web/  docs/  .github/workflows/
   ```
-  `npx create-expo-app` in `app/` (SDK 56, New Architecture), TypeScript strict, ESLint+Prettier, absolute imports.
+  `npx create-expo-app` in `app/` (SDK 56, New Architecture), TypeScript strict, ESLint+Prettier, absolute imports. ✅ 2026-07-11
   - Verify: `npx expo start` boots; `npm run lint` and `tsc --noEmit` pass clean.
 - [ ] **P1.T2** 🤖 ∥ Design system foundation per UIUX §1.2: theme module with the Ink & Cinnabar tokens (`paper/ink/ink-wash/cinnabar/gold/jade`), dark mode, Noto Serif Display + Noto Sans via `expo-font`, spacing/type scale, and 5 primitives (`Screen`, `Text`, `Button`, `Card`, `SealBadge`).
   - Verify: a `/dev/theme` screen renders all tokens/primitives in light+dark; screenshot saved to `docs/checkpoints/p1-theme.png`.
@@ -307,6 +307,7 @@ Dependency logic: P2 runs before backend depth because it is the one plausible p
 | Date | Task | Result / evidence | Notes |
 |---|---|---|---|
 | 2026-07-11 | P0.T6 | `docs/ENVIRONMENT.md` (7 sections: accounts, client keys, server secrets, CI, store, file layout, D1 Qs) + `.env.example` (all placeholders) created. Coverage check: GEMINI_API_KEY, EXPO_TOKEN, REVENUECAT, SUPABASE, POSTHOG, SENTRY, APPSFLYER, TURNSTILE all present in both files (2/2). | Also initialized local git (`main`) + `.gitignore` so per-task commits work; GitHub remote still owed by human (P0.T1). |
+| 2026-07-11 | P1.T1 | Scaffolded `app/` via `create-expo-app --template expo-template-default@sdk-56` → expo ~56.0.15, RN 0.85.3, React 19.2.3, New Arch, expo-router. TS strict already on; absolute imports `@/*`→`./src/*`. Added eslint-config-expo@57 flat config + prettier + `typecheck`/`format` scripts. Verify: `tsc --noEmit` exit 0; `npm run lint` exit 0; `expo start` → packager-status:running + Metro bundle HTTP 200 (8.96MB, 13s). Monorepo dirs created: modules/palm-landmarks, supabase/{migrations,functions,seed,tests}, prompts, kb, eval, web, .github/workflows (READMEs/.gitkeep). | Fixed 2 template issues to pass verify: CSS-module TS decls (`types/css.d.ts`) + rewrote `use-color-scheme.web.ts` to `useSyncExternalStore` (react-hooks/set-state-in-effect). |
 
 ## 🧾 DECISION LOG (append when a build-time decision deviates from or refines the specs)
 
@@ -315,3 +316,5 @@ Dependency logic: P2 runs before backend depth because it is the one plausible p
 | 2026-07-11 | Plan created (v1.0) | — | — |
 | 2026-07-11 | Initialized local git repo (`main`) during P0.T6 even though P0.T1 (GitHub remote) is a pending human task | Per-task commits (Execution Protocol step 6) require a local repo; creating the GitHub *remote* + push access remains the human's P0.T1 work. Non-destructive, unblocks all agent ∥ work. | Buildplan Execution Protocol |
 | 2026-07-11 | Documented **two** cloud Supabase projects (staging+prod) + local `supabase start` for dev, not the three in Backend §12 | Ledger P0.T2 specifies two; P3.T1 uses local Docker for dev. Reconciled in `docs/ENVIRONMENT.md`. | Backend §12 |
+| 2026-07-11 | Pinned Expo **SDK 56** (56.0.15) as the plan specifies, though SDK 57 is now npm `latest`. `eslint-config-expo` pinned to `^57.0.0` (its `latest`; no stable `sdk-56` tag exists — only a canary) | Plan/§Standing rules say follow the specs; VisionCamera V5 + MediaPipe validation (Backend §2) was done against SDK 56. eslint rules are SDK-agnostic so @57 lints SDK-56 code fine. Revisit if a P2 native dep requires SDK 57. | Backend §2.1, §12 |
+| 2026-07-11 | Kept template's `src/app/` router root + `@/*`→`./src/*` alias (create-expo-app default) rather than a root `app/` routes dir | It's the current Expo convention, already wired into tsconfig; no reason to fight the template. P1.T3 route groups go under `app/src/app/`. | UIUX nav / P1.T3 |
