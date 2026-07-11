@@ -40,6 +40,11 @@ day-to-day dev (P3.T1). This file follows the ledger.
 These are compiled into the app. They are **publishable/public** keys by design. Live in
 `app/.env` locally and as EAS secrets / build-profile env for CI builds.
 
+> **Supabase key format:** current Supabase projects issue new-style API keys —
+> `sb_publishable_…` (client-safe → `EXPO_PUBLIC_SUPABASE_ANON_KEY`) and
+> `sb_secret_…` (**server-only** → `SUPABASE_SERVICE_ROLE_KEY`, never in the client bundle).
+> These replace the legacy `anon` / `service_role` JWTs; supabase-js accepts either.
+
 | Key | Value source | First used |
 |---|---|---|
 | `EXPO_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API → URL | P3.T6 |
