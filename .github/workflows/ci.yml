@@ -49,6 +49,21 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
+  functions:
+    name: Edge Functions (Deno typecheck + tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Deno typecheck
+        run: deno check hello/index.ts _shared/*.ts
+        working-directory: supabase/functions
+      - name: Deno tests
+        run: deno test --no-check
+        working-directory: supabase/functions
+
   eas-preview:
     name: EAS preview build (manual approval)
     needs: quality

@@ -45,7 +45,15 @@ evidence).
 
 - [ ] **H4 — Mirror `GEMINI_API_KEY` into Supabase Vault (staging).** The Edge Functions read the
   Gemini key from Vault, not from the client. Supabase dashboard → staging project → Vault → add
-  secret `GEMINI_API_KEY`. **Needed at P3.T5 / P5** (AI workers).
+  secret `GEMINI_API_KEY` (or `supabase secrets set GEMINI_API_KEY=…`). **Needed at P5** (AI workers).
+
+- [ ] **H4b — Supabase deploy secrets (unblocks staging deploy CI + P3.G gate).** (1) Create a
+  Supabase **personal access token** (dashboard → Account → Access Tokens, starts `sbp_`); put it in
+  `.env` as `SUPABASE_ACCESS_TOKEN`. (2) Add three **GitHub repo secrets** (Settings → Secrets →
+  Actions): `SUPABASE_ACCESS_TOKEN`, `SUPABASE_STAGING_PROJECT_REF` (`rphtdgoggsldshtdbkaj`),
+  `SUPABASE_STAGING_DB_PASSWORD`. This lets `.github/workflows/deploy.yml` push migrations + deploy
+  Edge Functions to staging on merge to `main`. **Gates:** P3.T5 "deployed by CI" + the P3.G phase
+  gate. (Backend dev/testing doesn't need it — that runs transactionally against staging already.)
 
 - [ ] **H5 — Cloudflare Turnstile + domain `palmly.app`.** Buy the domain; in Cloudflare create a
   Turnstile widget. Put `EXPO_PUBLIC_TURNSTILE_SITE_KEY` (client) + `TURNSTILE_SECRET_KEY` (server)
