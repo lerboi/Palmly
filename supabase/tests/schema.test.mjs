@@ -11,9 +11,10 @@ const TABLES = [
   'compatibility_pairs', 'compatibility_results', 'invites', 'subscriptions',
   'subscription_events', 'fortune_templates', 'user_fortunes', 'chat_threads',
   'chat_messages', 'share_cards', 'devices', 'kb_chunks', 'deletion_log',
+  'worker_telemetry', // added by migration 0004 (queues/telemetry)
 ];
 
-test('all 18 tables exist with RLS enabled — and nothing extra', async () => {
+test('all public tables exist with RLS enabled — and nothing extra', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);
     const rows = (
@@ -27,7 +28,7 @@ test('all 18 tables exist with RLS enabled — and nothing extra', async () => {
       assert.ok(t in rls, `table public.${t} exists`);
       assert.equal(rls[t], true, `RLS enabled on ${t}`);
     }
-    assert.equal(rows.length, TABLES.length, 'exactly the 18 spec tables, no more');
+    assert.equal(rows.length, TABLES.length, 'exactly the expected public tables, no more');
   });
 });
 
