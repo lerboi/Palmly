@@ -55,11 +55,16 @@ evidence).
   Edge Functions to staging on merge to `main`. **Gates:** P3.T5 "deployed by CI" + the P3.G phase
   gate. (Backend dev/testing doesn't need it — that runs transactionally against staging already.)
 
-- [ ] **H5 — Cloudflare Turnstile + domain `palmly.app`.** Buy the domain; in Cloudflare create a
-  Turnstile widget. Put `EXPO_PUBLIC_TURNSTILE_SITE_KEY` (client) + `TURNSTILE_SECRET_KEY` (server)
-  per ENVIRONMENT.md. **Needed at P3.T6** (anonymous-auth CAPTCHA) and **P8.T3** (teaser page DNS).
+- [ ] **H5 — Enable anonymous sign-ins (1-click, blocks the app's first launch).** Supabase
+  dashboard → staging → **Authentication → Sign In / Providers → Anonymous Sign-Ins → enable**
+  (currently **disabled** — the app's `signInAnonymously()` returns HTTP 422 until this is on). The
+  profile trigger + app code are done; this toggle + a device (H1) complete P3.T6's runtime path.
 
-- [ ] **H6 — KB authenticity review (P5.T5).** When the agent has drafted `kb/v1/` (palmistry +
+- [ ] **H6 — Cloudflare Turnstile + domain `palmly.app`.** Buy the domain; in Cloudflare create a
+  Turnstile widget. Put `EXPO_PUBLIC_TURNSTILE_SITE_KEY` (client) + `TURNSTILE_SECRET_KEY` (server)
+  per ENVIRONMENT.md. **Needed at P3.T6** (anonymous-auth invisible CAPTCHA) and **P8.T3** (teaser DNS).
+
+- [ ] **H6b — KB authenticity review (P5.T5).** When the agent has drafted `kb/v1/` (palmistry +
   physiognomy entries), a native-reader / practitioner reviews it for authenticity; notes go to
   `kb/REVIEW.md`. The agent will flag you when the draft exists.
 

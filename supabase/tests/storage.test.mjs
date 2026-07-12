@@ -12,10 +12,8 @@ const B = '22222222-2222-2222-2222-222222222222';
 
 async function setup(c) {
   await applyMigrations(c);
-  for (const u of [A, B]) {
-    await seedUser(c, u);
-    await c.query('insert into public.profiles (id, is_anonymous) values ($1, false)', [u]);
-  }
+  // the on_auth_user_created trigger (migration 0005) auto-creates each profile row.
+  for (const u of [A, B]) await seedUser(c, u);
 }
 
 const countObjects = async (c, bucket) =>

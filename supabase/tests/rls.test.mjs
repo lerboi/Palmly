@@ -20,10 +20,9 @@ const D = '44444444-4444-4444-4444-444444444444'; // auth.users only, NO profile
 
 async function setup(c) {
   await applyMigrations(c);
-  for (const u of [A, B, C]) {
-    await seedUser(c, u);
-    await c.query('insert into public.profiles (id, is_anonymous) values ($1, false)', [u]);
-  }
+  // seedUser inserts an auth.users row; the on_auth_user_created trigger (migration 0005)
+  // auto-creates the matching public.profiles row (is_anonymous=false here).
+  for (const u of [A, B, C]) await seedUser(c, u);
 }
 
 /** Seed a full owner FK chain (scan → feature_set → subject_profile → reading → share_card). */
@@ -281,7 +280,8 @@ test('anon-JWT restrictive policy + invite forgery: only a permanent user can cr
 test('profiles: owner-only read + self-write; no cross-user read/update/insert', async () => {
   await withRollback(async (c) => {
     await setup(c);
-    await seedUser(c, D); // auth.users row, but NO profile → lets us hit the INSERT WITH CHECK cleanly
+    await seedUser(c, D); // trigger auto-creates D's profile...
+    await c.query('delete from public.profiles where id=$1', [D]); // ...remove it so the INSERT WITH CHECK is the only barrier
 
     await asRole(c, { uid: A });
     assert.equal(await countOf(c, 'profiles'), 1, 'A sees only own profile');

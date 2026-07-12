@@ -3,14 +3,15 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { useAuthBootstrap } from '@/lib/auth';
 import { ThemeProvider } from '@/theme';
 
 /**
- * Root layout. Wraps the app in the Palmly design-system ThemeProvider (loads Noto fonts,
- * provides light/dark theme) + SafeAreaProvider. The real route groups —
- * (onboarding)/(capture)/(reading)/(home)/(settings) + modals — are added in P1.T3.
+ * Root layout. Establishes an anonymous-first session on launch (Backend §5.1), then wraps the
+ * app in the Palmly design-system ThemeProvider (Noto fonts, light/dark) + SafeAreaProvider.
  */
 export default function RootLayout() {
+  useAuthBootstrap();
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

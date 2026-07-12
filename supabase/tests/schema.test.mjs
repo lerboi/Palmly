@@ -51,9 +51,8 @@ test('canonical-pair check (user_a < user_b) is enforced', async () => {
     await applyMigrations(c);
     const A = '11111111-1111-1111-1111-111111111111';
     const B = '22222222-2222-2222-2222-222222222222';
-    await seedUser(c, A);
+    await seedUser(c, A); // trigger auto-creates each profile (migration 0005)
     await seedUser(c, B);
-    await c.query(`insert into public.profiles (id) values ($1),($2)`, [A, B]);
     // A < B is fine
     await c.query(`insert into public.compatibility_pairs (user_a, user_b) values ($1,$2)`, [A, B]);
     // reversed violates the check
