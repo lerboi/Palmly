@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Docker-free backend test harness — migrations + RLS proofs against staging, always rolled back.",
   "scripts": {
-    "test": "node --test",
+    "test": "node --test --test-concurrency=1",
     "apply:staging": "node ./scripts/apply.mjs"
   },
   "dependencies": {
