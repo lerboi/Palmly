@@ -51,16 +51,31 @@ iOS dev builds also go through EAS cloud (`--platform ios`) and need an Apple ac
 (deferred — see P0.T4). EAS profiles are in `app/eas.json`
 (`development` / `preview` / `production`); EAS Update channels are configured.
 
-## Backend (Supabase, from P3)
+## Backend (Supabase, from P3) — Docker-free
+
+This project develops the backend **without Docker** (user decision, Decision Log 2026-07-12).
+Instead of the local `supabase start` stack, migrations + RLS are exercised against the real
+**staging** Postgres inside a transaction that is **always rolled back** — real Supabase platform
+(auth schema, `auth.uid()`, roles) with zero persistent change to staging.
 
 ```bash
-supabase start                  # local stack (needs Docker running)
-supabase db reset               # apply migrations + seed from scratch
-supabase test db                # pgTAP suite (RLS proofs)
+cd supabase/tests
+npm ci
+npm test          # node:test — applies migrations + runs RLS proofs, all transactional (rollback)
 ```
 
-Migrations are versioned files in `supabase/migrations/` — **never edit an applied migration**;
-add a new one. The read-only Supabase **MCP** (`.mcp.json`) points at staging for inspection.
+- Test harness: `supabase/tests/lib/db.mjs` (pure-JS `pg`; reads the staging DB password from the
+  git-ignored `.env.staging`; connects to `db.<ref>.supabase.co`). Helpers: `withRollback`,
+  `applyMigrations`, `asRole`/`resetRole` (impersonate `authenticated`/`anon` + JWT claims),
+  `seedUser`.
+- Migrations are versioned files in `supabase/migrations/` — **never edit an applied migration**;
+  add a new one.
+- **Deploy** the schema to staging persistently only when needed (e.g. before P5 workers run):
+  `CONFIRM=1 node supabase/tests/scripts/apply.mjs` (or, later, the P3.T5 CI `supabase db push`).
+- The read-only Supabase **MCP** (`.mcp.json`) points at staging for inspection (`list_tables`, etc.).
+
+> If you ever want the classic local stack instead, `supabase start` + `supabase db reset` +
+> `supabase test db` still work once Docker Desktop is running — the migration files are identical.
 
 ## CI
 
