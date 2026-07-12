@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "face_features.v1",
+  "title": "Palmly face feature extraction (v1)",
+  "description": "Enum-bucketed structured physiognomy (面相) features (Backend §6.2): 五行 element face, three-courts (三停) proportions, five-eyes (五眼) spacing, and per-feature descriptors. Entertainment framing only — no health/medical inference.",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "confidence": { "enum": ["low", "medium", "high"] }
+  },
+  "properties": {
+    "is_face": { "type": "boolean" },
+    "face_shape": { "enum": ["wood", "fire", "earth", "metal", "water", "mixed"] },
+    "three_courts": { "enum": ["upper_dominant", "balanced", "lower_dominant"] },
+    "five_eyes_spacing": { "enum": ["narrow", "balanced", "wide"] },
+    "eyebrows": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shape": { "enum": ["straight", "curved", "arched", "sparse", "thick"] },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "required": ["shape", "confidence"]
+    },
+    "eyes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shape": { "enum": ["round", "almond", "narrow", "upturned", "downturned"] },
+        "set": { "enum": ["deep", "balanced", "prominent"] },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "required": ["shape", "set", "confidence"]
+    },
+    "nose": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shape": { "enum": ["straight", "aquiline", "button", "broad", "fleshy"] },
+        "bridge": { "enum": ["low", "medium", "high"] },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "required": ["shape", "bridge", "confidence"]
+    },
+    "mouth": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shape": { "enum": ["full", "thin", "balanced", "upturned", "downturned"] },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "required": ["shape", "confidence"]
+    },
+    "ears": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "set": { "enum": ["high", "balanced", "low"] },
+        "size": { "enum": ["small", "medium", "large"] },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "required": ["set", "size", "confidence"]
+    },
+    "canthus_wolong": { "enum": ["absent", "slight", "prominent"] },
+    "overall_confidence": { "$ref": "#/$defs/confidence" }
+  },
+  "required": [
+    "is_face",
+    "face_shape",
+    "three_courts",
+    "five_eyes_spacing",
+    "eyebrows",
+    "eyes",
+    "nose",
+    "mouth",
+    "overall_confidence"
+  ]
+}

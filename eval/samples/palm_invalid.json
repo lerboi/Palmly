@@ -1,0 +1,11 @@
+{
+  "is_hand": true,
+  "hand_shape": "square",
+  "heart_line": { "length": "long", "depth": "deep", "curvature": "gently_curved", "ending": "between_index_middle", "breaks": "none", "islands": "none", "chains": "none", "confidence": "high" },
+  "head_line": { "length": "medium", "depth": "moderate", "curvature": "gently_curved", "ending": "other", "breaks": "none", "islands": "present", "chains": "none", "confidence": "medium" },
+  "life_line": { "length": "long", "depth": "moderate", "curvature": "strongly_curved", "ending": "other", "breaks": "none", "islands": "none", "chains": "none", "confidence": "high" },
+  "fate_line": { "present": "clear", "origin": "wrist", "confidence": "medium" },
+  "mounts": [],
+  "line_geometry": { "heart_line": [[1, 2], [3, 4]], "head_line": [[1, 2], [3, 4]], "life_line": [[1, 2], [3, 4]] },
+  "overall_confidence": "high"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "palmly-eval",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AI-pipeline eval + prompt/schema verification (P5, P12).",
+  "scripts": {
+    "p5t1": "node ./p5t1.mjs"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1"
+  }
+}

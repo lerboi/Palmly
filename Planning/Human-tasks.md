@@ -55,6 +55,15 @@ evidence).
   Edge Functions to staging on merge to `main`. **Gates:** P3.T5 "deployed by CI" + the P3.G phase
   gate. (Backend dev/testing doesn't need it — that runs transactionally against staging already.)
 
+- [ ] **H4c — Confirm/enable Gemini PAID tier (important).** The current `GEMINI_API_KEY` behaves as
+  **free-tier**: explicit context caching returns `429 FreeTier limit=0` and implicit caching never
+  hits (so P5.T1's caching verify can't pass). Two consequences: (1) the ~10× cost saving from
+  caching (Backend §6.4) is off; (2) **hard production blocker** — Backend §13: the free tier trains
+  on submitted content, which is unacceptable for real palm/face photos. In Google AI Studio / Cloud
+  Console, attach billing to the project behind this key (or issue a new key on a billing-enabled
+  project) and confirm cached-content storage quota > 0. Functional `generateContent` already works,
+  so the build proceeds meanwhile; this must be resolved before real user data / launch.
+
 - [ ] **H5 — Enable anonymous sign-ins (1-click, blocks the app's first launch).** Supabase
   dashboard → staging → **Authentication → Sign In / Providers → Anonymous Sign-Ins → enable**
   (currently **disabled** — the app's `signInAnonymously()` returns HTTP 422 until this is on). The

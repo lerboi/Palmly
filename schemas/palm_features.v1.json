@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "palm_features.v1",
+  "title": "Palmly palm feature extraction (v1)",
+  "description": "Enum-bucketed structured palmistry features (Backend §6.2). Enums collapse the answer space, which is the strongest consistency lever. This is the server-side validation schema; a Gemini responseSchema subset is derived from it for constrained decoding.",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "confidence": { "enum": ["low", "medium", "high"] },
+    "major_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "length": { "enum": ["short", "medium", "long"] },
+        "depth": { "enum": ["faint", "moderate", "deep"] },
+        "curvature": { "enum": ["straight", "gently_curved", "strongly_curved"] },
+        "ending": { "enum": ["under_index", "between_index_middle", "under_middle", "other"] },
+        "breaks": { "enum": ["none", "single", "multiple"] },
+        "islands": { "enum": ["none", "present"] },
+        "chains": { "enum": ["none", "partial", "chained"] },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "required": ["length", "depth", "curvature", "ending", "breaks", "islands", "chains", "confidence"]
+    },
+    "polyline": {
+      "type": "array",
+      "description": "Ordered [x,y] points in Gemini's 0-1000 normalized frame; converted server-side to the 1536 crop.",
+      "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+    }
+  },
+  "properties": {
+    "is_hand": { "type": "boolean" },
+    "hand_shape": { "enum": ["earth", "water", "fire", "air", "mixed"] },
+    "heart_line": { "$ref": "#/$defs/major_line" },
+    "head_line": { "$ref": "#/$defs/major_line" },
+    "life_line": { "$ref": "#/$defs/major_line" },
+    "fate_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "present": { "enum": ["absent", "faint", "clear"] },
+        "origin": { "enum": ["life_line", "wrist", "mount_moon", "palm_center", "other", "not_applicable"] },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "required": ["present", "origin", "confidence"]
+    },
+    "mounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": { "enum": ["venus", "jupiter", "saturn", "apollo", "mercury", "luna", "mars_upper", "mars_lower"] },
+          "prominence": { "enum": ["flat", "moderate", "prominent"] }
+        },
+        "required": ["name", "prominence"]
+      }
+    },
+    "notable_markings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": { "enum": ["star", "cross", "triangle", "grille", "island", "square"] },
+          "location": { "type": "string" }
+        },
+        "required": ["type", "location"]
+      }
+    },
+    "line_geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "heart_line": { "$ref": "#/$defs/polyline" },
+        "head_line": { "$ref": "#/$defs/polyline" },
+        "life_line": { "$ref": "#/$defs/polyline" },
+        "fate_line": { "$ref": "#/$defs/polyline" }
+      },
+      "required": ["heart_line", "head_line", "life_line"]
+    },
+    "exposure_quality": { "enum": ["poor", "adequate", "good"] },
+    "overall_confidence": { "$ref": "#/$defs/confidence" }
+  },
+  "required": [
+    "is_hand",
+    "hand_shape",
+    "heart_line",
+    "head_line",
+    "life_line",
+    "fate_line",
+    "mounts",
+    "line_geometry",
+    "overall_confidence"
+  ]
+}

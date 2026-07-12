@@ -1,0 +1,13 @@
+{
+  "is_face": true,
+  "face_shape": "water",
+  "three_courts": "balanced",
+  "five_eyes_spacing": "balanced",
+  "eyebrows": { "shape": "arched", "confidence": "high" },
+  "eyes": { "shape": "almond", "set": "balanced", "confidence": "high" },
+  "nose": { "shape": "straight", "bridge": "high", "confidence": "medium" },
+  "mouth": { "shape": "full", "confidence": "high" },
+  "ears": { "set": "balanced", "size": "medium", "confidence": "medium" },
+  "canthus_wolong": "slight",
+  "overall_confidence": "high"
+}
