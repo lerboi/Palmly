@@ -5,8 +5,24 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { withRetry } from '../_shared/gemini.ts';
 import { EXTRACTION_MODEL, extractFeatures, type GeminiCall, type GeminiResponse } from '../_shared/extraction.ts';
+import { deriveGeometry, featureHash, type Geometry } from '../_shared/features.ts';
+import { fieldMajority, matchSubject, sameFeatures, type SubjectCandidate } from '../_shared/consistency.ts';
 import { writeTelemetry } from '../_shared/telemetry.ts';
 import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
+
+type Candidate = SubjectCandidate & { scanCount: number };
+
+/** Load the user's existing subjects for this hand/face, each with its canonical geometry. */
+async function loadSubjectCandidates(db: SupabaseClient, userId: string, subjectKind: string): Promise<Candidate[]> {
+  const { data } = await db.from('subject_profiles').select('id, canonical_feature_set_id, scan_count').eq('user_id', userId).eq('kind', subjectKind);
+  const rows = (data ?? []) as Array<{ id: string; canonical_feature_set_id: string; scan_count: number }>;
+  const out: Candidate[] = [];
+  for (const r of rows) {
+    const { data: fsRow } = await db.from('feature_sets').select('geometry').eq('id', r.canonical_feature_set_id).single();
+    out.push({ subjectId: r.id, canonicalFeatureSetId: r.canonical_feature_set_id, scanCount: r.scan_count, geometry: (fsRow?.geometry ?? {}) as Geometry });
+  }
+  return out;
+}
 
 const SCHEMA_VERSION = 1;
 const EXTRACTOR_VERSION = 'cv1+gemini-3.5-flash+extract.v1';
@@ -75,39 +91,68 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
   }
   const imageBase64 = bytesToBase64(new Uint8Array(await dl.data.arrayBuffer()));
 
-  const result = await extractFeatures({ imageBase64, kind: scan.kind as 'palm' | 'face', systemInstruction: EXTRACTION_PREFIX, geminiCall });
-  if (!result.ok) {
-    await setStatus(db, scanId, 'failed', result.failureReason);
-    await writeTelemetry(db, { worker: 'worker-scan', queue: 'scan_jobs', msg_id: msg.msg_id, status: 'failed', queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started, detail: { failure: result.failureReason } });
+  const kind = scan.kind as 'palm' | 'face';
+  const subjectKind = kind === 'face' ? 'face' : `palm_${scan.side}`;
+  const runExtract = () => extractFeatures({ imageBase64, kind, systemInstruction: EXTRACTION_PREFIX, geminiCall });
+
+  const failScan = async (reason: string) => {
+    await setStatus(db, scanId, 'failed', reason);
+    await writeTelemetry(db, { worker: 'worker-scan', queue: 'scan_jobs', msg_id: msg.msg_id, status: 'failed', queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started, detail: { failure: reason } });
     await archive(db, msg.msg_id);
-    return { scanId, outcome: result.failureReason };
+    return { scanId, outcome: reason };
+  };
+
+  // vote A — its geometry also drives subject matching
+  const a = await runExtract();
+  if (!a.ok) return failScan(a.failureReason);
+
+  // recognize the same hand → reuse the canonical feature_set (§6.6.4: no new extraction row)
+  const m = matchSubject(a.geometry, await loadSubjectCandidates(db, scan.user_id, subjectKind));
+  if (m) {
+    await db.from('subject_profiles').update({ scan_count: m.subject.scanCount + 1, last_matched_at: new Date().toISOString() }).eq('id', m.subject.subjectId);
+    await setStatus(db, scanId, 'matched');
+    await writeTelemetry(db, { worker: 'worker-scan', queue: 'scan_jobs', msg_id: msg.msg_id, status: 'ok', queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started, detail: { reused: m.subject.canonicalFeatureSetId } });
+    await archive(db, msg.msg_id);
+    return { scanId, outcome: 'matched', canonical: m.subject.canonicalFeatureSetId };
   }
+
+  // new subject → confirm the trust-critical first extraction with a 2nd vote (+ tie-break)
+  let features = a.features;
+  let votes = 1;
+  const b = await runExtract();
+  if (b.ok) {
+    votes = 2;
+    if (!sameFeatures(a.features, b.features)) {
+      const c3 = await runExtract();
+      features = fieldMajority(c3.ok ? [a.features, b.features, c3.features] : [a.features, b.features]);
+      votes = c3.ok ? 3 : 2;
+    }
+  }
+  const featHash = await featureHash(features);
+  const geometry = deriveGeometry(features);
 
   const { data: fs, error: fsErr } = await db
     .from('feature_sets')
     .insert({
-      scan_id: scanId, user_id: scan.user_id, kind: scan.kind, side: scan.side,
-      features: result.features, feature_schema_version: SCHEMA_VERSION, extractor_version: EXTRACTOR_VERSION,
-      geometry: result.geometry, feature_hash: result.featureHash,
+      scan_id: scanId, user_id: scan.user_id, kind, side: scan.side,
+      features, feature_schema_version: SCHEMA_VERSION, extractor_version: EXTRACTOR_VERSION,
+      geometry, feature_hash: featHash,
     })
     .select('id')
     .single();
-  if (fsErr || !fs) {
-    await setStatus(db, scanId, 'failed', 'store_failed');
-    await archive(db, msg.msg_id);
-    return { scanId, outcome: 'store_failed' };
-  }
+  if (fsErr || !fs) return failScan('store_failed');
 
+  await db.from('subject_profiles').insert({ user_id: scan.user_id, kind: subjectKind, canonical_feature_set_id: fs.id });
   await setStatus(db, scanId, 'narrating');
   await db.rpc('queue_send', { p_queue: 'narrative_jobs', p_msg: { scan_id: scanId, feature_set_id: fs.id } });
   await writeTelemetry(db, {
     worker: 'worker-scan', queue: 'scan_jobs', msg_id: msg.msg_id, status: 'ok',
     queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started,
-    tokens_in: result.usage?.promptTokenCount, tokens_out: result.usage?.candidatesTokenCount,
-    cache_hit: (result.usage?.cachedContentTokenCount ?? 0) > 0,
+    tokens_in: a.usage?.promptTokenCount, tokens_out: a.usage?.candidatesTokenCount,
+    cache_hit: (a.usage?.cachedContentTokenCount ?? 0) > 0, detail: { votes },
   });
   await archive(db, msg.msg_id);
-  return { scanId, outcome: 'ok', feature_set_id: fs.id };
+  return { scanId, outcome: 'new_subject', feature_set_id: fs.id, votes };
 }
 
 Deno.serve(
