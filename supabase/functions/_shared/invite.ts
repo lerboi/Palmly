@@ -29,3 +29,11 @@ export async function generateInviteToken(): Promise<{ token: string; tokenHash:
 
 export const INVITE_BASE_URL = 'https://palmly.app/i';
 export const inviteUrl = (token: string): string => `${INVITE_BASE_URL}/${token}`;
+
+/** Short, human-typable fallback code shown on the teaser (§8.2). Derived from the token_hash
+ *  (hex → no ambiguous letters); manual claim matches invites where token_hash starts with it. */
+export const deriveShortCode = (tokenHash: string): string => {
+  const s = tokenHash.slice(0, 6).toUpperCase();
+  return `${s.slice(0, 3)}-${s.slice(3, 6)}`;
+};
+
