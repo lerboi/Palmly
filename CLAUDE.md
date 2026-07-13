@@ -27,10 +27,14 @@ Common read tools:
 - `mcp__supabase__search_docs` — Supabase documentation
 
 ### Guardrails
+- **Single Supabase project (2026-07-14): `palmly-staging` (`rphtdgoggsldshtdbkaj`) is the ONE
+  working DB pre-launch; `palmly-prod` was deleted and is recreated at launch (P12) from the git
+  migrations.** Do all Supabase config once, on this project. (Decision Log 2026-07-14.)
 - The MCP is **read-only** and targets **staging** — treat it as an inspection window, not a way
   to change anything.
 - **Schema changes never go through the MCP.** Every schema change is a new versioned migration
-  file in `supabase/migrations/` (Build Plan standing rule + Backend spec). Local dev uses
-  `supabase start`; deploys run migrations via the Supabase CLI.
+  file in `supabase/migrations/` (Build Plan standing rule + Backend spec), and must be
+  **backward-compatible / expand-contract** (additive; never a breaking drop/rename in one step).
+  Local dev uses `supabase start`; deploys run migrations via the Supabase CLI.
 - Don't paste secrets into queries or output. Secret keys live only in `.env.staging` /
   `.env.prod` (git-ignored), never in the client bundle.

@@ -9,10 +9,13 @@ EAS secrets / Supabase Vault — **never committed**, and **never in the client 
 RevenueCat public SDK keys** (client-safe by design). Only `.env.example` (placeholders) is
 tracked in git.
 
-**Note on Supabase project count:** Backend §12 sketches three projects
-(`palmly-dev`, `palmly-staging`, `palmly-prod`); the ledger (P0.T2) provisions **two cloud
-projects — `palmly-staging` + `palmly-prod`** — and uses `supabase start` (local Docker) for
-day-to-day dev (P3.T1). This file follows the ledger.
+**Note on Supabase project count (updated 2026-07-14 — Decision Log):** **ONE cloud project**
+(`palmly-staging`, ref `rphtdgoggsldshtdbkaj`) is the single working DB pre-launch. The `palmly-prod`
+project was **deleted** — it was empty and every schema is a versioned migration file in git, so a
+fresh prod is a one-command CI step at launch (P12). Until then, do all dashboard config **once**,
+on this one project. Backend §12's three-project sketch (`dev`/`staging`/`prod`) is a launch-time
+target, not the pre-launch setup. **Tripwire:** once real beta users exist on this project, split a
+separate prod back out (or stop running the destructive test harness against it).
 
 ---
 
@@ -21,7 +24,7 @@ day-to-day dev (P3.T1). This file follows the ledger.
 | Account | Purpose | Provisioning task | Consumed by |
 |---|---|---|---|
 | **GitHub** (`palmly`, private) | Repo + Actions CI | P0.T1 | P1.T5 (CI), all commits |
-| **Supabase** org + 2 projects (`palmly-staging`, `palmly-prod`, `ap-southeast-1`) | DB, Auth, Storage, Edge Functions, Queues, Realtime, pgvector | P0.T2 | P3–P12 |
+| **Supabase** org + **1 project** (`palmly-staging` `rphtdgoggsldshtdbkaj`, `ap-southeast-1`; prod recreated at launch) | DB, Auth, Storage, Edge Functions, Queues, Realtime, pgvector | P0.T2 | P3–P12 |
 | **Google AI Studio / Cloud** (paid tier) | Gemini API (vision + text) | P0.T3 | P5, P8, P9 (all AI) |
 | **Apple Developer Program** | iOS signing, App Store Connect, subscriptions | P0.T4 | P1.T4, P7.T2, P12 |
 | **Google Play Console** | Android app, billing, closed track | P0.T4 | P1.T4, P7.T2, P12 |
@@ -83,10 +86,9 @@ by the platform — they only need to be in the **local** `.env` for tests/scrip
 |---|---|---|
 | `EXPO_TOKEN` | Expo → Access Tokens | P1.T4/T5 (EAS build in CI), P12.T9 |
 | `SUPABASE_ACCESS_TOKEN` | Supabase → Account → Access Tokens (CLI) | P3.T5 (deploy functions/migrations from CI) |
-| `SUPABASE_STAGING_PROJECT_REF` | Supabase → staging project ref | P3.T5 CI deploy |
-| `SUPABASE_PROD_PROJECT_REF` | Supabase → prod project ref | P12.T9 |
-| `SUPABASE_STAGING_DB_PASSWORD` | Supabase → staging DB password | P3.T5 (`supabase db push`) |
-| `SUPABASE_PROD_DB_PASSWORD` | Supabase → prod DB password | P12.T9 |
+| `SUPABASE_STAGING_PROJECT_REF` | Supabase → project ref (`rphtdgoggsldshtdbkaj`) | P3.T5 CI deploy |
+| `SUPABASE_STAGING_DB_PASSWORD` | Supabase → DB password | P3.T5 (`supabase db push`) |
+| `SUPABASE_PROD_PROJECT_REF` / `SUPABASE_PROD_DB_PASSWORD` | **Created at launch** — fresh prod project (P12.T9); not provisioned pre-launch | P12.T9 |
 | `SENTRY_AUTH_TOKEN` | Sentry → Auth Tokens (source-map upload) | P1.T6 / release builds |
 | `SENTRY_ORG` / `SENTRY_PROJECT` | Sentry org + project slugs | P1.T6 |
 
@@ -108,8 +110,8 @@ by the platform — they only need to be in the **local** `.env` for tests/scrip
 | File | Purpose | Git |
 |---|---|---|
 | `.env.example` | Placeholder names for every key above | **tracked** |
-| `.env.staging` | Real staging keys (P0.T2/T3) | ignored |
-| `.env.prod` | Real prod keys | ignored |
+| `.env.staging` | Real keys for the single working project (P0.T2/T3) | ignored |
+| `.env.prod` | **Unused pre-launch** (prod deleted 2026-07-14); recreated at launch | ignored |
 | `app/.env` | Client `EXPO_PUBLIC_*` for local dev | ignored |
 | `supabase/.env` | Local function secrets for `supabase functions serve` | ignored |
 

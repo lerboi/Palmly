@@ -25,12 +25,14 @@ evidence).
   - Once attached: the loop will `eas build -p android --profile development` (or reuse the queued
     build) and verify install + launch.
 
-- [ ] **H2 — PostHog + Sentry projects.** Create a PostHog project and a Sentry project, then put
-  these in `app/.env` (client-safe) and `.env.staging`:
-  - `EXPO_PUBLIC_POSTHOG_KEY`, `EXPO_PUBLIC_POSTHOG_HOST` (e.g. `https://us.i.posthog.com`)
-  - `EXPO_PUBLIC_SENTRY_DSN`
-  - (for release source-maps, later) `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`
-  - **Unblocks:** P1.T6 (analytics/crash plumbing — `app_opened` event + a test crash).
+- [x] **H2 — PostHog + Sentry projects.** ✅ 2026-07-14 — both created and **verified live**: a
+  test PostHog capture → `HTTP 200 {"status":"Ok"}`, a test Sentry envelope → `HTTP 200` + event id.
+  `EXPO_PUBLIC_POSTHOG_KEY` (`phc_…`), `EXPO_PUBLIC_POSTHOG_HOST` (`https://us.i.posthog.com`),
+  `EXPO_PUBLIC_SENTRY_DSN` are in **`app/.env`** (the Expo project root; agent moved them there from
+  the root `.env`). **Sentry org/project = `makeitai` / `react-native`** → use for `SENTRY_ORG` /
+  `SENTRY_PROJECT` at P1.T6 source-map upload. **Remaining for full P1.T6 (device):** wire
+  `Sentry.init` + PostHog SDK in-app (the `@sentry/wizard` line the user was given, or manual) + the
+  on-device `app_opened` event + forced-crash checks. Account/key half is done.
 
 - [ ] **H3 — CI green-check settings (P1.T5).** In the GitHub repo (`lerboi/Palmly`):
   1. **Settings → Secrets and variables → Actions →** add repo secret **`EXPO_TOKEN`**.
@@ -43,17 +45,19 @@ evidence).
 
 ## 🟡 Needed soon — upcoming phases
 
-- [ ] **H4 — Mirror `GEMINI_API_KEY` into Supabase Vault (staging).** The Edge Functions read the
-  Gemini key from Vault, not from the client. Supabase dashboard → staging project → Vault → add
-  secret `GEMINI_API_KEY` (or `supabase secrets set GEMINI_API_KEY=…`). **Needed at P5** (AI workers).
+- [x] **H4 — `GEMINI_API_KEY` set as an Edge-Function secret (staging).** ✅ 2026-07-14 — set via
+  `supabase secrets set GEMINI_API_KEY=… --project-ref rphtdgoggsldshtdbkaj`; confirmed present in
+  `supabase secrets list` (digest `17728948…`). The functions read it via `Deno.env.get()` (Edge
+  secrets), which is the correct mechanism — not SQL-side Vault. Applies to functions on next deploy.
 
-- [ ] **H4b — Supabase deploy secrets (unblocks staging deploy CI + P3.G gate).** (1) Create a
-  Supabase **personal access token** (dashboard → Account → Access Tokens, starts `sbp_`); put it in
-  `.env` as `SUPABASE_ACCESS_TOKEN`. (2) Add three **GitHub repo secrets** (Settings → Secrets →
-  Actions): `SUPABASE_ACCESS_TOKEN`, `SUPABASE_STAGING_PROJECT_REF` (`rphtdgoggsldshtdbkaj`),
-  `SUPABASE_STAGING_DB_PASSWORD`. This lets `.github/workflows/deploy.yml` push migrations + deploy
-  Edge Functions to staging on merge to `main`. **Gates:** P3.T5 "deployed by CI" + the P3.G phase
-  gate. (Backend dev/testing doesn't need it — that runs transactionally against staging already.)
+- [~] **H4b — Supabase deploy secrets.** (1) ✅ 2026-07-14 — Supabase **personal access token**
+  created + in `.env` as `SUPABASE_ACCESS_TOKEN` (validated against the Management API: lists 1
+  project `palmly-staging`, confirming prod deleted). The agent can now drive the CLI (deploy,
+  secrets). (2) ⬜ **Still todo (browser, needed only for *automatic* CI deploys):** add GitHub repo
+  secrets (Settings → Secrets → Actions): `SUPABASE_ACCESS_TOKEN`, `SUPABASE_STAGING_PROJECT_REF`
+  (`rphtdgoggsldshtdbkaj`), `SUPABASE_STAGING_DB_PASSWORD` — so `.github/workflows/deploy.yml`
+  deploys on merge to `main`. **Gates:** P3.T5 "deployed by CI" + P3.G. *(Manual CLI deploy from the
+  agent needs only part 1, which is done.)*
 
 - [ ] **H4c — Confirm/enable Gemini PAID tier (important).** The current `GEMINI_API_KEY` behaves as
   **free-tier**: explicit context caching returns `429 FreeTier limit=0` and implicit caching never
@@ -64,10 +68,10 @@ evidence).
   project) and confirm cached-content storage quota > 0. Functional `generateContent` already works,
   so the build proceeds meanwhile; this must be resolved before real user data / launch.
 
-- [ ] **H5 — Enable anonymous sign-ins (1-click, blocks the app's first launch).** Supabase
-  dashboard → staging → **Authentication → Sign In / Providers → Anonymous Sign-Ins → enable**
-  (currently **disabled** — the app's `signInAnonymously()` returns HTTP 422 until this is on). The
-  profile trigger + app code are done; this toggle + a device (H1) complete P3.T6's runtime path.
+- [x] **H5 — Enable anonymous sign-ins.** ✅ 2026-07-14 — enabled on staging; verified via the auth
+  endpoint: `POST /auth/v1/signup {}` now returns **HTTP 200** with an anonymous session (was `422
+  anonymous_provider_disabled`). Throwaway test user cleaned up. The profile trigger + app code were
+  already done; this completes P3.T6's server side (the on-device relaunch-reuse check still needs H1).
 
 - [ ] **H6 — Cloudflare Turnstile + domain `palmly.app`.** Buy the domain; in Cloudflare create a
   Turnstile widget. Put `EXPO_PUBLIC_TURNSTILE_SITE_KEY` (client) + `TURNSTILE_SECRET_KEY` (server)
@@ -97,6 +101,12 @@ evidence).
 ---
 
 ## Notes / status the agent left you
+
+- **Supabase: ONE project now (2026-07-14).** You deleted `palmly-prod`; everything targets the
+  single `palmly-staging` project (`rphtdgoggsldshtdbkaj`). **Do every Supabase/dashboard task once**
+  (H4, H4b, H5, H6 Turnstile) — no prod copy. A fresh prod is created at launch (P12) from the git
+  migrations. Migrations are kept backward-compatible so the one DB stays safe. (`.env.prod` is now
+  unused; safe to ignore or delete.)
 
 - **Build `e081b5db`** (Android dev build) was queued 2026-07-11 and may now be finished:
   https://expo.dev/accounts/lehehroi/projects/palmly/builds/e081b5db-97c2-4444-a5fa-c88a232a6ee7 —
