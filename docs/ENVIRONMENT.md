@@ -71,7 +71,7 @@ by the platform — they only need to be in the **local** `.env` for tests/scrip
 | `GEMINI_API_KEY` | Google AI Studio (paid tier) | P5.T2 (`worker-scan`), P5.T6, P7 compat, P9 (`fortune-generate`, `chat-send`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → API → `service_role` key | Local tests, seed scripts, `_shared` (P3.T5) |
 | `TURNSTILE_SECRET_KEY` | Cloudflare → Turnstile → Secret Key | P3.T6 (verify challenge server-side) |
-| `REVENUECAT_WEBHOOK_AUTH` | Shared secret set in RC → Integrations → Webhook Authorization header | P7.T3 (`revenuecat-webhook`) |
+| `REVENUECAT_WEBHOOK_SECRET` | RC → Integrations → Webhook → **Signing secret** (HMAC-SHA256; the `revenuecat-webhook` fn verifies the `X-RevenueCat-Webhook-Signature` header — the recommended method over a plain Authorization header) | P7.T3 (`revenuecat-webhook`) |
 | `REVENUECAT_SECRET_API_KEY` | RevenueCat → API keys → Secret (v2 REST) | P10.T2 (`account-delete` subscriber delete) |
 | `APPSFLYER_S2S_API_TOKEN` | AppsFlyer → Security → S2S / API token | P10.T2 (data-deletion request) |
 
