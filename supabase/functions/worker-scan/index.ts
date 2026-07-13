@@ -8,6 +8,7 @@ import { EXTRACTION_MODEL, extractFeatures, type GeminiCall, type GeminiResponse
 import { deriveGeometry, featureHash, type Geometry } from '../_shared/features.ts';
 import { fieldMajority, matchSubject, sameFeatures, type SubjectCandidate } from '../_shared/consistency.ts';
 import { writeTelemetry } from '../_shared/telemetry.ts';
+import { decideFailure, exhausted } from '../_shared/retry.ts';
 import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 
 type Candidate = SubjectCandidate & { scanCount: number };
@@ -48,6 +49,9 @@ function realGeminiCall(): GeminiCall {
         body: JSON.stringify(body),
       }),
     );
+    // 429/5xx that survived withRetry's backoff → throw so the worker treats it as transient
+    // (retry via the pgmq visibility timeout), not as malformed output (a permanent failure).
+    if (!res.ok) throw new Error(`gemini_http_${res.status}`);
     return (await res.json()) as GeminiResponse;
   };
 }
@@ -66,6 +70,7 @@ const archive = (db: SupabaseClient, msgId: number) =>
 
 interface ScanMessage {
   msg_id: number;
+  read_ct: number;
   enqueued_at: string;
   message: { scan_id: string };
 }
@@ -74,37 +79,45 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
   const started = Date.now();
   const scanId = msg.message.scan_id;
   const queueAgeMs = Date.now() - new Date(msg.enqueued_at).getTime();
+  const telem = { worker: 'worker-scan', queue: 'scan_jobs', msg_id: msg.msg_id, queue_age_ms: queueAgeMs };
+
+  // §6.6 failure policy: permanent → fail fast (archive + status failed); transient → retry (leave
+  // the message so pgmq re-delivers after the vt); exhausted/poison → dead-letter.
+  const applyFailure = async (reason: string) => {
+    const o = decideFailure(reason, msg.read_ct);
+    if (o.action === 'retry') {
+      await writeTelemetry(db, { ...telem, status: 'retry', model_latency_ms: Date.now() - started, detail: { failure: reason, read_ct: msg.read_ct } });
+      return { scanId, outcome: 'retry', reason }; // NOT archived → redelivered after the visibility timeout
+    }
+    await setStatus(db, scanId, 'failed', o.failureReason);
+    await writeTelemetry(db, { ...telem, status: 'failed', model_latency_ms: Date.now() - started, detail: { failure: o.failureReason, read_ct: msg.read_ct, dead_letter: o.action === 'dead_letter' } });
+    await archive(db, msg.msg_id);
+    return { scanId, outcome: o.action, reason: o.failureReason };
+  };
+
+  // poison / retry-exhausted message → dead-letter before spending another Gemini call on it
+  if (exhausted(msg.read_ct)) return applyFailure('exhausted');
 
   const { data: scan } = await db.from('scans').select('id,user_id,kind,side,storage_path').eq('id', scanId).single();
-  if (!scan) {
-    await archive(db, msg.msg_id);
-    return { scanId, outcome: 'missing_scan' };
-  }
+  if (!scan) return applyFailure('missing_scan');
   await setStatus(db, scanId, 'extracting');
 
   const dl = await db.storage.from('scans').download(scan.storage_path);
-  if (dl.error || !dl.data) {
-    await setStatus(db, scanId, 'failed', 'image_unavailable');
-    await writeTelemetry(db, { worker: 'worker-scan', queue: 'scan_jobs', msg_id: msg.msg_id, status: 'failed', queue_age_ms: queueAgeMs, detail: { failure: 'image_unavailable' } });
-    await archive(db, msg.msg_id);
-    return { scanId, outcome: 'image_unavailable' };
-  }
+  if (dl.error || !dl.data) return applyFailure('image_unavailable'); // transient → retry
   const imageBase64 = bytesToBase64(new Uint8Array(await dl.data.arrayBuffer()));
 
   const kind = scan.kind as 'palm' | 'face';
   const subjectKind = kind === 'face' ? 'face' : `palm_${scan.side}`;
   const runExtract = () => extractFeatures({ imageBase64, kind, systemInstruction: EXTRACTION_PREFIX, geminiCall });
 
-  const failScan = async (reason: string) => {
-    await setStatus(db, scanId, 'failed', reason);
-    await writeTelemetry(db, { worker: 'worker-scan', queue: 'scan_jobs', msg_id: msg.msg_id, status: 'failed', queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started, detail: { failure: reason } });
-    await archive(db, msg.msg_id);
-    return { scanId, outcome: reason };
-  };
-
   // vote A — its geometry also drives subject matching
-  const a = await runExtract();
-  if (!a.ok) return failScan(a.failureReason);
+  let a: Awaited<ReturnType<typeof runExtract>>;
+  try {
+    a = await runExtract();
+  } catch {
+    return applyFailure('gemini_unavailable'); // Gemini unavailable past withRetry → transient
+  }
+  if (!a.ok) return applyFailure(a.failureReason);
 
   // recognize the same hand → reuse the canonical feature_set (§6.6.4: no new extraction row)
   const m = matchSubject(a.geometry, await loadSubjectCandidates(db, scan.user_id, subjectKind));
@@ -116,14 +129,23 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
     return { scanId, outcome: 'matched', canonical: m.subject.canonicalFeatureSetId };
   }
 
-  // new subject → confirm the trust-critical first extraction with a 2nd vote (+ tie-break)
+  // new subject → confirm the trust-critical first extraction with a 2nd vote (+ tie-break).
+  // A transient blip on a *confirming* vote must not fail the whole scan (vote A already succeeded)
+  // — fall back to fewer votes rather than retrying the whole pipeline.
+  const voteSafely = async (): Promise<Awaited<ReturnType<typeof runExtract>>> => {
+    try {
+      return await runExtract();
+    } catch {
+      return { ok: false, failureReason: 'vote_unavailable' };
+    }
+  };
   let features = a.features;
   let votes = 1;
-  const b = await runExtract();
+  const b = await voteSafely();
   if (b.ok) {
     votes = 2;
     if (!sameFeatures(a.features, b.features)) {
-      const c3 = await runExtract();
+      const c3 = await voteSafely();
       features = fieldMajority(c3.ok ? [a.features, b.features, c3.features] : [a.features, b.features]);
       votes = c3.ok ? 3 : 2;
     }
@@ -140,7 +162,7 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
     })
     .select('id')
     .single();
-  if (fsErr || !fs) return failScan('store_failed');
+  if (fsErr || !fs) return applyFailure('store_failed'); // transient DB error → retry
 
   await db.from('subject_profiles').insert({ user_id: scan.user_id, kind: subjectKind, canonical_feature_set_id: fs.id });
   await setStatus(db, scanId, 'narrating');

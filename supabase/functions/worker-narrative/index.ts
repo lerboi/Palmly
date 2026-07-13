@@ -17,6 +17,7 @@ import {
   type GeminiResponse,
 } from '../_shared/narrative.ts';
 import { writeTelemetry } from '../_shared/telemetry.ts';
+import { decideFailure, exhausted } from '../_shared/retry.ts';
 import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 
 const NARRATIVE_PREFIX = await Deno.readTextFile(
@@ -38,6 +39,7 @@ function realGeminiCall(): GeminiCall {
         body: JSON.stringify(body),
       }),
     );
+    if (!res.ok) throw new Error(`gemini_http_${res.status}`); // 429/5xx past withRetry → transient
     return (await res.json()) as GeminiResponse;
   };
 }
@@ -58,6 +60,7 @@ const archive = (db: SupabaseClient, msgId: number) =>
 
 interface NarrativeMessage {
   msg_id: number;
+  read_ct: number;
   enqueued_at: string;
   message: { scan_id: string; feature_set_id: string; depth_level?: number };
 }
@@ -67,29 +70,44 @@ async function processMessage(db: SupabaseClient, msg: NarrativeMessage, geminiC
   const { scan_id: scanId, feature_set_id: featureSetId } = msg.message;
   const depthLevel = msg.message.depth_level ?? 1;
   const queueAgeMs = Date.now() - new Date(msg.enqueued_at).getTime();
+  const telem = { worker: 'worker-narrative', queue: 'narrative_jobs', msg_id: msg.msg_id, queue_age_ms: queueAgeMs };
 
-  const fail = async (reason: string, detail?: string) => {
-    if (scanId) await setStatus(db, scanId, 'failed', reason);
-    await writeTelemetry(db, { worker: 'worker-narrative', queue: 'narrative_jobs', msg_id: msg.msg_id, status: 'failed', queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started, detail: { failure: reason, ...(detail ? { detail } : {}) } });
+  // §6.6 failure policy (see _shared/retry.ts): permanent → archive+failed; transient → retry
+  // (leave for vt redelivery); exhausted/poison → dead-letter.
+  const applyFailure = async (reason: string, detail?: string) => {
+    const o = decideFailure(reason, msg.read_ct);
+    if (o.action === 'retry') {
+      await writeTelemetry(db, { ...telem, status: 'retry', model_latency_ms: Date.now() - started, detail: { failure: reason, read_ct: msg.read_ct, ...(detail ? { detail } : {}) } });
+      return { featureSetId, outcome: 'retry', reason };
+    }
+    if (scanId) await setStatus(db, scanId, 'failed', o.failureReason);
+    await writeTelemetry(db, { ...telem, status: 'failed', model_latency_ms: Date.now() - started, detail: { failure: o.failureReason, read_ct: msg.read_ct, dead_letter: o.action === 'dead_letter', ...(detail ? { detail } : {}) } });
     await archive(db, msg.msg_id);
-    return { featureSetId, outcome: reason };
+    return { featureSetId, outcome: o.action, reason: o.failureReason };
   };
 
+  if (exhausted(msg.read_ct)) return applyFailure('exhausted');
+
   const { data: fs } = await db.from('feature_sets').select('id,user_id,kind,features').eq('id', featureSetId).single();
-  if (!fs) return fail('missing_feature_set');
+  if (!fs) return applyFailure('missing_feature_set');
 
   const kind = fs.kind as FeatureKind;
   const kb = await loadKb(db, traditionFor(kind));
 
-  const r = await generateNarrative({
-    kind,
-    features: fs.features as Record<string, unknown>,
-    kb,
-    depthLevel,
-    systemInstruction: NARRATIVE_PREFIX,
-    geminiCall,
-  });
-  if (!r.ok) return fail(r.failureReason, r.detail);
+  let r: Awaited<ReturnType<typeof generateNarrative>>;
+  try {
+    r = await generateNarrative({
+      kind,
+      features: fs.features as Record<string, unknown>,
+      kb,
+      depthLevel,
+      systemInstruction: NARRATIVE_PREFIX,
+      geminiCall,
+    });
+  } catch {
+    return applyFailure('gemini_unavailable'); // Gemini unavailable past withRetry → transient
+  }
+  if (!r.ok) return applyFailure(r.failureReason, r.detail);
 
   const { error: insErr } = await db.from('readings').insert({
     user_id: fs.user_id,
@@ -103,7 +121,7 @@ async function processMessage(db: SupabaseClient, msg: NarrativeMessage, geminiC
     tokens_in: r.usage?.promptTokenCount,
     tokens_out: r.usage?.candidatesTokenCount,
   });
-  if (insErr) return fail('store_failed', insErr.message);
+  if (insErr) return applyFailure('store_failed', insErr.message); // transient DB error → retry
 
   if (scanId) await setStatus(db, scanId, 'complete');
   await writeTelemetry(db, {
