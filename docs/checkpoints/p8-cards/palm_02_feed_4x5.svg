@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+  <rect width="1080" height="1350" fill="#FCF8EF"/>
+  <rect x="20" y="20" width="1040" height="1310" fill="none" stroke="#E6DCC6" stroke-width="2"/>
+  <text x="64" y="180" font-family="Noto Serif Display, Noto Serif, serif" font-size="58" font-weight="600" fill="#1E1B16"><tspan x="64" dy="0">An Earth hand — steady to</tspan><tspan x="64" dy="66.69999999999999">the core.</tspan></text>
+  <path d="M 330 626 C 376.7 627.2, 563.3 631.8, 610 633" fill="none" stroke="#1E1B16" stroke-opacity="0.10" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 330 626 C 376.7 627.2, 563.3 631.8, 610 633" fill="none" stroke="#C3272B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 337 689 C 370.8 690.2, 506.2 694.8, 540 696" fill="none" stroke="#1E1B16" stroke-opacity="0.10" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 337 689 C 370.8 690.2, 506.2 694.8, 540 696" fill="none" stroke="#1E1B16" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 365 654 C 374.3 696, 411.7 864, 421 906" fill="none" stroke="#1E1B16" stroke-opacity="0.10" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 365 654 C 374.3 696, 411.7 864, 421 906" fill="none" stroke="#C3272B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="628" y="641" font-family="Noto Serif SC, Noto Serif TC, serif" font-size="34" fill="#5A544A">心</text>
+  <text x="558" y="704" font-family="Noto Serif SC, Noto Serif TC, serif" font-size="34" fill="#5A544A">智</text>
+  <text x="439" y="914" font-family="Noto Serif SC, Noto Serif TC, serif" font-size="34" fill="#5A544A">命</text>
+  
+  <rect x="64" y="1104" rx="30" ry="30" width="234" height="60" fill="none" stroke="#E6DCC6" stroke-width="2"/><text x="181" y="1144" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="28" fill="#5A544A">Earth hand</text>
+  <rect x="64" y="1248" width="56" height="56" rx="8" fill="#C3272B"/><text x="92" y="1288" text-anchor="middle" font-family="Noto Serif SC, serif" font-size="34" fill="#FCF8EF">相</text>
+  <text x="138" y="1288" font-family="Noto Sans, sans-serif" font-size="30" fill="#1E1B16">palmly.app</text>
+</svg>

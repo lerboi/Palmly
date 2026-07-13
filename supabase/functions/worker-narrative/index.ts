@@ -55,6 +55,23 @@ async function loadKb(db: SupabaseClient, tradition: string): Promise<Map<string
 const setStatus = (db: SupabaseClient, id: string, status: string, failure_reason?: string) =>
   db.from('scans').update({ status, ...(failure_reason ? { failure_reason } : {}) }).eq('id', id);
 
+/** Fire the card-render function to pre-render the share card (§6.1). Best-effort — a failure here
+ *  must never fail the reading (the card can be rendered on-demand at share time). */
+async function preRenderCard(featureSetId: string, readingId: string): Promise<void> {
+  try {
+    const url = Deno.env.get('SUPABASE_URL');
+    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!url || !key) return;
+    await fetch(`${url}/functions/v1/card-render`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ feature_set_id: featureSetId, variant: 'feed_4x5', source_type: 'reading', source_id: readingId }),
+    });
+  } catch (e) {
+    console.error('[worker-narrative] card pre-render invoke failed (non-fatal):', e instanceof Error ? e.message : e);
+  }
+}
+
 const archive = (db: SupabaseClient, msgId: number) =>
   db.rpc('queue_archive', { p_queue: 'narrative_jobs', p_msg_id: msgId });
 
@@ -109,19 +126,27 @@ async function processMessage(db: SupabaseClient, msg: NarrativeMessage, geminiC
   }
   if (!r.ok) return applyFailure(r.failureReason, r.detail);
 
-  const { error: insErr } = await db.from('readings').insert({
-    user_id: fs.user_id,
-    feature_set_id: fs.id,
-    kind,
-    narrative: r.narrative,
-    depth_level: depthLevel,
-    model_id: NARRATIVE_MODEL,
-    prompt_version: PROMPT_VERSION,
-    kb_version: KB_VERSION,
-    tokens_in: r.usage?.promptTokenCount,
-    tokens_out: r.usage?.candidatesTokenCount,
-  });
-  if (insErr) return applyFailure('store_failed', insErr.message); // transient DB error → retry
+  const { data: reading, error: insErr } = await db
+    .from('readings')
+    .insert({
+      user_id: fs.user_id,
+      feature_set_id: fs.id,
+      kind,
+      narrative: r.narrative,
+      depth_level: depthLevel,
+      model_id: NARRATIVE_MODEL,
+      prompt_version: PROMPT_VERSION,
+      kb_version: KB_VERSION,
+      tokens_in: r.usage?.promptTokenCount,
+      tokens_out: r.usage?.candidatesTokenCount,
+    })
+    .select('id')
+    .single();
+  if (insErr || !reading) return applyFailure('store_failed', insErr?.message); // transient DB error → retry
+
+  // pre-render the share card so sharing is instant (§6.1) — best-effort, never blocks completion,
+  // and decoupled (an HTTP invoke of card-render, so resvg stays out of this worker).
+  await preRenderCard(fs.id, reading.id);
 
   if (scanId) await setStatus(db, scanId, 'complete');
   await writeTelemetry(db, {
