@@ -99,6 +99,17 @@ async function processMessage(db: SupabaseClient, msg: CompatMessage, geminiCall
     .eq('id', resultId);
   if (upErr) return applyFailure('store_failed');
 
+  // notify BOTH members — the P2 reveal moment (§7.4). Best-effort; a push failure never fails the job.
+  try {
+    for (const uid of [pair?.user_a, pair?.user_b]) {
+      if (uid) {
+        await db.rpc('enqueue_push', { p_user_id: uid, p_type: 'compat_complete', p_title: 'The thread is tied 🧧', p_body: `Your compatibility is ready — you scored ${score.composite}.`, p_deep_link: `palmly://compat/${result.pair_id}` });
+      }
+    }
+  } catch (e) {
+    console.error('[worker-compat] push enqueue failed (non-fatal):', e instanceof Error ? e.message : e);
+  }
+
   await writeTelemetry(db, { ...telem, status: 'ok', model_latency_ms: Date.now() - started, tokens_in: narr.usage?.promptTokenCount, tokens_out: narr.usage?.candidatesTokenCount, detail: { composite: score.composite } });
   await archive(db, msg.msg_id);
   return { resultId, outcome: 'complete', composite: score.composite };
