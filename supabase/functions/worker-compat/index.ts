@@ -7,6 +7,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { withRetry } from '../_shared/gemini.ts';
 import { COMPAT_ALGORITHM_VERSION, scorePair } from '../_shared/compat.ts';
 import { COMPAT_NARRATIVE_MODEL, COMPAT_PROMPT_VERSION, generateCompatNarrative } from '../_shared/compat-narrative.ts';
+import { renderNotification } from '../_shared/notif-templates.ts';
 import { KB_VERSION, type GeminiCall, type GeminiResponse } from '../_shared/narrative.ts';
 import { writeTelemetry } from '../_shared/telemetry.ts';
 import { decideFailure, exhausted } from '../_shared/retry.ts';
@@ -75,6 +76,7 @@ async function processMessage(db: SupabaseClient, msg: CompatMessage, geminiCall
   const score = scorePair(fa, fb);
   const { data: pair } = await db.from('compatibility_pairs').select('user_a, user_b').eq('id', result.pair_id).single();
   const nameOf = async (uid?: string) => (uid ? (await db.from('profiles').select('display_name').eq('id', uid).maybeSingle()).data?.display_name ?? undefined : undefined);
+  const [nameA, nameB] = [await nameOf(pair?.user_a), await nameOf(pair?.user_b)];
 
   let narr;
   try {
@@ -83,8 +85,8 @@ async function processMessage(db: SupabaseClient, msg: CompatMessage, geminiCall
       subScores: score.sub_scores as unknown as Record<string, number>,
       handA: String(fa.hand_shape ?? 'mixed'),
       handB: String(fb.hand_shape ?? 'mixed'),
-      nameA: await nameOf(pair?.user_a),
-      nameB: await nameOf(pair?.user_b),
+      nameA,
+      nameB,
       systemInstruction: COMPAT_PREFIX,
       geminiCall,
     });
@@ -99,12 +101,14 @@ async function processMessage(db: SupabaseClient, msg: CompatMessage, geminiCall
     .eq('id', resultId);
   if (upErr) return applyFailure('store_failed');
 
-  // notify BOTH members — the P2 reveal moment (§7.4). Best-effort; a push failure never fails the job.
+  // notify BOTH members — the P2 reveal moment (§7.4). Each sees the OTHER member's name. Rendered
+  // from the shared templates (P9.T5) and routed through the dedupe/cap gate (idempotent per pair
+  // per day). Best-effort; a push failure never fails the job.
   try {
-    for (const uid of [pair?.user_a, pair?.user_b]) {
-      if (uid) {
-        await db.rpc('enqueue_push', { p_user_id: uid, p_type: 'compat_complete', p_title: 'The thread is tied 🧧', p_body: `Your compatibility is ready — you scored ${score.composite}.`, p_deep_link: `palmly://compat/${result.pair_id}` });
-      }
+    for (const [uid, otherName] of [[pair?.user_a, nameB], [pair?.user_b, nameA]] as const) {
+      if (!uid) continue;
+      const n = renderNotification('compat_complete', { name: otherName, score: score.composite, pair_id: result.pair_id });
+      await db.rpc('enqueue_push_deduped', { p_user_id: uid, p_type: n.type, p_title: n.title, p_body: n.body, p_deep_link: n.deep_link, p_data: {}, p_dedupe_key: n.dedupe_key, p_cap_class: n.cap_class });
     }
   } catch (e) {
     console.error('[worker-compat] push enqueue failed (non-fatal):', e instanceof Error ? e.message : e);

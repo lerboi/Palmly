@@ -12,6 +12,7 @@ const TABLES = [
   'subscription_events', 'fortune_templates', 'user_fortunes', 'chat_threads',
   'chat_messages', 'share_cards', 'devices', 'kb_chunks', 'deletion_log',
   'worker_telemetry', // added by migration 0004 (queues/telemetry)
+  'notification_log', // added by migration 0014 (P9.T5 push caps/dedupe)
 ];
 
 test('all public tables exist with RLS enabled — and nothing extra', async () => {
