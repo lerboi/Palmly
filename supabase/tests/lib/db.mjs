@@ -54,8 +54,19 @@ export function loadMigrations() {
     .map((f) => ({ name: f, sql: fs.readFileSync(path.join(MIGRATIONS_DIR, f), 'utf8') }));
 }
 
-/** Apply every migration file in order against the given (already-open) client. */
+/**
+ * Apply every migration file in order against the given (already-open) client.
+ *
+ * Two modes (Decision Log 2026-07-14, single-project setup):
+ * - **Empty staging** (pre-deploy): the DDL builds the full schema inside the test txn, as before.
+ * - **Deployed staging** (post `supabase db push`): the schema is already committed, so re-running
+ *   the DDL would collide (`relation ... already exists`). We detect the live schema via a sentinel
+ *   table and skip — every test then seeds + asserts against the deployed schema, still inside a
+ *   rolled-back transaction (zero persistent mutation). Callers need no change.
+ */
 export async function applyMigrations(client) {
+  const { rows } = await client.query(`select to_regclass('public.profiles') is not null as deployed`);
+  if (rows[0]?.deployed) return; // schema already live on staging — DDL is a no-op/verify
   for (const m of loadMigrations()) {
     try {
       await client.query(m.sql);
