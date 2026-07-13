@@ -1,0 +1,13 @@
+{
+  "is_hand": true,
+  "hand_shape": "earth",
+  "heart_line": { "length": "short", "depth": "faint", "curvature": "straight", "ending": "under_index", "breaks": "single", "islands": "none", "chains": "partial", "confidence": "low" },
+  "head_line": { "length": "short", "depth": "deep", "curvature": "straight", "ending": "under_index", "breaks": "none", "islands": "none", "chains": "none", "confidence": "high" },
+  "life_line": { "length": "medium", "depth": "faint", "curvature": "gently_curved", "ending": "between_index_middle", "breaks": "multiple", "islands": "present", "chains": "none", "confidence": "medium" },
+  "fate_line": { "present": "absent", "origin": "not_applicable", "confidence": "high" },
+  "mounts": [],
+  "notable_markings": [],
+  "line_geometry": { "heart_line": [[200, 380], [600, 390]], "head_line": [[210, 470], [500, 480]], "life_line": [[250, 420], [330, 780]] },
+  "exposure_quality": "adequate",
+  "overall_confidence": "medium"
+}

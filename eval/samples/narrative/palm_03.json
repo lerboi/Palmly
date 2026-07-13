@@ -1,0 +1,13 @@
+{
+  "is_hand": true,
+  "hand_shape": "fire",
+  "heart_line": { "length": "medium", "depth": "moderate", "curvature": "strongly_curved", "ending": "under_middle", "breaks": "none", "islands": "none", "chains": "chained", "confidence": "medium" },
+  "head_line": { "length": "long", "depth": "moderate", "curvature": "strongly_curved", "ending": "other", "breaks": "none", "islands": "none", "chains": "none", "confidence": "high" },
+  "life_line": { "length": "long", "depth": "deep", "curvature": "gently_curved", "ending": "other", "breaks": "single", "islands": "present", "chains": "none", "confidence": "medium" },
+  "fate_line": { "present": "faint", "origin": "life_line", "confidence": "low" },
+  "mounts": [ { "name": "apollo", "prominence": "prominent" }, { "name": "mars_upper", "prominence": "moderate" }, { "name": "saturn", "prominence": "flat" } ],
+  "notable_markings": [ { "type": "cross", "location": "below saturn" }, { "type": "grille", "location": "on luna" } ],
+  "line_geometry": { "heart_line": [[180, 360], [720, 360]], "head_line": [[190, 470], [760, 520]], "life_line": [[250, 380], [420, 870]] },
+  "exposure_quality": "good",
+  "overall_confidence": "medium"
+}

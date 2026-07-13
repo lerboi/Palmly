@@ -1,0 +1,13 @@
+{
+  "is_face": true,
+  "face_shape": "earth",
+  "three_courts": "lower_dominant",
+  "five_eyes_spacing": "wide",
+  "eyebrows": { "shape": "curved", "confidence": "medium" },
+  "eyes": { "shape": "round", "set": "prominent", "confidence": "high" },
+  "nose": { "shape": "broad", "bridge": "low", "confidence": "medium" },
+  "mouth": { "shape": "upturned", "confidence": "high" },
+  "ears": { "set": "low", "size": "large", "confidence": "medium" },
+  "canthus_wolong": "absent",
+  "overall_confidence": "medium"
+}

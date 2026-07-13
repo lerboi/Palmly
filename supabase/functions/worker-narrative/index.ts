@@ -1,0 +1,130 @@
+// worker-narrative (Backend §4, §6.1, §6.3): drains one narrative_jobs message → loads the stored
+// feature_set + the pinned KB → deterministic keyed KB selection → Gemini Flash-Lite writes the
+// section prose (features + KB only, NO image) → grafted onto the deterministic claim skeleton →
+// insert `readings` (with model/prompt/kb version stamps) → scan status → complete → telemetry →
+// archive. Invoked by the pg_cron drain (via pg_net) once deployed. Only runs for NEW subjects —
+// worker-scan short-circuits repeat scans to `matched` and reuses the stored reading (§6.6.4).
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { withRetry } from '../_shared/gemini.ts';
+import {
+  generateNarrative,
+  KB_VERSION,
+  NARRATIVE_MODEL,
+  PROMPT_VERSION,
+  traditionFor,
+  type FeatureKind,
+  type GeminiCall,
+  type GeminiResponse,
+} from '../_shared/narrative.ts';
+import { writeTelemetry } from '../_shared/telemetry.ts';
+import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
+
+const NARRATIVE_PREFIX = await Deno.readTextFile(
+  new URL('../../../prompts/narrative/v1/system_instruction.md', import.meta.url),
+).catch(() => 'Write a warm, reflective palm/face reading that expresses ONLY the given grounded claims. Output JSON per the schema. No health, medical, or lifespan claims.');
+
+const admin = (): SupabaseClient =>
+  createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+function realGeminiCall(): GeminiCall {
+  const key = Deno.env.get('GEMINI_API_KEY') ?? '';
+  return async (body) => {
+    const res = await withRetry(() =>
+      fetch(`https://generativelanguage.googleapis.com/v1beta/models/${NARRATIVE_MODEL}:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    );
+    return (await res.json()) as GeminiResponse;
+  };
+}
+
+/** Load the pinned KB tradition into a feature_key → passage map for deterministic keyed lookup. */
+async function loadKb(db: SupabaseClient, tradition: string): Promise<Map<string, string>> {
+  const { data } = await db.from('kb_chunks').select('feature_key, content').eq('kb_version', KB_VERSION).eq('tradition', tradition);
+  const map = new Map<string, string>();
+  for (const r of (data ?? []) as Array<{ feature_key: string; content: string }>) map.set(r.feature_key, r.content);
+  return map;
+}
+
+const setStatus = (db: SupabaseClient, id: string, status: string, failure_reason?: string) =>
+  db.from('scans').update({ status, ...(failure_reason ? { failure_reason } : {}) }).eq('id', id);
+
+const archive = (db: SupabaseClient, msgId: number) =>
+  db.rpc('queue_archive', { p_queue: 'narrative_jobs', p_msg_id: msgId });
+
+interface NarrativeMessage {
+  msg_id: number;
+  enqueued_at: string;
+  message: { scan_id: string; feature_set_id: string; depth_level?: number };
+}
+
+async function processMessage(db: SupabaseClient, msg: NarrativeMessage, geminiCall: GeminiCall) {
+  const started = Date.now();
+  const { scan_id: scanId, feature_set_id: featureSetId } = msg.message;
+  const depthLevel = msg.message.depth_level ?? 1;
+  const queueAgeMs = Date.now() - new Date(msg.enqueued_at).getTime();
+
+  const fail = async (reason: string, detail?: string) => {
+    if (scanId) await setStatus(db, scanId, 'failed', reason);
+    await writeTelemetry(db, { worker: 'worker-narrative', queue: 'narrative_jobs', msg_id: msg.msg_id, status: 'failed', queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started, detail: { failure: reason, ...(detail ? { detail } : {}) } });
+    await archive(db, msg.msg_id);
+    return { featureSetId, outcome: reason };
+  };
+
+  const { data: fs } = await db.from('feature_sets').select('id,user_id,kind,features').eq('id', featureSetId).single();
+  if (!fs) return fail('missing_feature_set');
+
+  const kind = fs.kind as FeatureKind;
+  const kb = await loadKb(db, traditionFor(kind));
+
+  const r = await generateNarrative({
+    kind,
+    features: fs.features as Record<string, unknown>,
+    kb,
+    depthLevel,
+    systemInstruction: NARRATIVE_PREFIX,
+    geminiCall,
+  });
+  if (!r.ok) return fail(r.failureReason, r.detail);
+
+  const { error: insErr } = await db.from('readings').insert({
+    user_id: fs.user_id,
+    feature_set_id: fs.id,
+    kind,
+    narrative: r.narrative,
+    depth_level: depthLevel,
+    model_id: NARRATIVE_MODEL,
+    prompt_version: PROMPT_VERSION,
+    kb_version: KB_VERSION,
+    tokens_in: r.usage?.promptTokenCount,
+    tokens_out: r.usage?.candidatesTokenCount,
+  });
+  if (insErr) return fail('store_failed', insErr.message);
+
+  if (scanId) await setStatus(db, scanId, 'complete');
+  await writeTelemetry(db, {
+    worker: 'worker-narrative', queue: 'narrative_jobs', msg_id: msg.msg_id, status: 'ok',
+    queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started,
+    tokens_in: r.usage?.promptTokenCount, tokens_out: r.usage?.candidatesTokenCount,
+    cache_hit: (r.usage?.cachedContentTokenCount ?? 0) > 0,
+    detail: { sections: r.narrative.sections.length, depth_level: depthLevel },
+  });
+  await archive(db, msg.msg_id);
+  return { featureSetId, outcome: 'reading_created', sections: r.narrative.sections.length };
+}
+
+Deno.serve(
+  withErrorEnvelope(async () => {
+    const db = admin();
+    const geminiCall = realGeminiCall();
+    const { data: msgs } = await db.rpc('queue_read', { p_queue: 'narrative_jobs', p_vt: 60, p_qty: 1 });
+    const list = (msgs ?? []) as NarrativeMessage[];
+    const outcomes = [];
+    for (const m of list) outcomes.push(await processMessage(db, m, geminiCall));
+    return jsonResponse({ processed: outcomes.length, outcomes });
+  }),
+);

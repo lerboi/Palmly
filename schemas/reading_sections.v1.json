@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "reading_sections.v1",
+  "title": "Palmly reading narrative (v1)",
+  "description": "Pass-2 narrative output (Backend §6.3). Structured sections so the client renders native progressive-unlock UI, not a text blob. The claim-bearing fields — section `key`, `depth_level`, `tags`, `feature_refs` — are DETERMINISTIC (code-derived from the stored features via keyed KB lookup, §6.5, §6.6.6); only `headline`, `title`, `body` are model-authored wording. Regenerating from identical features therefore yields identical claims (the diff target) while prose may vary. Stored in readings.narrative.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "headline": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string" },
+    "sections": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "enum": [
+              "hand_shape", "heart", "head", "life", "fate", "mounts", "markings",
+              "face_shape", "proportion", "eyes", "eyebrows", "nose", "mouth", "ears", "canthus"
+            ]
+          },
+          "title": { "type": "string", "minLength": 1 },
+          "body": { "type": "string", "minLength": 1 },
+          "depth_level": { "type": "integer", "minimum": 1 },
+          "tags": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Canonical claim identifiers = the feature_keys grounding this section (e.g. 'heart_line.depth.deep'). The consistency diff target.",
+            "items": { "type": "string" }
+          },
+          "feature_refs": {
+            "type": "array",
+            "description": "feature_keys resolved into KB chunks that grounded this section (same set as tags for v1).",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["key", "title", "body", "depth_level", "tags", "feature_refs"]
+      }
+    },
+    "disclaimer": { "type": "string" }
+  },
+  "required": ["headline", "sections"]
+}

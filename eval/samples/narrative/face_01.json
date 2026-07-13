@@ -1,0 +1,13 @@
+{
+  "is_face": true,
+  "face_shape": "wood",
+  "three_courts": "upper_dominant",
+  "five_eyes_spacing": "narrow",
+  "eyebrows": { "shape": "thick", "confidence": "high" },
+  "eyes": { "shape": "narrow", "set": "deep", "confidence": "high" },
+  "nose": { "shape": "aquiline", "bridge": "high", "confidence": "medium" },
+  "mouth": { "shape": "thin", "confidence": "high" },
+  "ears": { "set": "high", "size": "small", "confidence": "medium" },
+  "canthus_wolong": "prominent",
+  "overall_confidence": "high"
+}
