@@ -36,6 +36,14 @@
             "image": "./assets/images/splash-icon.png"
           }
         }
+      ],
+      "expo-localization",
+      [
+        "@sentry/react-native",
+        {
+          "organization": "makeitai",
+          "project": "react-native"
+        }
       ]
     ],
     "experiments": {

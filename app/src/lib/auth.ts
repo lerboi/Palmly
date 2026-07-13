@@ -22,7 +22,6 @@ export async function ensureSession(): Promise<string | null> {
 
   const { data, error } = await supabase.auth.signInAnonymously();
   if (error) {
-    // eslint-disable-next-line no-console
     console.warn('[auth] anonymous sign-in failed:', error.message);
     return null;
   }
