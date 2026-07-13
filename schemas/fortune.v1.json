@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "fortune.v1",
+  "title": "Palmly daily fortune (v1)",
+  "description": "Almanac-style daily fortune content (Backend §3.2, §10). Generated per (fortune_date × pillar_bucket × locale), NOT per user — lightweight BaZi/almanac tone (mvp_spec §8), for reflection & entertainment, never health/medical/financial-advice claims. The free tier shows `overall`; premium expands the rest (spec §4.5, U4).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "overall": { "type": "string", "minLength": 1 },
+    "career": { "type": "string", "minLength": 1 },
+    "love": { "type": "string", "minLength": 1 },
+    "wealth": { "type": "string", "minLength": 1 },
+    "do": { "type": "array", "minItems": 1, "maxItems": 3, "items": { "type": "string", "minLength": 1 } },
+    "dont": { "type": "array", "minItems": 1, "maxItems": 3, "items": { "type": "string", "minLength": 1 } },
+    "lucky_direction": { "enum": ["East", "South", "West", "North", "Southeast", "Southwest", "Northeast", "Northwest"] },
+    "lucky_color": { "type": "string", "minLength": 1 },
+    "lucky_hours": { "type": "string", "minLength": 1 }
+  },
+  "required": ["overall", "career", "love", "wealth", "do", "dont", "lucky_direction", "lucky_color", "lucky_hours"]
+}

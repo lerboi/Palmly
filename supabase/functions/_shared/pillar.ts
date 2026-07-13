@@ -56,6 +56,24 @@ export function dayPillar(birthDate: string | null | undefined): DayPillar | nul
 /** The fortune bucket for a birth date — one of 60 sexagenary buckets, or the generic bucket. */
 export const pillarBucket = (birthDate: string | null | undefined): string => dayPillar(birthDate)?.bucket ?? GENERIC_BUCKET;
 
+export interface BucketInfo {
+  bucket: string;
+  element: DayPillar['element'] | 'generic';
+  day_pillar: string;
+}
+
+/** The full set fortune-generate writes against: the 60 sexagenary buckets + the generic bucket. */
+export function allPillarBuckets(): BucketInfo[] {
+  const out: BucketInfo[] = [];
+  for (let idx = 0; idx < 60; idx++) {
+    const s = idx % 10;
+    const b = idx % 12;
+    out.push({ bucket: STEM_PY[s] + BRANCH_PY[b], element: STEM_ELEMENT[s], day_pillar: STEM_CN[s] + BRANCH_CN[b] });
+  }
+  out.push({ bucket: GENERIC_BUCKET, element: 'generic', day_pillar: '' });
+  return out;
+}
+
 /** The jsonb stored on profiles.element_profile at birth-date capture. */
 export function elementProfile(birthDate: string | null | undefined): Record<string, unknown> {
   const p = dayPillar(birthDate);
