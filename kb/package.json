@@ -1,0 +1,11 @@
+{
+  "name": "palmly-kb",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Palmly knowledge base (手相/面相), versioned; deterministic keyed lookup for grounded narrative (Backend §6.5). No deps — pure Node.",
+  "scripts": {
+    "audit": "node ./audit.mjs",
+    "list": "node ./audit.mjs --list"
+  }
+}

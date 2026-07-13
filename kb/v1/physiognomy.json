@@ -1,0 +1,62 @@
+{
+  "kb_version": "v1",
+  "tradition": "physiognomy",
+  "note": "Classical 面相 grounding (五行 element face, 三停 three courts, 五眼 five-eyes, per-feature descriptors), entertainment framing only. No health/medical/lifespan/financial claims (Backend §13). One chunk per (feature, enum-value); composed deterministically by the narrative worker (§6.5). Practitioner review: P5.T5 → kb/REVIEW.md.",
+  "chunks": [
+    { "feature_key": "face_shape.wood", "content": "A Wood-element face — longer, upright and well-defined — is classically read in 面相 as upright, growth-minded and principled, a nature that reaches upward like a tree. Offered for reflection, not prediction." },
+    { "feature_key": "face_shape.fire", "content": "A Fire-element face — pointed chin, broad forehead, animated features — traditionally signals passion, quick spirit and expressive warmth." },
+    { "feature_key": "face_shape.earth", "content": "An Earth-element face — broad, full and grounded — is classically linked to steadiness, generosity and patient, dependable strength." },
+    { "feature_key": "face_shape.metal", "content": "A Metal-element face — clear, defined and well-structured — is traditionally read as disciplined, precise and principled, with a cool composure." },
+    { "feature_key": "face_shape.water", "content": "A Water-element face — rounded, soft and full — is classically associated with adaptability, sociability and an easy, flowing warmth." },
+    { "feature_key": "face_shape.mixed", "content": "A Mixed-element face blends several elemental qualities — traditionally read as a versatile, many-sided nature not captured by one type." },
+
+    { "feature_key": "three_courts.upper_dominant", "content": "An emphasised upper court (the forehead) is classically read in 三停 as an intellectual, reflective emphasis — a nature that leads with thought and vision." },
+    { "feature_key": "three_courts.balanced", "content": "Balanced three courts — forehead, midface and jaw in even proportion — are traditionally read as a harmonious, well-rounded temperament." },
+    { "feature_key": "three_courts.lower_dominant", "content": "An emphasised lower court (jaw and chin) is classically linked to a grounded, practical and determined nature — strength that shows in action and will." },
+
+    { "feature_key": "five_eyes_spacing.narrow", "content": "Narrow eye spacing is classically read in 五眼 as focus and precision — a nature attentive to detail and quick to concentrate." },
+    { "feature_key": "five_eyes_spacing.balanced", "content": "Balanced eye spacing is traditionally read as even-handed perspective — a composed, well-proportioned outlook." },
+    { "feature_key": "five_eyes_spacing.wide", "content": "Wide eye spacing is classically linked to a broad, easygoing perspective — a nature that takes in the big picture and stays relaxed." },
+
+    { "feature_key": "eyebrows.shape.straight", "content": "Straight eyebrows are classically read as a direct, rational temperament — clear-minded and matter-of-fact." },
+    { "feature_key": "eyebrows.shape.curved", "content": "Curved eyebrows are traditionally linked to warmth and sociability — an approachable, people-attuned nature." },
+    { "feature_key": "eyebrows.shape.arched", "content": "Arched eyebrows are classically read as expressiveness and poise — a flair for presence and a lively responsiveness." },
+    { "feature_key": "eyebrows.shape.sparse", "content": "Sparse eyebrows are traditionally read as an independent, understated spirit — someone who acts on their own counsel." },
+    { "feature_key": "eyebrows.shape.thick", "content": "Thick, full eyebrows are classically linked to energy and conviction — a strong will and forthright vigour." },
+
+    { "feature_key": "eyes.shape.round", "content": "Round eyes are classically read in 面相 as openness and curiosity — an expressive, feeling-forward nature." },
+    { "feature_key": "eyes.shape.almond", "content": "Almond eyes are traditionally linked to poise and balance — a composed, discerning presence." },
+    { "feature_key": "eyes.shape.narrow", "content": "Narrow eyes are classically read as focus and shrewdness — a watchful, considering nature." },
+    { "feature_key": "eyes.shape.upturned", "content": "Upturned eyes are traditionally linked to optimism and ambition — an upward, hopeful outlook." },
+    { "feature_key": "eyes.shape.downturned", "content": "Downturned eyes are classically read as gentleness and empathy — a kind, approachable warmth." },
+    { "feature_key": "eyes.set.deep", "content": "Deep-set eyes are classically read as depth and reserve — an observant, inward, considering nature." },
+    { "feature_key": "eyes.set.balanced", "content": "Balanced-set eyes are traditionally read as an even, approachable presence — engaged without intensity." },
+    { "feature_key": "eyes.set.prominent", "content": "Prominent eyes are classically linked to expressiveness and openness — a warm, outwardly engaged spirit." },
+
+    { "feature_key": "nose.shape.straight", "content": "A straight nose is classically read in 面相 as fairness and self-discipline — a steady, principled bearing." },
+    { "feature_key": "nose.shape.aquiline", "content": "An aquiline nose is traditionally linked to independence and drive — a strong-willed, self-directed nature." },
+    { "feature_key": "nose.shape.button", "content": "A small, rounded nose is classically read as approachability and charm — an easygoing, personable warmth." },
+    { "feature_key": "nose.shape.broad", "content": "A broad nose is traditionally linked to groundedness and generosity — a sturdy, open-handed nature." },
+    { "feature_key": "nose.shape.fleshy", "content": "A full, fleshy nose tip is classically read in 面相 as warmth and enjoyment of life — a generous, sociable spirit." },
+    { "feature_key": "nose.bridge.low", "content": "A low nose bridge is classically read as adaptability and ease — a flexible, cooperative temperament." },
+    { "feature_key": "nose.bridge.medium", "content": "A medium nose bridge is traditionally read as balance — self-possession without rigidity." },
+    { "feature_key": "nose.bridge.high", "content": "A high nose bridge is classically linked to independence and pride of purpose — a self-assured, autonomous streak." },
+
+    { "feature_key": "mouth.shape.full", "content": "A full mouth is classically read in 面相 as warmth and generosity — an expressive, affectionate nature." },
+    { "feature_key": "mouth.shape.thin", "content": "A thin mouth is traditionally linked to precision and self-control — measured words and a disciplined manner." },
+    { "feature_key": "mouth.shape.balanced", "content": "A balanced mouth is classically read as even-tempered expression — warmth and restraint in fair measure." },
+    { "feature_key": "mouth.shape.upturned", "content": "Naturally upturned mouth corners are traditionally read as optimism and good humour — a bright, welcoming disposition." },
+    { "feature_key": "mouth.shape.downturned", "content": "Naturally downturned mouth corners are classically read as seriousness and depth — a thoughtful, composed bearing." },
+
+    { "feature_key": "ears.set.high", "content": "High-set ears are classically read in 面相 as quick intelligence and drive — an alert, ambitious cast of mind." },
+    { "feature_key": "ears.set.balanced", "content": "Balanced-set ears are traditionally read as even judgment — a steady, well-proportioned temperament." },
+    { "feature_key": "ears.set.low", "content": "Low-set ears are classically linked to a calm, deliberate nature — someone unhurried and grounded." },
+    { "feature_key": "ears.size.small", "content": "Small ears are classically read as sensitivity and refinement — an attentive, discerning nature." },
+    { "feature_key": "ears.size.medium", "content": "Medium ears are traditionally read as balance — receptive and steady in equal part." },
+    { "feature_key": "ears.size.large", "content": "Large ears are classically linked in 面相 to boldness and generosity — an open, expansive spirit." },
+
+    { "feature_key": "canthus_wolong.absent", "content": "Without a pronounced 卧蚕 (the soft ridge beneath the eye), tradition reads a cool, composed expressiveness — warmth held quietly in reserve." },
+    { "feature_key": "canthus_wolong.slight", "content": "A slight 卧蚕 beneath the eyes is classically read as gentle charm and approachability — a soft, likeable warmth." },
+    { "feature_key": "canthus_wolong.prominent", "content": "A prominent 卧蚕 (the 'silkworm' ridge below the eye) is traditionally linked to charisma and warmth — an engaging, affectionate presence people are drawn to." }
+  ]
+}
