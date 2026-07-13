@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "compat_sections.v1",
+  "title": "Palmly compatibility narrative (v1)",
+  "description": "Both-perspectives compatibility narrative (Backend §7.3). The score + sub_scores are DETERMINISTIC (compat.v1 scorer) and passed in as ground truth; the model only writes the prose — a headline, a one-line score framing, and three sections (strengths / frictions / advice). Structured so the client renders native cards. `key`/`tags` are code-set; headline/score_line/body are model prose.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "headline": { "type": "string", "minLength": 1 },
+    "score_line": { "type": "string" },
+    "sections": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": { "enum": ["strengths", "frictions", "advice"] },
+          "title": { "type": "string", "minLength": 1 },
+          "body": { "type": "string", "minLength": 1 }
+        },
+        "required": ["key", "title", "body"]
+      }
+    },
+    "disclaimer": { "type": "string" }
+  },
+  "required": ["headline", "sections"]
+}
