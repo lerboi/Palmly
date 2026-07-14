@@ -11,31 +11,29 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R17 (Paywall modal — value stack, elevated plan cards, gold SAVE seal, accent CTA)
-- **Next task:** R18 (de-almanac the Fortune home + card; empty/first-run state)
+- **Last completed:** R18 (Fortune home de-almanac'd — grouped sections, streak icon, empty state)
+- **Next task:** R19 (Chat thread redesign + fleshed fixture + typing indicator)
 - **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin + render/grep-verify.)
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
   `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
   `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
   in app surfaces — the camera-overlay `OVERLAY` palette in `CaptureView` is a justified
   theme-independent exception), realistic English (no lorem, trim CJK/almanac).
-  **R18 = de-almanac the Fortune home + card.** Files: `src/features/fortune/FortuneHome.tsx`
-  (StreakStrip still uses 🔥 + `RowLink` uses CJK 掌/问 glyphs — replace with `Icon`
-  streak/history/chat; `RedThreadRow` already fixed in R16), `src/features/fortune/FortuneCard.tsx`
-  (READ IT — holds the almanac Do/Avoid + aspects + lucky stats; has the crammed `gap:1`, 宜/忌,
-  事业/感情/财运 CJK tags, "Cinnabar red" lucky colour), `src/features/fortune/fortune.ts`
-  (`almanacDate` → weekday/gregorian/pillar 己丑日; lead with weekday + date, DEMOTE the 干支
-  pillar to a small optional detail). Do: split Do/Avoid, aspects, lucky stats into distinct
-  grouped sections with real spacing (fix `gap:1`); 宜/忌 → Do/Avoid; drop 事业/感情/财运 CJK tags
-  (→ English Career/Love/Wealth or icons); rename/drop the "Cinnabar red" lucky colour; a designed
-  streak component with the `Icon name="streak"` (drop 🔥). **Add the empty/first-run state** (no
-  reading yet → a calm "scan to begin" card). Read UIUX-specs §2.11 first. Verify: premium + free
-  screenshots — calm hierarchy, no CJK, no edge-clipped streak; a `/dev/fortune-empty` preview for
-  the empty state. The fortune route is `(home)/fortune`.
+  **R19 = redesign the Chat thread + flesh the fixture.** Files: `src/features/chat/ChatThread.tsx`
+  (uses `SealBadge glyph="问"` as the gate seal → `Icon name="chat"`; a "↑" send glyph →
+  `Icon name="send"`; the chips + "Cites your…" grounding line), `src/features/chat/chat.ts`
+  (`PREVIEW_THREAD` — expand to a realistic 3–4 turn conversation; `PREVIEW_CHIPS` — make them
+  DISTINCT from already-asked questions, drop the duplicate first chip). Do: grounded chat bubbles
+  (user right / assistant left, elevation/tokens), a streaming/typing indicator (3-dot; reduce-
+  motion fallback → static "…"), elevate the "Cites your <line>" grounding footer, a premium
+  empty/first-run state (suggestion chips only, no messages). Read UIUX-specs §2.11 (chat bullet)
+  first. The chat route is `(home)/chat`. Verify: screenshot — full conversation (no void), typing
+  indicator, distinct chips; also a `/dev/chat-empty` preview for the first-run state. `SealBadge`
+  is deprecated — after R19 removes its last app call site (chat), only /dev/theme may reference
+  it; note if fully removable.
   **SCREENSHOTS:** `npx expo export --platform web` then
-  `node scripts/shoot.mjs ../docs/checkpoints/redesign "fortune:390x900=r18-fortune"`. (Free vs
-  premium: the `(home)/fortune.tsx` route seeds `premium`; may need a `/dev/fortune-free` preview.)
-  Then R19 (chat), R20 (history), R21 (settings), R22–R24 (finalize).
+  `node scripts/shoot.mjs ../docs/checkpoints/redesign "chat:390x900=r19-chat"`.
+  Then R20 (history), R21 (settings), R22–R24 (finalize).
   **Finalize-pass cleanups (R22/R24):** `fonts.cjk`/NotoSerifTC has ZERO default consumers →
   zh-only load; /dev/theme "Section markers" CJK demo + the chat `SealBadge` call (R19) to migrate.
 
@@ -183,7 +181,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   stack, plan cards with elevation + rounded-rect, gold reserved as the single premium marker,
   one confident primary CTA in the new accent. Provide plan-card fixtures (names/prices/no-trial
   copy). Mark the RevenueCat-native leg `[~]`. Verify: phone-size screenshot; no cinnabar fill.
-- [ ] **R18 — De-almanac the Fortune home + card** — lead with weekday + date, demote 己丑日 to
+- [x] **R18 — De-almanac the Fortune home + card** _(2026-07-14)_ — lead with weekday + date, demote 己丑日 to
   a small optional detail; split Do/Avoid, aspects, lucky stats into distinct grouped sections
   with real spacing (fix `gap:1` cram); 宜/忌 → Do/Avoid, drop 事业/感情/财运 CJK tags;
   rename/drop the "Cinnabar red" lucky colour; designed streak component + svg icon (drop 🔥);
@@ -416,3 +414,14 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   Gold used ONLY as the premium marker; no cinnabar fill. RevenueCat Paywalls-v2 purchase flow is
   `[~]`. Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, grep shows no cinnabar/CJK,
   screenshot `docs/checkpoints/redesign/r17-paywall.png`. — 2026-07-14
+- R18 — Fortune home de-almanac'd (`FortuneHome.tsx` + `FortuneCard.tsx` + `fortune.ts`): header
+  leads with weekday + date (`Tuesday` / `July 14`) — the 干支 day-pillar is demoted to the
+  optional zh view (kept in `dayPillarCn`/`almanacDate` data for tests + traditional view, not
+  rendered). StreakStrip 🔥 → `Icon name="streak"`; `RowLink` 掌/问 glyphs → `Icon` history/chat
+  + `chevron`; FortuneCard 运 header → `Icon sparkle`; premium expands into grouped sections with
+  dividers + real spacing (fixed the `gap:1` cram); 宜/忌 → "Do"/"Avoid" (success/heritage),
+  事业/感情/财运 → Career/Love/Wealth, 🔒 → `Icon lock`; renamed the "Cinnabar red" lucky colour →
+  "Indigo". Added a calm first-run empty state (`firstRun` prop → "Your daily fortune starts
+  here" + Read-my-palm CTA). Added a `history` clock icon to the Icon set. Evidence: `tsc` clean,
+  `jest` 31/31 (pillar contract intact), `expo lint` clean, no rendered CJK/emoji in fortune;
+  screenshots `r18-premium.png` / `r18-free.png` / `r18-empty.png`. — 2026-07-14

@@ -28,7 +28,8 @@ export type IconName =
   | 'upload'
   | 'bell'
   | 'shield'
-  | 'sparkle';
+  | 'sparkle'
+  | 'history';
 
 // Geometry only — stroke/fill/caps come from the shared <G> below.
 const PATHS: Record<IconName, ReactNode> = {
@@ -135,6 +136,12 @@ const PATHS: Record<IconName, ReactNode> = {
       stroke="none"
     />
   ),
+  history: (
+    <G>
+      <Circle cx="12" cy="12" r="9" />
+      <Path d="M12 7.5 V12 L15.5 14" />
+    </G>
+  ),
 };
 
 const DEFAULT_LABELS: Record<IconName, string> = {
@@ -157,6 +164,7 @@ const DEFAULT_LABELS: Record<IconName, string> = {
   bell: 'Notifications',
   shield: 'Privacy',
   sparkle: 'Insight',
+  history: 'History',
 };
 
 export interface IconProps {

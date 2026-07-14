@@ -64,6 +64,6 @@ export const PREVIEW_FORTUNE: Fortune = {
   do: ['Sign what’s ready', 'Reach out first', 'Tidy one loose end'],
   dont: ['Lend impulsively', 'Argue over trifles', 'Skip your rest'],
   lucky_direction: 'Southeast',
-  lucky_color: 'Cinnabar red',
+  lucky_color: 'Indigo',
   lucky_hours: '7–9am · 3–5pm',
 };
