@@ -36,6 +36,8 @@ export interface PalmDiagramProps {
   silhouette?: boolean;
   /** Play the ~1.2s draw-on (native only; respects reduce-motion). Default true. */
   animate?: boolean;
+  /** Accessibility label for the diagram (a meaningful image). Pass `""` to mark decorative. */
+  accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -55,6 +57,7 @@ export function PalmDiagram({
   traditional = false,
   silhouette = true,
   animate = true,
+  accessibilityLabel = 'Your palm line diagram',
   style,
 }: PalmDiagramProps) {
   const { colors, fonts } = useTheme();
@@ -86,7 +89,15 @@ export function PalmDiagram({
   }, [shouldAnimate, progress]);
 
   return (
-    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={style}>
+    <Svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      style={style}
+      accessibilityRole={accessibilityLabel ? 'image' : 'none'}
+      accessibilityLabel={accessibilityLabel || undefined}
+      aria-hidden={accessibilityLabel ? undefined : true}
+    >
       <Defs>
         <LinearGradient id="palmAccent" x1="0" y1="0" x2="1" y2="1">
           <Stop offset="0" stopColor={colors.accent} />

@@ -11,8 +11,8 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R22 (fixture English sweep — verified; comment CJK romanized; only zh-DATA remains)
-- **Next task:** R23 (accessibility pass)
+- **Last completed:** R23 (a11y — PalmDiagram label added; all svg labelled; reduce-motion + AA verified)
+- **Next task:** R24 (FINALIZE — /dev/theme full system + full device-free suite + mark DONE + STOP loop)
 - **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin + render/grep-verify.
   Web-export ScrollView top-aligns short content — scroll screens need a taller capture; correct on device.)
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
@@ -234,7 +234,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   xuanxue/almanac phrasing + classical CJK citations) while keeping the warm, specific, human
   quality. Optionally add zh-locale strings for the "traditional view". Verify: every built
   screen still renders realistic (non-lorem) content; grep finds no stray CJK outside zh.
-- [ ] **R23 — Accessibility pass** — `accessibilityLabel`/`accessibilityRole` on all new svg
+- [x] **R23 — Accessibility pass** _(2026-07-14)_ — `accessibilityLabel`/`accessibilityRole` on all new svg
   icons; `AccessibilityInfo.isReduceMotionEnabled` fallbacks on the PalmDiagram draw-on,
   analyzing ring, chat typing; validate AA contrast + dynamic-type for the new accent. Verify:
   grep shows labels present (today there are zero); manual contrast check recorded.
@@ -486,3 +486,15 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   zh-traditional-view only). Evidence: `tsc` clean, `jest` 31/31, `grep` over `src/features` shows
   CJK only in `fortune.ts`/`fortune.test.ts`/`reveal.ts` (all intentional zh data). No rendered
   string changed → prior screenshots stand as the "realistic English content" evidence. — 2026-07-14
+- R23 — Accessibility pass. Added an `accessibilityLabel` (default "Your palm line diagram",
+  role=image; `""`→decorative/aria-hidden) to `PalmDiagram` (the one gap). Audited: every svg
+  component carries labels/roles — `Icon` (default label per name + `decorative` opt-out),
+  `Logomark` ("Palmly"), `PalmDiagram`, `AppHeader` (back), `Button`, plus interactive Pressables
+  across screens. Reduce-motion fallbacks confirmed on both animations (`PalmDiagram` draw-on +
+  chat typing dots — `AccessibilityInfo.isReduceMotionEnabled` + Platform; the analyzing ring is
+  static). Contrast (AA) recorded: accent `#4B57C4` on `#FFFFFF` ~6.4:1 / on `#FAF9F7` ~6.2:1;
+  white-on-indigo ~6.4:1; textSecondary `#6B6B72` ~5.0:1; success `#3F7A5E` ~4.8:1; danger
+  `#C0392B` ~4.9:1; dark accent `#8B95F0` on `#14151A` ~6.3:1 — all >=4.5 (AA). heritage `#C2554A`
+  ~4.4:1 used only for icons/graphical accents (>=3:1). Dynamic type: all copy uses the scalable
+  `Text` variant scale. Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean; a11y-label grep
+  non-zero across all svg components (was zero pre-redesign). — 2026-07-14
