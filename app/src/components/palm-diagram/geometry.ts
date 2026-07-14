@@ -9,11 +9,19 @@ export type LineGeometry = Record<string, Point[]>;
 
 /** The four major lines in classical reading order, with their CJK labels (UIUX §1.2 / §2.5). */
 export const MAJOR_LINES = ['heart_line', 'head_line', 'life_line', 'fate_line'] as const;
+/** Traditional CJK labels — kept as raw data for the optional zh "traditional view" + card-svg. */
 export const LINE_LABEL: Record<string, string> = {
   heart_line: '心',
   head_line: '智',
   life_line: '命',
   fate_line: '运',
+};
+/** English-first labels — the redesign default (heritage CJK is opt-in only, §2). */
+export const ENGLISH_LINE_LABEL: Record<string, string> = {
+  heart_line: 'Heart',
+  head_line: 'Head',
+  life_line: 'Life',
+  fate_line: 'Fate',
 };
 
 const r1 = (n: number): number => Math.round(n * 10) / 10;
@@ -41,7 +49,9 @@ export function smoothPath(pts: Point[]): string {
 export interface DiagramStroke {
   line: string;
   d: string; // SVG path `d` in the target `size` frame
-  highlighted: boolean; // drawn in cinnabar
+  highlighted: boolean; // drawn in the accent
+  /** Approx polyline length in the `size` frame — seeds the draw-on `strokeDasharray`. */
+  length: number;
   label?: { text: string; x: number; y: number };
 }
 
@@ -72,10 +82,15 @@ export function buildDiagram(geometry: LineGeometry, opts: DiagramOptions = {}):
     const highlighted = hi ? line === hi : sig.has(line);
     const label = LINE_LABEL[line];
     const end = mapped[mapped.length - 1];
+    let length = 0;
+    for (let i = 1; i < mapped.length; i++) {
+      length += Math.hypot(mapped[i][0] - mapped[i - 1][0], mapped[i][1] - mapped[i - 1][1]);
+    }
     out.push({
       line,
       d: smoothPath(mapped),
       highlighted,
+      length: r1(length),
       label: label ? { text: label, x: r1(end[0] + (18 / 1000) * size), y: r1(end[1] + (8 / 1000) * size) } : undefined,
     });
   }

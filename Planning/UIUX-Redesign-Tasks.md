@@ -11,21 +11,23 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R9 (AppHeader + PrivacyBadge; history/reveal adopt; CDP screenshot fix)
-- **Next task:** R10 (LAST foundation task)
+- **Last completed:** R10 — **FOUNDATION PHASE R1–R10 COMPLETE.** PalmDiagram upgraded (hand
+  silhouette + weighted ink + English labels + native draw-on).
+- **Next task:** R11 (first SCREEN task — the journey begins)
 - **Blocked on:** —
-- **Notes for next run:** R10 = upgrade the `PalmDiagram` hero. `PalmDiagram.tsx` + `geometry.ts`:
-  soft hand silhouette / negative space, richer multi-point geometry, weighted/gradient ink;
-  recolor highlight to the new accent (already reads indigo via `colors.accent` — good);
-  `showLabels` DEFAULT OFF + English (Heart/Head/Life/Fate) — the CJK labels currently use
-  `fonts.cjk`, PalmDiagram's LAST consumer, so de-CJK them and NotoSerifTC can go zh-only; real
-  ~1.2s reanimated draw-on (currently stubbed) with an `AccessibilityInfo.isReduceMotionEnabled`
-  fallback. `geometry.test.ts` MUST stay green (geometry.ts is pure/RN-free — keep its contract).
-  Reanimated web draw-on may not capture headlessly → verify the static end-state, mark motion
-  `[~]` if the gif fails. **TOOLING: `scripts/shoot.mjs` now uses CDP mobile emulation — phone
-  routes render at a TRUE 390px viewport (no more fake horizontal overflow). `dev/*` routes render
-  desktop-wide. Use it for all route screenshots.** After R10, foundation is done → screen tasks
-  R11+ (each will also adopt AppHeader/Icon/Logomark as it rebuilds its screen).
+- **Notes for next run:** Foundation done — the design system is ready. Screen tasks R11–R21 now
+  rebuild each surface using the primitives: `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`
+  (19 names in `IconName`)/`Logomark`/`AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`. All via
+  design tokens (no raw hexes), realistic English content (no lorem, trim CJK/almanac).
+  R11 = redesign the launcher `app/src/app/index.tsx`: Logomark + English tagline ("Read your
+  palm from a single photo"), new-accent primary CTA, NO CJK (it currently calls
+  `<SealBadge glyph="掌"/>` → replace with `<Logomark/>`, and likely has a CJK tagline → English).
+  Verify: screenshot, no CJK on first screen. **SCREENSHOTS: `npx expo export --platform web`
+  then `node scripts/shoot.mjs ../docs/checkpoints/redesign "index:390x844=r11-launcher"` — CDP
+  mobile emulation renders a true 390px phone viewport.** Migration cleanups still pending for a
+  finalize pass (R22/R24): `fonts.cjk`/NotoSerifTC now has ZERO default consumers → module can go
+  zh-only load; the /dev/theme "Section markers" CJK demo + remaining `SealBadge` call sites
+  (launcher/chat/reveal) get migrated in their screen tasks.
 
 ---
 
@@ -118,7 +120,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
     history/fortune/settings (currently `headerShown:false` + inline serif titles). Reduce the
     repeated "✓ Photo deleted" to **one** prominent placement per surface.
   - Verify: screenshots show a header + back; grep shows the privacy string once per screen.
-- [ ] **R10 — Upgrade the PalmDiagram hero + de-CJK labels + draw-on animation**
+- [x] **R10 — Upgrade the PalmDiagram hero + de-CJK labels + draw-on animation** _(2026-07-14)_ _(native draw-on motion [~])_
   - Build: `PalmDiagram.tsx`/`geometry.ts` — soft hand silhouette/negative space, richer
     multi-point geometry, weighted/gradient ink; recolor highlight to the new accent;
     `showLabels` default off / English; implement the real ~1.2s reanimated draw-on (currently
@@ -293,3 +295,15 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   screen; screenshots `docs/checkpoints/redesign/r9-history.png` (one badge, no per-row privacy)
   + `r9-reveal.png` (back header, no clipping). Full AppHeader adoption on chat/fortune/settings
   lands with their screen tasks (R18/R19/R21). — 2026-07-14
+- R10 — PalmDiagram upgraded: faint hand silhouette (negative space so lines read as a palm),
+  weighted ink + a wider accent glow under the highlighted/signature line(s), accent-gradient
+  main stroke; `showLabels` now DEFAULT OFF and English-first (`ENGLISH_LINE_LABEL`
+  Heart/Head/Life/Fate; `traditional` prop opts into CJK). `geometry.ts` gained a per-stroke
+  `length` (seeds the draw-on) + `ENGLISH_LINE_LABEL`, keeping `LINE_LABEL` (CJK) as raw data so
+  `geometry.test.ts` stays green. Real ~1.2s reanimated draw-on (dash-offset) with an
+  `AccessibilityInfo` reduce-motion fallback; fail-safe progress starts fully-drawn so the
+  diagram is never blank on web / if the worklet is absent. Evidence: `tsc` clean, `jest` 31/31
+  (geometry contract intact), `expo lint` clean, screenshots
+  `docs/checkpoints/redesign/r10-reveal.png` + `r10-analyzing.png` — a premium hand-like diagram
+  (not floating strokes), no CJK labels, accent-highlighted lines. Native draw-on motion is
+  `[~]` (web renders the static end-state; the animation plays on device). — 2026-07-14
