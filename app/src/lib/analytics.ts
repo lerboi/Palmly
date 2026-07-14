@@ -17,10 +17,58 @@ import { Platform } from 'react-native';
  * nothing is instantiated and every call is a no-op — imports never throw.
  */
 
-// ---- Typed event catalogue (extended in P11.T1) -------------------------------------------------
+// ---- Typed event catalogue (UIUX §8, Backend §14; validates the mvp_spec §10 metrics) ------------
+// One typed map is the whole emitter surface — `track('<event>', props)` is compile-time-checked, so
+// a typo or a wrong prop shape is a build error. docs/ANALYTICS.md maps each §10 validation metric to
+// these events (funnels / cohorts). Events with no properties use `Record<string, never>`.
 export type AnalyticsEventMap = {
-  /** App brought to the foreground from a cold start. */
+  // ── App lifecycle ──
   app_opened: { cold_start?: boolean };
+
+  // ── Capture funnel (P1 — "is capture effortless?") ──
+  capture_started: { kind: 'palm' | 'face'; hand?: 'left' | 'right' };
+  capture_state_dwell: { kind: 'palm' | 'face'; state: string; ms: number };
+  capture_completed: { kind: 'palm' | 'face'; method: 'auto' | 'manual'; duration_ms: number };
+  capture_abandoned: { kind: 'palm' | 'face'; last_state?: string; duration_ms: number };
+  upload_ok: { scan_id: string; kind: 'palm' | 'face' };
+
+  // ── Reading + reveal ("is the wow landing?") ──
+  reading_ready: { scan_id: string; kind: 'palm' | 'face'; latency_ms?: number };
+  reveal_viewed: { reading_id: string; kind: 'palm' | 'face' };
+  reveal_section_viewed: { reading_id: string; section: string; index: number };
+  reveal_scroll_depth: { reading_id: string; pct: number };
+  reveal_time_spent: { reading_id: string; ms: number };
+  consistency_survey: { reading_id: string; response: 'consistent' | 'inconsistent' | 'unsure' };
+
+  // ── Viral loop (P2 — the invite state machine, "is the loop turning?") ──
+  share_sheet_opened: { source: 'reveal' | 'home' | 'face' | 'compat'; reading_id?: string };
+  share_completed: { channel: string; card_variant: 'feed' | 'story'; with_invite: boolean };
+  invite_created: { channel: string; kind: string };
+  invite_clicked: { source?: 'clipboard' | 'referrer' | 'appsflyer' | 'manual_code' | 'web' };
+  invite_installed: { source: string };
+  invite_accepted: { pair_id: string; source: string };
+  pair_reveal_viewed: { pair_id: string; role: 'sender' | 'recipient' };
+
+  // ── Paywall funnel ("is the paywall placed right?") ──
+  paywall_viewed: { trigger: 'locked_section' | 'fortune_full' | 'compat_second' | 'chat_entry' | 'post_share'; variant?: string };
+  paywall_page_viewed: { trigger: string; page: number };
+  paywall_dismissed: { trigger: string; page: number };
+  purchase_completed: { plan: 'monthly' | 'annual'; trigger: string };
+  winback_converted: Record<string, never>;
+
+  // ── Fortune retention ("is fortune retaining?" — D1/D7/D30) ──
+  fortune_opened: { date: string; premium: boolean; streak: number };
+  push_opened: { type: string };
+  notification_pref_changed: { pref: 'daily_fortune' | 'social' | 'offers'; enabled: boolean };
+
+  // ── Account + privacy ──
+  account_linked: { provider: 'apple' | 'google' | 'phone' };
+  account_deleted: Record<string, never>;
+  scans_deleted: Record<string, never>;
+
+  // ── Chat (premium) ──
+  chat_message_sent: { thread_id: string };
+  chat_deflected: { category: string };
 };
 export type AnalyticsEvent = keyof AnalyticsEventMap;
 
