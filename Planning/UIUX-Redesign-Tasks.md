@@ -11,34 +11,38 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R19 (Chat thread — grounded bubbles, typing indicator, empty state, send icon)
-- **Next task:** R20 (History shelf redesign + empty state)
+- **Last completed:** R20 (History shelf — palm/face type-icons, success unchanged banner, empty state)
+- **Next task:** R21 (Settings suite — 5 screens; MethodologyScreen CJK strip)
 - **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin + render/grep-verify.
-  Web-export ScrollView top-aligns short content — chat/scroll screens need a taller capture; correct on device.)
+  Web-export ScrollView top-aligns short content — scroll screens need a taller capture; correct on device.)
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
   `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
   `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
   in app surfaces — the camera-overlay `OVERLAY` palette in `CaptureView` is a justified
   theme-independent exception), realistic English (no lorem, trim CJK/almanac).
-  **R20 = redesign the History shelf.** File: `src/features/reading/HistoryShelf.tsx` (already
-  has the R9 `AppHeader` + one `PrivacyBadge`; a `ReadingRow` still uses CJK 掌/面 glyphs for the
-  palm/face kind). Do: replace the 掌/面 kind glyph with a small type line-icon (palm → `Icon`
-  e.g. `sparkle`/`life`; face → a different Icon — pick sensible; maybe add a `face` icon or reuse
-  `mind`); keep the privacy line ONCE (header badge — already done R9, verify still single); keep
-  the "unchanged" consistency brag on the `success` token (the `UnchangedBanner` — retint to
-  success); vary the thumbnails a little (they all use `signatureLines=['heart_line','fate_line']`
-  — fine, or vary per kind); **add the empty (zero-readings) state** (already has an `EmptyState`
-  — polish it to premium: icon tile + copy + a "Read my palm" CTA). Read the file first. The
-  route is `(home)/history`; add a `/dev/history-empty` preview (readings=[]). Verify: screenshot
-  — no per-row CJK, one privacy signal, premium empty state.
-  **SCREENSHOTS:** `npx expo export --platform web` then
-  `node scripts/shoot.mjs ../docs/checkpoints/redesign "history:390x900=r20-history"`. NOTE the
-  web-export ScrollView top-aligns short content — for scroll-y screens capture taller (e.g.
-  390x1200) so nothing is below the fold; it's correct on device.
-  **After R20:** R21 (settings suite — 5 screens; MethodologyScreen 一/二/三 + 心智命运/手相/面相
-  → 1/2/3 + English), R22 (fixture English sweep), R23 (a11y pass), R24 (finalize /dev/theme +
-  full suite). `SealBadge` now has ZERO app call sites (chat migrated) — only its own file +
-  barrel; safe to delete in R24 cleanup (or keep the deprecated shim).
+  **R21 = migrate the Settings suite (5 screens).** Files under `src/features/settings/`:
+  `SettingsHub.tsx`, `NotificationSettings.tsx`, `MethodologyScreen.tsx`, `PrivacyCenter.tsx`,
+  `LegalScreen.tsx` (+ `settingsUi.tsx` shared rows). READ each first. Do: token-migrate (any
+  `gold`→`premium`, `jade`→`success`, destructive→`danger`; `colors.text`→`textPrimary` etc. —
+  aliases still work but prefer roles); adopt `AppHeader` (back + title) on each (they're likely
+  `headerShown:false` + inline titles). In `MethodologyScreen.tsx`: replace 一/二/三 step numerals
+  with 1/2/3 (or step icons) and STRIP the inline CJK (心/智/命/运, 手相, 面相) — lead English
+  ("palmistry", "face reading", Heart/Head/Life/Fate). Wire the Language row (in SettingsHub or a
+  dedicated row) toward the optional zh "traditional view" (a simple toggle/row that would flip
+  `activeSkin`→`inkCinnabarSkin` + load `fonts.cjk`; a stub/no-op wired to a row is fine — note it).
+  Routes: `/settings /notifications /methodology /privacy /legal` (all under `(settings)`).
+  Verify: screenshots of all five; grep confirms NO CJK in `MethodologyScreen.tsx`; re-shoot
+  notifications at 320 AND 390 wide to confirm the old right-edge clipping was only a capture
+  artifact. **SCREENSHOTS:** `npx expo export --platform web` then
+  `node scripts/shoot.mjs ../docs/checkpoints/redesign "settings:390x900=r21-settings"
+  "methodology:390x1200=r21-methodology" "notifications:390x844=r21-notif" "notifications:320x844=r21-notif-320"
+  "privacy:390x900=r21-privacy" "legal:390x900=r21-legal"`.
+  **After R21:** R22 (fixture English sweep — `PREVIEW_*` in reveal/fortune/chat/history/analyzing),
+  R23 (a11y — accessibilityLabels on all svg icons + reduce-motion fallbacks + AA/dynamic-type),
+  R24 (finalize /dev/theme with the full new system + first-run/empty/failed variants + full
+  device-free suite). `SealBadge` now has ZERO app call sites — safe to delete in R24 (or keep the
+  deprecated shim). Also R22/R24: `fonts.cjk`/NotoSerifTC → zh-only load; /dev/theme "Section
+  markers" CJK demo → icons.
   **Finalize-pass cleanups (R22/R24):** `fonts.cjk`/NotoSerifTC has ZERO default consumers →
   zh-only load; /dev/theme "Section markers" CJK demo + the chat `SealBadge` call (R19) to migrate.
 
@@ -198,7 +202,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   chip); elevate the "Cites your…" grounding line; replace the "↑" glyph with the send icon and
   the 问 gate seal with a neutral chat icon. Verify: screenshot — full conversation (no void),
   typing indicator, distinct chips.
-- [ ] **R20 — Redesign the History shelf** — replace row CJK 掌/面 glyphs with a small type
+- [x] **R20 — Redesign the History shelf** _(2026-07-14)_ — replace row CJK 掌/面 glyphs with a small type
   line-icon; show the privacy line once (header badge) not per row; keep the "unchanged"
   consistency brag on the `success` token; vary thumbnails; **add the empty (zero-readings)
   state.** Verify: screenshot — no per-row CJK, one privacy signal.
@@ -442,3 +446,10 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   screenshots `r19-chat.png` (full thread), `r19-typing.png` (dots), `r19-empty.png`. The
   typing-dot pulse is `[~]` (web renders static); web-export ScrollView top-aligns (captured
   taller — bounds correctly on device). — 2026-07-14
+- R20 — History shelf redesigned (`HistoryShelf.tsx`): per-row CJK 掌/面 kind glyphs → new
+  `Icon` **palm** (open-hand) + **face** (smiley) type-icons (added to the Icon set); rows are
+  elevated cards with a chevron; the privacy signal stays ONCE in the header (`PrivacyBadge`); the
+  `UnchangedBanner` retinted to the `success` token (green border + check icon + heading); the
+  zero-readings `EmptyState` polished to premium (history-icon tile + copy + "Read my palm" CTA).
+  Added `/dev/history-empty` preview. Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, no
+  CJK in HistoryShelf; screenshots `r20-history.png` (banner + palm/face rows) + `r20-empty.png`. — 2026-07-14
