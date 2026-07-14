@@ -1,5 +1,5 @@
 import { View, ScrollView, StyleSheet } from 'react-native';
-import { Button, Card, Icon, Logomark, Text } from '@/components/ui';
+import { AppHeader, Button, Card, Icon, Logomark, PrivacyBadge, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import {
   ThemeProvider,
@@ -189,6 +189,14 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
         <Button label="Disabled primary" variant="primary" disabled fullWidth />
         <Button label="Disabled secondary" variant="secondary" disabled fullWidth />
       </View>
+
+      <Divider />
+
+      {/* App header + privacy badge */}
+      <Text variant="heading">Header &amp; privacy</Text>
+      <AppHeader title="Your reading" onBack={() => {}} right={<PrivacyBadge />} />
+      <AppHeader title="Settings" onBack={() => {}} />
+      <PrivacyBadge />
 
       <Divider />
 

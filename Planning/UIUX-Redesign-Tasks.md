@@ -11,18 +11,21 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R8 (deleted the dead Expo-template scaffold cluster + orphan branded assets)
-- **Next task:** R9
+- **Last completed:** R9 (AppHeader + PrivacyBadge; history/reveal adopt; CDP screenshot fix)
+- **Next task:** R10 (LAST foundation task)
 - **Blocked on:** —
-- **Notes for next run:** R9 = shared `AppHeader` + nav shell + dedupe the privacy line. Build an
-  `AppHeader` (back affordance using the new `Icon name="back"` + optional title) and adopt it
-  across reveal/chat/history/fortune/settings (they're `headerShown:false` + inline serif titles
-  today). Reduce the repeated "✓ Photo deleted" chrome to ONE prominent placement per surface
-  (grep `Photo deleted`/`deleted` to find dupes). Put AppHeader in `components/ui/`. Read the
-  current screens first (RevealView, ChatThread, HistoryShelf, FortuneHome, settings/*). Verify:
-  screenshots show a header + back; grep shows the privacy string once per screen. Then R10 =
-  PalmDiagram upgrade (last foundation task; `fonts.cjk`'s only remaining consumer — de-CJK the
-  labels there and NotoSerifTC can move to zh-only load). Foundation R1–R10 before screen tasks.
+- **Notes for next run:** R10 = upgrade the `PalmDiagram` hero. `PalmDiagram.tsx` + `geometry.ts`:
+  soft hand silhouette / negative space, richer multi-point geometry, weighted/gradient ink;
+  recolor highlight to the new accent (already reads indigo via `colors.accent` — good);
+  `showLabels` DEFAULT OFF + English (Heart/Head/Life/Fate) — the CJK labels currently use
+  `fonts.cjk`, PalmDiagram's LAST consumer, so de-CJK them and NotoSerifTC can go zh-only; real
+  ~1.2s reanimated draw-on (currently stubbed) with an `AccessibilityInfo.isReduceMotionEnabled`
+  fallback. `geometry.test.ts` MUST stay green (geometry.ts is pure/RN-free — keep its contract).
+  Reanimated web draw-on may not capture headlessly → verify the static end-state, mark motion
+  `[~]` if the gif fails. **TOOLING: `scripts/shoot.mjs` now uses CDP mobile emulation — phone
+  routes render at a TRUE 390px viewport (no more fake horizontal overflow). `dev/*` routes render
+  desktop-wide. Use it for all route screenshots.** After R10, foundation is done → screen tasks
+  R11+ (each will also adopt AppHeader/Icon/Logomark as it rebuilds its screen).
 
 ---
 
@@ -110,7 +113,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
     `expo-badge*.png`). Keep only what's actually imported by real screens.
   - Verify: `tsc --noEmit` + `eslint` clean; grep finds no imports of removed modules; only
     the real design system remains.
-- [ ] **R9 — Shared AppHeader + nav shell; dedupe the privacy line**
+- [x] **R9 — Shared AppHeader + nav shell; dedupe the privacy line** _(2026-07-14)_
   - Build: an `AppHeader` (back affordance + optional title) adopted across reveal/chat/
     history/fortune/settings (currently `headerShown:false` + inline serif titles). Reduce the
     repeated "✓ Photo deleted" to **one** prominent placement per surface.
@@ -280,3 +283,13 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   self-referential (grep-verified no real-screen importer); `PlaceholderScreen` + `SealBadge`
   shim kept. Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, grep finds no imports of any
   removed module. Only the real design system remains under `components/`. — 2026-07-14
+- R9 — Shared `AppHeader` (back via `Icon name="back"` + optional sans title + trailing slot) +
+  a single `PrivacyBadge` (shield + "Photo deleted", success tone). Adopted in HistoryShelf
+  (header title + ONE badge; removed the per-row "✓ Photo deleted") and RevealView (back header +
+  footer badge); showcased in /dev/theme. Also rewrote `scripts/shoot.mjs` to drive Chrome via
+  the DevTools Protocol with true mobile device emulation — phone routes now render at a real
+  390px viewport instead of Chrome's ~500px window floor (which had faked horizontal overflow).
+  Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean; grep shows the privacy string once per
+  screen; screenshots `docs/checkpoints/redesign/r9-history.png` (one badge, no per-row privacy)
+  + `r9-reveal.png` (back header, no clipping). Full AppHeader adoption on chat/fortune/settings
+  lands with their screen tasks (R18/R19/R21). — 2026-07-14

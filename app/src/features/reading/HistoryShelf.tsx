@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
-import { Card, Screen, Text } from '@/components/ui';
+import { AppHeader, Card, PrivacyBadge, Screen, Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 import { type ReadingSummary, relativeDate } from './history';
 
@@ -21,14 +21,12 @@ export interface HistoryShelfProps {
  * guarantee ("same palm, same reading") as a trust brag when a rescan matched a stored reading.
  */
 export function HistoryShelf({ readings, showUnchanged = false, now }: HistoryShelfProps) {
-  const theme = useTheme();
   // Stamp "now" once (lazy init keeps render pure — no Date.now() during render).
   const [nowTs] = useState(() => now ?? Date.now());
   return (
     <Screen scroll>
-      <Text variant="title" style={{ marginBottom: theme.spacing.lg }}>
-        Your readings
-      </Text>
+      {/* One privacy signal for the whole shelf — not repeated per row (redesign §2). */}
+      <AppHeader title="Your readings" right={<PrivacyBadge />} />
       {showUnchanged ? <UnchangedBanner /> : null}
       {readings.length === 0 ? <EmptyState /> : readings.map((r) => <ReadingRow key={r.id} reading={r} now={nowTs} />)}
     </Screen>
@@ -54,9 +52,6 @@ function ReadingRow({ reading, now }: { reading: ReadingSummary; now: number }) 
             </View>
             <Text variant="bodyMedium" numberOfLines={2} style={{ marginTop: 2 }}>
               {reading.headline}
-            </Text>
-            <Text variant="caption" tone="jade" style={{ marginTop: theme.spacing.xs }}>
-              ✓ Photo deleted
             </Text>
           </View>
         </View>

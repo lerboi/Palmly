@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
-import { Button, Card, Screen, SealBadge, Text } from '@/components/ui';
+import { AppHeader, Button, Card, PrivacyBadge, Screen, SealBadge, Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 import { type Reading, type ReadingSection, SECTION_GLYPH, SECTION_LINE, freeSections, lockedSections, traditionFootnote } from './reveal';
 
@@ -27,6 +27,7 @@ export function RevealView({ reading, geometry }: RevealViewProps) {
   return (
     <View style={{ flex: 1 }}>
       <Screen scroll>
+        <AppHeader onBack={() => router.back()} />
         {/* ── Hero: palm diagram + headline (UIUX §2.5) ── */}
         <View style={{ alignItems: 'center', marginBottom: theme.spacing.xl }}>
           <PalmDiagram geometry={geometry} size={260} signatureLines={['heart_line', 'fate_line']} />
@@ -166,9 +167,7 @@ function TrustFooter({ onMethodology }: { onMethodology: () => void }) {
       <Text variant="small" tone="secondary" style={{ textAlign: 'center' }}>
         Same palm, same reading. Rescan anytime — your lines don&apos;t lie.
       </Text>
-      <Text variant="small" tone="jade" style={{ textAlign: 'center' }}>
-        ✓ Photo deleted
-      </Text>
+      <PrivacyBadge />
       <Pressable onPress={onMethodology} accessibilityRole="link">
         <Text variant="small" color={theme.colors.accent}>
           How Palmly reads →
