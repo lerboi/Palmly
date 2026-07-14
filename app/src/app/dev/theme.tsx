@@ -204,6 +204,7 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
       <Text variant="heading">Header &amp; privacy</Text>
       <AppHeader title="Your reading" onBack={() => {}} right={<PrivacyBadge />} />
       <AppHeader title="Settings" onBack={() => {}} />
+      <AppHeader title="Scrolled content" onBack={() => {}} showDivider />
       <PrivacyBadge />
 
       <Divider />

@@ -16,13 +16,13 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V6 `[x]`. V0 foundation continues (V7–V8) before screens (V9+). Prior
-  round R1–R24 ("Quiet Cosmos") is complete + archived in `UIUX-Redesign-Tasks.md`.
+- **Status:** IN PROGRESS — V1–V7 `[x]`. Last V0 foundation task V8 (dev/theme) remains before screens (V9+).
+  Prior round R1–R24 ("Quiet Cosmos") is complete + archived in `UIUX-Redesign-Tasks.md`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V6** — PalmDiagram stagger/bloom + label-collision fix + `highlightColor` (2026-07-15).
-- **Next task:** **V7 — AppHeader: press feedback + optional scroll divider**.
+- **Last completed:** **V7** — AppHeader back press-spring + optional scroll divider (2026-07-15).
+- **Next task:** **V8 — Extend the `/dev/theme` harness to gate the new system** (last V0 task).
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -194,12 +194,18 @@ schema/migration/secret changes — none of this touches the DB.
     line-overlap, heart/head split) + `v6-history.png` (64px thumbs now silhouette-free, cleaner);
     palm highlight renders vermilion. Live stagger/bloom/draw-on `[~]`. (Silhouette shape kept as-is
     for large sizes — the concrete win is the thumbnail drop; a bespoke hand path is a later nicety.)
-- [ ] **V7 — AppHeader: press feedback + optional scroll divider**
+- [x] **V7 — AppHeader: press feedback + optional scroll divider** (2026-07-15)
   - Build: `AppHeader.tsx` — the back `Pressable` gets the shared reduce-motion-aware press
     affordance; add an optional `showDivider` bottom hairline (`border`) for scrolled content; keep
     `accessibilityLabel="Back"`.
   - Verify: add an `AppHeader showDivider` example to `/dev/theme`; screenshot 390×844; `tsc`+`jest`
     green; a11y label unchanged.
+  - DONE: extracted `BackButton` with a reduce-motion-aware press-spring (icon scales to 0.9 on
+    hold, held-state effect; web/reduce-motion → static 1); added `showDivider` (bottom hairline +
+    paddingBottom) for scrolled content; `accessibilityLabel="Back"` unchanged. `/dev/theme` gains a
+    `showDivider` header example. tsc + lint(0) + jest **38/38**;
+    `docs/checkpoints/redesign/v7-header.png` (light+dark) shows the divider under "Scrolled content".
+    Live press-spring `[~]`.
 - [ ] **V8 — Extend the `/dev/theme` harness to gate the new system**
   - Build: `app/src/app/dev/theme.tsx` — render pressed/active states, a pressable Card, the
     `danger`/`premium` buttons, the brand loader, the motion showcases (entrance/stagger sample,
@@ -374,3 +380,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V4 — Card: `onPress` press-spring (0.985) + `pressedTint` (sunken/accentMuted), `entranceIndex` FadeInDown stagger (reduce-motion/web → static); migrated history ReadingRow + fortune RedThreadRow/RowLink off `<Pressable><Card>` (index-staggered) — tsc + lint(0) + jest 36/36; `v4-{fortune,history,theme-cards}.png` light+dark; PaywallView/RevealView Card-rows deferred to V16/V13 — 2026-07-15
 - V5 — Logomark: heart heaviest + two-tone paired against ink (accent-safe), heritage/onAccent mono (onAccent contrast fix), opt-in `animate` draw-on (web/reduce-motion static); `/dev/theme` matrix extended — tsc + lint(0) + jest 36/36; `v5-{launcher,logomark}.png` light+dark; no raw hex in Logomark — 2026-07-15
 - V6 — PalmDiagram: per-stroke `withDelay` stagger (classical order) + highlighted-glow bloom + `highlightColor` prop (default accent) + silhouette auto-drop ≤64px; geometry.ts label placement fixed (edge-margin anchor + gutter + heart/head nudge, `LabelAnchor` exposed → `textAnchor`) — tsc + lint(0) + jest 38/38 (geometry 9); `v6-welcome{,-320}.png` no clip/overlap, `v6-history.png` clean thumbs — 2026-07-15
+- V7 — AppHeader: `BackButton` reduce-motion-aware press-spring (icon 0.9, web/static safe) + optional `showDivider` bottom hairline; a11y "Back" unchanged; `/dev/theme` example — tsc + lint(0) + jest 38/38; `v7-header.png` light+dark shows the divider — 2026-07-15
