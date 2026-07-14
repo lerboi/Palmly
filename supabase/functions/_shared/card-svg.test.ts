@@ -13,19 +13,20 @@ Deno.test('buildCardSvg: feed variant has the right dimensions and core elements
   assertStringIncludes(svg, 'palmly.app'); // brand
   assertStringIncludes(svg, 'Mei'); // attribution
   assertStringIncludes(svg, 'Deep heart line'); // chip
-  assert(svg.includes('相')); // seal chop glyph
+  assertStringIncludes(svg, '#C2554A'); // CJK-free heritage logomark stamp (the corner seal)
+  assert(!/[一-鿿]/.test(svg), 'no CJK anywhere in the redesigned card'); // §2/§7
   assert((svg.match(/<path /g) ?? []).length >= 6, 'engraved strokes rendered (underlay + main per line)');
 });
 
-Deno.test('buildCardSvg: signature lines are drawn in cinnabar; others in ink', () => {
+Deno.test('buildCardSvg: signature lines are drawn in the accent; others in ink', () => {
   const withFate: Record<string, Point[]> = { ...geom, fate_line: [[500, 880], [520, 360]] };
   const svg = buildCardSvg({ variant: 'feed_4x5', headline: 'x', chips: ['y'], lineGeometry: withFate, signatureLines: ['heart_line', 'fate_line'] });
-  assertStringIncludes(svg, '#C3272B'); // cinnabar present (signature strokes)
-  assertStringIncludes(svg, '心'); // heart label
-  assertStringIncludes(svg, '运'); // fate label
-  // a cinnabar signature stroke uses width 6; a non-signature (ink) stroke uses 4.5
-  assertStringIncludes(svg, 'stroke="#C3272B" stroke-width="6"');
-  assertStringIncludes(svg, `stroke="#1E1B16" stroke-width="4.5"`);
+  assertStringIncludes(svg, '#4B57C4'); // twilight-indigo accent present (signature strokes)
+  assertStringIncludes(svg, 'Heart'); // heart label (English)
+  assertStringIncludes(svg, 'Fate'); // fate label (English)
+  // an accent signature stroke uses width 6; a non-signature (ink) stroke uses 4.5
+  assertStringIncludes(svg, 'stroke="#4B57C4" stroke-width="6"');
+  assertStringIncludes(svg, `stroke="#1A1A1F" stroke-width="4.5"`);
 });
 
 Deno.test('buildCardSvg: story variant is 9:16 and adds the QR block', () => {

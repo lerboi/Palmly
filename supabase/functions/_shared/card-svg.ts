@@ -7,14 +7,21 @@
 export type CardVariant = 'feed_4x5' | 'story_9x16';
 export type Point = [number, number];
 
+// Quiet Cosmos palette (redesign §3/§7). Source of truth: app/src/theme/tokens.ts (`quietCosmosSkin`
+// light). Kept in sync manually — the Deno edge runtime can't import the RN app module, so the
+// in-app share preview (`ShareView`) and this posted image share the SAME hexes to avoid drift.
 const PALETTE = {
-  paper: '#FCF8EF', // paperCard
-  edge: '#E6DCC6', // paperEdge — hairline
-  ink: '#1E1B16',
-  inkWash: '#5A544A',
-  cinnabar: '#C3272B',
-  gold: '#B8912F',
+  paper: '#FFFFFF', // card surface (role: surface)
+  edge: '#E7E3DC', // hairline (role: border)
+  ink: '#1A1A1F', // role: textPrimary
+  inkWash: '#6B6B72', // role: textSecondary
+  accent: '#4B57C4', // signature / highlighted palm lines (role: accent — was cinnabar)
+  heritage: '#C2554A', // the corner stamp — softened-cinnabar heritage whisper (role: heritageAccent)
 };
+
+// Faint hand silhouette (0–1000 frame, mirrors PalmDiagram) so the lines read as a palm.
+const HAND_SILHOUETTE =
+  'M235 560 C210 470 218 420 246 414 C250 356 250 298 286 298 C322 298 322 356 324 414 L352 414 C356 338 360 250 400 250 C440 250 444 340 446 420 L474 420 C478 348 486 270 520 272 C554 274 552 352 548 424 L574 424 C584 372 606 330 634 346 C664 364 646 454 626 522 C704 548 764 622 744 728 C716 858 560 942 430 930 C300 918 250 840 232 720 C152 700 150 612 235 560 Z';
 
 const DIMS: Record<CardVariant, { w: number; h: number }> = {
   feed_4x5: { w: 1080, h: 1350 },
@@ -28,12 +35,12 @@ const LAYOUT: Record<CardVariant, { headlineY: number; heroTop: number; heroSize
   story_9x16: { headlineY: 300, heroTop: 560, heroSize: 800 },
 };
 
-// The four majors → their CJK accent label (心 heart · 智 head · 命 life · 运 fate). §3.2.
+// The four majors → their English label (redesign §2/§7 — CJK dropped from the default surface).
 const LINE_LABEL: Record<string, string> = {
-  heart_line: '心',
-  head_line: '智',
-  life_line: '命',
-  fate_line: '运',
+  heart_line: 'Heart',
+  head_line: 'Head',
+  life_line: 'Life',
+  fate_line: 'Fate',
 };
 
 export interface CardInput {
@@ -102,20 +109,25 @@ export function buildCardSvg(input: CardInput): string {
   const heroY = heroTop;
   const mapPt = (p: Point): Point => [heroX + (p[0] / 1000) * heroSize, heroY + (p[1] / 1000) * heroSize];
 
+  // Faint hand silhouette behind the lines (negative space → reads as a palm, matches the app).
+  const silhouette =
+    `<g transform="translate(${r1(heroX)},${r1(heroY)}) scale(${r1(heroSize / 1000)})">` +
+    `<path d="${HAND_SILHOUETTE}" fill="${PALETTE.ink}" fill-opacity="0.04" stroke="${PALETTE.inkWash}" stroke-opacity="0.14" stroke-width="2" stroke-linejoin="round"/></g>`;
+
   const strokes: string[] = [];
   const labels: string[] = [];
   for (const [line, pts] of Object.entries(input.lineGeometry)) {
     if (!Array.isArray(pts) || pts.length < 2) continue;
     const mapped = pts.map(mapPt);
     const d = smoothPath(mapped);
-    const color = sig.has(line) ? PALETTE.cinnabar : PALETTE.ink;
+    const color = sig.has(line) ? PALETTE.accent : PALETTE.ink;
     // underlay (soft) + main stroke → an engraved/embossed feel
     strokes.push(`<path d="${d}" fill="none" stroke="${PALETTE.ink}" stroke-opacity="0.10" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>`);
     strokes.push(`<path d="${d}" fill="none" stroke="${color}" stroke-width="${sig.has(line) ? 6 : 4.5}" stroke-linecap="round" stroke-linejoin="round"/>`);
     const label = LINE_LABEL[line];
     if (label) {
       const end = mapped[mapped.length - 1];
-      labels.push(`<text x="${r1(end[0] + 18)}" y="${r1(end[1] + 8)}" font-family="Noto Serif SC, Noto Serif TC, serif" font-size="34" fill="${PALETTE.inkWash}">${label}</text>`);
+      labels.push(`<text x="${r1(end[0] + 18)}" y="${r1(end[1] + 8)}" font-family="Noto Sans, sans-serif" font-size="30" fill="${PALETTE.inkWash}">${label}</text>`);
     }
   }
 
@@ -139,15 +151,21 @@ export function buildCardSvg(input: CardInput): string {
     chipX += cw + 22;
   }
 
-  // ── footer rail: seal chop + domain + optional attribution ──
+  // ── footer rail: CJK-free logomark stamp + domain + optional attribution ──
   const railY = h - 96;
+  const stampScale = 56 / 48; // the Logomark stamp is a 48-frame tile
   const seal =
-    `<rect x="${pad}" y="${railY - 6}" width="56" height="56" rx="8" fill="${PALETTE.cinnabar}"/>` +
-    `<text x="${pad + 28}" y="${railY + 34}" text-anchor="middle" font-family="Noto Serif SC, serif" font-size="34" fill="${PALETTE.paper}">相</text>`;
+    `<g transform="translate(${pad},${railY - 6}) scale(${r1(stampScale)})">` +
+    `<rect x="3" y="3" width="42" height="42" rx="10" fill="none" stroke="${PALETTE.heritage}" stroke-width="2.6"/>` +
+    `<g fill="none" stroke="${PALETTE.heritage}" stroke-width="3" stroke-linecap="round">` +
+    `<path d="M19.5 12.5 C14 18.5 13 28 18.5 36"/>` +
+    `<path d="M11.5 24.5 C20 21.5 29.5 22.5 35.5 26"/>` +
+    `<path d="M12 18.5 C20 14 30 15 36.5 19.5"/>` +
+    `</g></g>`;
   const brand =
     `<text x="${pad + 74}" y="${railY + 34}" font-family="Noto Sans, sans-serif" font-size="30" fill="${PALETTE.ink}">${esc(domain)}</text>` +
     (input.attribution
-      ? `<text x="${w - pad}" y="${railY + 34}" text-anchor="end" font-family="Noto Serif, serif" font-size="28" fill="${PALETTE.inkWash}">${esc(input.attribution)}</text>`
+      ? `<text x="${w - pad}" y="${railY + 34}" text-anchor="end" font-family="Noto Sans, sans-serif" font-size="28" fill="${PALETTE.inkWash}">${esc(input.attribution)}</text>`
       : '');
 
   // ── QR placeholder (story variant only, corner) — real code wired in the share flow (P8.T2/T3) ──
@@ -161,7 +179,8 @@ export function buildCardSvg(input: CardInput): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
   <rect width="${w}" height="${h}" fill="${PALETTE.paper}"/>
   <rect x="20" y="20" width="${w - 40}" height="${h - 40}" fill="none" stroke="${PALETTE.edge}" stroke-width="2"/>
-  <text x="${pad}" y="${L.headlineY}" font-family="Noto Serif Display, Noto Serif, serif" font-size="${hlSize}" font-weight="600" fill="${PALETTE.ink}">${headline}</text>
+  <text x="${pad}" y="${L.headlineY}" font-family="Noto Sans, sans-serif" font-size="${hlSize}" font-weight="800" fill="${PALETTE.ink}">${headline}</text>
+  ${silhouette}
   ${strokes.join('\n  ')}
   ${labels.join('\n  ')}
   ${qr}

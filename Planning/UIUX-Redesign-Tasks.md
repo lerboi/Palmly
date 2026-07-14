@@ -11,32 +11,32 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R16 (Share sheet — solo + compat variants, red-thread svg, gold score ring)
-- **Next task:** R16b (reskin the SERVER share card `card-svg.ts` — Deno test)
-- **Blocked on:** —
+- **Last completed:** R16b (server share card reskinned to Quiet Cosmos; test re-pinned; render-verified)
+- **Next task:** R16c (reskin the invite landing page `invite-page.ts` — Deno)
+- **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin tests + render/grep-verify assertions instead)
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
   `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
   `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
   in app surfaces — the camera-overlay `OVERLAY` palette in `CaptureView` is a justified
   theme-independent exception), realistic English (no lorem, trim CJK/almanac).
-  **R16b = reskin the SERVER share card** — `supabase/functions/_shared/card-svg.ts` (a
-  server-rendered SVG, the image users actually post). Per north star §7: palette lines ~10–17
-  (cinnabar/gold/paper → Quiet Cosmos hexes), CJK `LINE_LABEL` ~31–37 (心… → English
-  Heart/Head/Life/Fate), a 相 seal chop ~144–146 (→ CJK-free mark, e.g. the palm-lines logomark
-  path), serif headline ~164 (→ sans). **Ideally factor to ONE shared palette source** so the
-  in-app share preview (`ShareView`) and the posted image can't drift — but the app is RN/TS and
-  the function is Deno; a shared literal palette object (duplicated hexes with a comment, or a
-  shared `.ts` both can import) is acceptable — keep it simple, note the choice. **Re-pin
-  `supabase/functions/_shared/card-svg.test.ts`** to the new output. This is a Deno task:
-  **run the Deno tests** (`cd supabase && deno test` or per repo convention — check
-  `docs/SETUP.md` / existing test invocation; if `deno` isn't installed, mark the Deno-test leg
-  `[~]` and verify by rendering the SVG string → PNG via the shoot HTML trick or by eyeballing
-  the generated SVG). Verify: rendered card matches the app's `r16-share.png` palette/labels;
-  Deno test green. Do NOT change the function's LOGIC/signature — only the SVG skin.
-  Then R16c (invite-page.ts reskin, Deno) + R16d (in-app invite-claim/pair-reveal route).
-  **APP SCREENSHOTS (for R16d etc.):** `npx expo export --platform web` then
-  `node scripts/shoot.mjs ../docs/checkpoints/redesign "<route:WxH=name>"`. ROOT launcher =
-  EMPTY route; only `dev/theme` renders desktop.
+  **R16c = reskin the invite landing page** — `supabase/functions/_shared/invite-page.ts` (+ any
+  `buildInviteGonePage`), the public HTML at `palmly.app/i/{token}` (first impression for every
+  invited non-user; currently `#F7F2E7` bg / `#C3272B` CTA+seal / 相 glyph / serif). Reskin to
+  Quiet Cosmos: bg `#FAF9F7`, accent CTA `#4B57C4`, heritage stamp `#C2554A`, textPrimary
+  `#1A1A1F`, sans (system sans stack — the HTML can't bundle Noto, so use a clean
+  `-apple-system, "Segoe UI", Roboto, sans-serif` stack), CJK-free (drop 相 → the palm-lines
+  logomark inline SVG, reuse the 3 paths from `card-svg.ts`/`Logomark`). English-first copy.
+  **Re-pin `invite-page.test.ts`** to the new markup (grep it for asserted hexes/glyphs/strings).
+  **Deno is NOT installed here → the Deno test RUN is `[~]`**: re-pin the test, then verify by
+  rendering the HTML → screenshot. VERIFY TRICK (worked for R16b): the module is pure — write
+  `app/scripts/gen-invite.ts` that imports `buildInvitePage(...)`, writes the HTML to a temp file,
+  then Chrome-screenshot it: `"/c/Program Files/Google/Chrome/Application/chrome.exe" --headless=new
+  --disable-gpu --hide-scrollbars --window-size=430,900 "--screenshot=<ABS out>.png" "file:///<ABS html>"`.
+  Run the generator with `node --experimental-strip-types scripts/gen-invite.ts` (scripts/ is now
+  excluded from app tsconfig, so a .ts there won't break `npm run typecheck`). Then grep the
+  generated HTML to confirm the re-pinned assertions + no CJK. Do NOT change the module's LOGIC —
+  only the HTML skin. Then R16d (in-app invite-claim/pair-reveal recipient route — a real app
+  route + fixture; screenshot via shoot.mjs). Do NOT change DB/edge logic.
   **Finalize-pass cleanups (R22/R24):** `fonts.cjk`/NotoSerifTC has ZERO default consumers →
   zh-only load; /dev/theme "Section markers" CJK demo + the chat `SealBadge` call (R19) to migrate.
 
@@ -169,7 +169,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   modern channel row, a compatibility variant with a lightened red-thread (svg, not 🔴) +
   score ring. Update `RevealView` CompareCard + `FortuneHome` RedThreadRow. Provide a
   share-preview fixture. Verify: screenshots; grep shows no 🔴.
-- [ ] **R16b — Reskin the SERVER share card** (`supabase/functions/_shared/card-svg.ts`) — new
+- [x] **R16b — Reskin the SERVER share card** (`supabase/functions/_shared/card-svg.ts`) _(2026-07-14)_ _(Deno test RUN [~] — deno not installed)_ — new
   palette (factor to ONE shared palette source so the app preview + posted image match),
   English line labels, CJK-free corner seal, sans headline. Re-pin `card-svg.test.ts`. Verify:
   render a sample card SVG → screenshot matches the app's share preview; Deno test green.
@@ -373,3 +373,16 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   `PREVIEW_*`; `/dev/share-compat` previews the compat variant. Native OS share sheet + brand
   channels are `[~]`. Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, grep shows **no 🔴
   anywhere in src**; screenshots `r16-share.png` (solo) + `r16-compat.png` (compat). — 2026-07-14
+- R16b — Server share card `card-svg.ts` reskinned to Quiet Cosmos: `PALETTE` → the skin #2 hexes
+  (bg `#FFFFFF`, border `#E7E3DC`, ink `#1A1A1F`/`#6B6B72`, signature/highlight `#4B57C4`, seal
+  `#C2554A`) with a comment noting it mirrors `app/src/theme/tokens.ts`; `LINE_LABEL` 心智命运 →
+  English Heart/Head/Life/Fate (Noto Sans); added the faint hand silhouette behind the lines to
+  match the app diagram; the 相 cinnabar chop → a CJK-free heritage **Logomark stamp** (the 3
+  palm-line paths); headline + attribution serif → Noto Sans 800. Function LOGIC/signature
+  unchanged. Re-pinned `card-svg.test.ts` (相→heritage stamp + no-CJK invariant; cinnabar→accent
+  hex; 心/运→Heart/Fate; ink hex). `deno` is NOT installed here → the **Deno test RUN is `[~]`**,
+  but I verified all re-pinned assertions hold against the real generated SVG (grep) and rendered
+  the card to a screenshot that matches the app preview. Added `scripts/gen-card.ts` (renders the
+  SVG via Node type-stripping) + excluded `scripts/` from app tsconfig so it doesn't break `tsc`.
+  Evidence: app `tsc`/`jest` 31/31/`lint` clean, assertion grep all-OK + no CJK + 12 paths,
+  screenshot `docs/checkpoints/redesign/r16b-card.png`. — 2026-07-14
