@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
-import { AppHeader, Button, Card, Icon, PrivacyBadge, Screen, Text } from '@/components/ui';
-import { useTheme } from '@/theme';
+import { AppHeader, Button, Card, Icon, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
+import { useReducedMotion, useTheme } from '@/theme';
 import { type ReadingSummary, relativeDate } from './history';
 
 export interface HistoryShelfProps {
@@ -16,10 +17,11 @@ export interface HistoryShelfProps {
 }
 
 /**
- * The readings shelf (UIUX §2.11 / §2.5, redesign R20) — past palm/face readings as re-openable
- * cards, each with its own line-diagram thumbnail + a small type icon (no per-row CJK glyph). The
- * privacy signal shows ONCE in the header. The repeat-scan banner surfaces the consistency
- * guarantee as a `success`-toned trust brag. English-first, no CJK.
+ * The readings shelf (UIUX §2.11 / §2.5, redesign R20 / v2 V19) — past palm/face readings as
+ * re-openable cards, each with a **legible** line-diagram thumbnail (silhouette off, lines in the
+ * accent) and a vermilion **type-chip** so palm vs face read at a glance. The privacy signal shows
+ * ONCE in the header. The repeat-scan banner is an earned trust brag — green stays the semantic
+ * "unchanged" check, the claret red-thread is the ornament (§3.2). English-first, no CJK.
  */
 export function HistoryShelf({ readings, showUnchanged = false, now }: HistoryShelfProps) {
   const [nowTs] = useState(() => now ?? Date.now());
@@ -45,21 +47,56 @@ function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: num
     <Card
       elevation="sm"
       onPress={() => router.push('/reveal')}
-      accessibilityLabel={`Open reading: ${reading.headline}`}
+      accessibilityLabel={`Open ${isPalm ? 'palm' : 'face'} reading: ${reading.headline}`}
       pressedTint="accent"
       entranceIndex={index}
       style={{ marginBottom: theme.spacing.md }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-        <PalmDiagram geometry={reading.geometry} size={64} animate={false} signatureLines={['heart_line', 'fate_line']} />
+        {/* Thumbnail — the reading's own lines in the accent, framed in a tile (no muddy silhouette). */}
+        <View
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: theme.radii.sm,
+            backgroundColor: theme.colors.surfaceSunken,
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+          }}
+        >
+          <PalmDiagram
+            geometry={reading.geometry}
+            size={56}
+            animate={false}
+            silhouette={false}
+            signatureLines={isPalm ? ['heart_line', 'fate_line'] : ['heart_line', 'head_line']}
+            accessibilityLabel=""
+          />
+        </View>
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
-            <Icon name={isPalm ? 'palm' : 'face'} size={16} color={theme.colors.accent} decorative />
-            <Text variant="caption" tone="tertiary" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
-              {isPalm ? 'Palm' : 'Face'} · {relativeDate(reading.createdAt, now)}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: theme.colors.accentMuted,
+                borderRadius: theme.radii.pill,
+                paddingHorizontal: theme.spacing.sm,
+                paddingVertical: 2,
+              }}
+            >
+              <Icon name={isPalm ? 'palm' : 'face'} size={13} color={theme.colors.accent} decorative />
+              <Text variant="caption" color={theme.colors.accent}>
+                {isPalm ? 'Palm' : 'Face'}
+              </Text>
+            </View>
+            <Text variant="caption" tone="tertiary">
+              {relativeDate(reading.createdAt, now)}
             </Text>
           </View>
-          <Text variant="bodyMedium" numberOfLines={2} style={{ marginTop: 2 }}>
+          <Text variant="bodyMedium" numberOfLines={2} style={{ marginTop: theme.spacing.xs }}>
             {reading.headline}
           </Text>
         </View>
@@ -69,6 +106,8 @@ function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: num
   );
 }
 
+/** The repeat-scan trust brag — green is the semantic "unchanged" check; the claret thread is the
+ *  ornament (your past + present readings, tied). */
 function UnchangedBanner() {
   const theme = useTheme();
   return (
@@ -79,9 +118,10 @@ function UnchangedBanner() {
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
         <Icon name="check" size={20} color={theme.colors.success} decorative />
-        <Text variant="heading" color={theme.colors.success}>
+        <Text variant="heading" color={theme.colors.success} style={{ flex: 1 }}>
           Your palm is unchanged
         </Text>
+        <Icon name="thread" size={22} color={theme.colors.heritageAccent} decorative />
       </View>
       <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.xs }}>
         Your reading stands — same palm, same reading. Your lines don&apos;t lie.
@@ -90,30 +130,35 @@ function UnchangedBanner() {
   );
 }
 
+/** Empty shelf — grounded in the Palmly mark, with a gentle entrance. */
 function EmptyState() {
   const theme = useTheme();
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
+  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
   return (
-    <Card elevation="md" style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-      <View
-        style={{
-          width: 72,
-          height: 72,
-          borderRadius: theme.radii.xl,
-          backgroundColor: theme.colors.accentMuted,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Icon name="history" size={34} color={theme.colors.accent} decorative />
-      </View>
-      <Text variant="title" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
-        No readings yet
-      </Text>
-      <Text variant="body" tone="secondary" style={{ textAlign: 'center', marginTop: theme.spacing.sm, maxWidth: 280 }}>
-        Your palm and face readings will live here — yours to reopen anytime.
-      </Text>
-      <Button label="Read my palm" variant="primary" fullWidth style={{ marginTop: theme.spacing.xl }} onPress={() => router.push('/primer')} />
-    </Card>
+    <Animated.View entering={shouldAnimate ? FadeIn.duration(theme.motion.duration.slow) : undefined}>
+      <Card elevation="sm" style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+        <View
+          style={{
+            width: 88,
+            height: 88,
+            borderRadius: 44,
+            backgroundColor: theme.colors.surfaceSunken,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Logomark size={48} tone="ink" />
+        </View>
+        <Text variant="title" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
+          No readings yet
+        </Text>
+        <Text variant="body" tone="secondary" style={{ textAlign: 'center', marginTop: theme.spacing.sm, maxWidth: 280 }}>
+          Your palm and face readings will live here — yours to reopen anytime.
+        </Text>
+        <Button label="Read my palm" variant="primary" fullWidth style={{ marginTop: theme.spacing.xl }} onPress={() => router.push('/primer')} />
+      </Card>
+    </Animated.View>
   );
 }

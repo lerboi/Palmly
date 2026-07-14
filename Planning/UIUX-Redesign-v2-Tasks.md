@@ -16,16 +16,16 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V18 `[x]` (V0 + Launcher…Fortune + Chat). Screen phase continues at
-  V19 (History). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
+- **Status:** IN PROGRESS — V1–V19 `[x]` (V0 + Launcher…Chat + History). Screen phase ends at V20
+  (Settings), then V2 phase (V21–V23). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
 - **Dark screenshots (V9+):** build a dark bundle with `EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export`
   then run `shoot.mjs` (RNW can't switch scheme client-side in a static web export). Light = normal
   export. `/dev/theme` still renders both via `forceScheme`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V18** — Chat (Logomark avatars, palm citation, differentiated empty state, tails, chip fade, micro-interactions) (2026-07-15).
-- **Next task:** **V19 — History** (`features/reading/HistoryShelf.tsx`).
+- **Last completed:** **V19** — History (legible type-distinct thumbnails, type-chips, Logomark empty, red-thread banner) (2026-07-15).
+- **Next task:** **V20 — Settings** (`features/settings/{SettingsHub,MethodologyScreen,NotificationSettings,PrivacyCenter,LegalScreen,settingsUi}.tsx`).
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -454,7 +454,7 @@ schema/migration/secret changes — none of this touches the DB.
     (input `typography.body.fontSize`, send `controlHeight.md`). tsc + lint(0) + jest **39/39**; grep
     no shield/success citation, no raw hex. Screens
     `docs/checkpoints/redesign/v18-chat-{typing,empty}{,-dark}.png`. Stagger/crossfade/press `[~]`.
-- [ ] **V19 — History** (`features/reading/HistoryShelf.tsx`) — row **entrance stagger** +
+- [x] **V19 — History** (`features/reading/HistoryShelf.tsx`) — row **entrance stagger** +
   **press-spring** (+ `accentMuted` pressed tint); make the 64px thumbnail **legible** (`silhouette=
   false`, palm vs face distinct) with the line in `accent` (vermilion); wrap the palm/face icon in a
   vermilion **type-chip** + fix row rhythm/hierarchy + separate rows on the warm-white bg; correct the
@@ -462,7 +462,17 @@ schema/migration/secret changes — none of this touches the DB.
   with a gentle entrance; turn `UnchangedBanner` into an earned **red-thread**-inflected trust brag
   (green stays the semantic check, heritage red is the ornament). Verify: screenshots
   `/(home)/history` + `/dev/history-empty` at 390×844 — distinct thumbnails, type-chips, Logomark
-  empty state, thread banner; `geometry.test.ts` green; grep no raw hex; motion `[~]`.
+  empty state, thread banner; `geometry.test.ts` green; grep no raw hex; motion `[~]`. (2026-07-15)
+  - DONE: rows keep the V4 stagger + press-spring (accentMuted tint). Thumbnails are now **legible** —
+    framed in a `surfaceSunken` tile, `silhouette={false}`, the reading's own lines in **accent**; palm
+    vs face read **distinct** (palm → crossing creases + red fate line; face → the two horizontal face
+    lines). The type is a vermilion **type-chip** (accentMuted pill + palm/face icon + label), the date
+    a separate tertiary caption. **Elevation inversion fixed** — the empty card dropped `md`→`sm`, level
+    with the rows. **Empty state** rebuilt around the **Logomark** (surfaceSunken circle) with a `FadeIn`
+    entrance. **UnchangedBanner** keeps the **green** semantic check + heading (+ green border) and gains
+    a **claret `thread`** ornament (§3.2 — readings tied). Row a11y label now names the type. tsc +
+    lint(0) + jest **39/39** (geometry green); grep no raw hex. Screens
+    `docs/checkpoints/redesign/v19-history{,-dark}.png` + `-empty{,-dark}`. Stagger/press/entrance `[~]`.
 - [ ] **V20 — Settings** (`features/settings/{SettingsHub,MethodologyScreen,NotificationSettings,
   PrivacyCenter,LegalScreen,settingsUi}.tsx`) — the highest-leverage fix in `settingsUi.tsx
   SettingRow`: press feedback + a `leadingIcon` prop + `SettingGroup` `elevation="sm"` (feeds every
@@ -533,3 +543,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V16 — Paywall: personalized palm hero (their fate line lit + line names), claret brand seal, feature-matched staggered inclusions, spring plan cards, `flex:1` dead space removed (ScrollView), stable price hierarchy (per-month lead, no colour flip), Restore hitSlop + separated footer — tsc + lint(0) + jest 39/39; `v16-paywall{,-320,-dark}.png` — 2026-07-15
 - V17 — Fortune: Avoid→danger (two-reds resolved, only red-thread keeps heritage), lucky_color Indigo→Jade green, hero FortuneCard (accent chip + promoted essence + staggered unfold), branded animated a11y StreakStrip (accent flame), first-run PalmDiagram hero, English day-pillar whisper (`dayPillarEn`) — tsc + lint(0) + jest 39/39; `v17-fortune{,-320,-dark,-free,-empty}.png` — 2026-07-15
 - V18 — Chat: Logomark avatar on assistant/typing bubbles, palm citation in accent (replaces green shield/success), Logomark empty state (distinct from gate), staggered bubbles + typing crossfade, speaker tails, chip press-spring+entrance+fade, send press-spring, input focus, KeyboardAvoidingView, showDivider — tsc + lint(0) + jest 39/39; `v18-chat-{typing,empty}{,-dark}.png` — 2026-07-15
+- V19 — History: legible tiled thumbnails (silhouette off, palm-vs-face distinct, accent lines), vermilion type-chips, elevation inversion fixed (empty md→sm), Logomark empty state + entrance, UnchangedBanner claret-thread ornament (green stays semantic) — tsc + lint(0) + jest 39/39; `v19-history{,-dark,-empty}.png` — 2026-07-15
