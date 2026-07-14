@@ -16,13 +16,16 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — **V0 FOUNDATION COMPLETE (V1–V8 `[x]`)**. Screen phase begins at V9. Prior
-  round R1–R24 ("Quiet Cosmos") is complete + archived in `UIUX-Redesign-Tasks.md`.
+- **Status:** IN PROGRESS — V0 foundation (V1–V8) + **V9 Launcher** `[x]`. Screen phase continues at
+  V10. Prior round R1–R24 ("Quiet Cosmos") is complete + archived in `UIUX-Redesign-Tasks.md`.
+- **Dark screenshots (V9+):** build a dark bundle with `EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export`
+  then run `shoot.mjs` (RNW can't switch scheme client-side in a static web export). Light = normal
+  export. `/dev/theme` still renders both via `forceScheme`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V8** — `/dev/theme` full-system harness; **V0 foundation complete** (2026-07-15).
-- **Next task:** **V9 — Launcher** (`app/src/app/index.tsx`) — first screen task.
+- **Last completed:** **V9** — Launcher (ghost-hand bg, mark draw-on, staggered lockup, __DEV__ gate) + dark-shot tooling (2026-07-15).
+- **Next task:** **V10 — Onboarding** (`(onboarding)/welcome|how-it-works|hand-select|claim.tsx`).
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -223,13 +226,29 @@ schema/migration/secret changes — none of this touches the DB.
 
 ## PHASE V1 — The journey (user-journey order) — every surface: recolor + one motion beat + craft
 
-- [ ] **V9 — Launcher** (`app/src/app/index.tsx`) — Logomark **draw-on** + lockup/CTA **entrance
+- [x] **V9 — Launcher** (`app/src/app/index.tsx`) — Logomark **draw-on** + lockup/CTA **entrance
   stagger**; a faint token-driven brand-background (echo the welcome ghost-hand) so it isn't a blank
   page; resolve the mark/CTA accent (single vermilion CTA owns accent; mark reads ink + heart-line
   whisper); rebalance composition + tighter mark→wordmark lockup; group the legal caption under the
   CTA; gate the "Dev · route map" button behind `__DEV__`; drop the `maxWidth:280` literal.
   Verify: screenshots 390×844 + 320, light+dark — no dev button in a `__DEV__=false` build, balanced
-  composition, drawn-mark end-state; grep no CJK/raw-hex; motion `[~]`.
+  composition, drawn-mark end-state; grep no CJK/raw-hex; motion `[~]`. (2026-07-15)
+  - DONE: launcher rebuilt — faint ghost-hand `PalmDiagram` background (opacity 0.07, decorative)
+    so it isn't blank; `Logomark tone="ink" animate` (draw-on; ink lines + vermilion heart whisper,
+    the single CTA owns the accent); wordmark + tagline + footer **stagger in** (`FadeInDown`, gated,
+    web/reduce-motion static); tight mark→wordmark lockup (spacing.sm); legal grouped under the CTA;
+    dev button `{__DEV__ ? … : null}`; `maxWidth:280` dropped. tsc + lint(0) + jest **38/38**; grep no
+    CJK/raw-hex. Screens `docs/checkpoints/redesign/v9-launcher-{light,320,dark}.png` — balanced,
+    drawn-mark end-state, **no dev button** (the production `expo export` has `__DEV__=false`), no
+    clip at 320. Entrance/draw-on `[~]`.
+  - **Dark-verification tooling** (enables light+dark for V9–V23): react-native-web's `useColorScheme`
+    is light-only in a static web export and a client-side scheme flip won't re-commit against the
+    pre-rendered light HTML — so added a **build-time** `EXPO_PUBLIC_FORCE_SCHEME` override on the root
+    `ThemeProvider` (`app/src/app/_layout.tsx`, inert in normal builds). Dark shots =
+    `EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export` then `shoot.mjs`; light = normal export.
+  - NB brand-asset PNGs (`scripts/gen-brand-assets.mjs`) still hold indigo/old paths — OUT of the
+    redesign-loop route scope (a build script, not a rendered route; a correct regen must apply V5's
+    two-tone rules to the icon generator). Tracked as a separate brand-asset follow-up, not a blocker.
 - [ ] **V10 — Onboarding** (`(onboarding)/welcome|how-it-works|hand-select|claim.tsx`) — welcome:
   drop `showLabels` on the hero (de-clutter), add a Logomark, stagger headline/subhead/CTA;
   how-it-works: **animate the three steps** (stagger + icon pop, spec §A2); hand-select:
@@ -390,3 +409,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V6 — PalmDiagram: per-stroke `withDelay` stagger (classical order) + highlighted-glow bloom + `highlightColor` prop (default accent) + silhouette auto-drop ≤64px; geometry.ts label placement fixed (edge-margin anchor + gutter + heart/head nudge, `LabelAnchor` exposed → `textAnchor`) — tsc + lint(0) + jest 38/38 (geometry 9); `v6-welcome{,-320}.png` no clip/overlap, `v6-history.png` clean thumbs — 2026-07-15
 - V7 — AppHeader: `BackButton` reduce-motion-aware press-spring (icon 0.9, web/static safe) + optional `showDivider` bottom hairline; a11y "Back" unchanged; `/dev/theme` example — tsc + lint(0) + jest 38/38; `v7-header.png` light+dark shows the divider — 2026-07-15
 - V8 — `/dev/theme` full-system harness: added States (pressed swatches + selected card) + palm draw-on end-state; whole Vermilion system now gated in one surface (light+dark) — tsc + lint(0) + jest 38/38; `v8-devtheme-full.png`. **V0 foundation (V1–V8) complete** — 2026-07-15
+- V9 — Launcher: ghost-hand brand bg, `Logomark tone="ink" animate` draw-on (ink + vermilion heart whisper), staggered wordmark/tagline/CTA, legal under CTA, `__DEV__`-gated dev button, dropped maxWidth literal; added build-time `EXPO_PUBLIC_FORCE_SCHEME` dark-shot tooling — tsc + lint(0) + jest 38/38; `v9-launcher-{light,320,dark}.png`, no dev button in prod export, no CJK/hex — 2026-07-15

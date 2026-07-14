@@ -22,6 +22,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(__dirname, '..', 'dist');
 const CHROME = process.env.CHROME_BIN || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const SCALE = Number(process.env.SHOOT_SCALE || '2');
+// Dark-theme captures come from a dark BUILD (`EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export`),
+// not from this script — react-native-web can't switch scheme client-side in a static web export.
 
 const MIME = {
   '.html': 'text/html',
