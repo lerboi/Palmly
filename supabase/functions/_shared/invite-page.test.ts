@@ -51,6 +51,13 @@ Deno.test('buildInvitePage: generic-kind invite uses a different headline', () =
   assertStringIncludes(html, 'Sam shared a Palmly reading');
 });
 
+Deno.test('buildInvitePage: reskinned to Quiet Cosmos — accent CTA, heritage mark, CJK-free (§7)', () => {
+  const html = buildInvitePage(base);
+  assertStringIncludes(html, 'background:#4B57C4'); // twilight-indigo CTA (was cinnabar)
+  assertStringIncludes(html, '#C2554A'); // heritage logomark stamp (the CJK-free seal)
+  assert(!/[一-鿿]/.test(html), 'no CJK glyphs — 相 chop dropped'); // (🤝 in the OG title is emoji, not CJK)
+});
+
 Deno.test('buildInviteGonePage: expired/not-found shell has no compatibility CTA', () => {
   const html = buildInviteGonePage('expired');
   assertStringIncludes(html, 'expired');

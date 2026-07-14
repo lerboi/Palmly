@@ -30,35 +30,46 @@ function ogText(o: InvitePageOpts): { title: string; description: string } {
   return { title: `${o.inviterName} shared a Palmly reading`, description: `Read your palm on Palmly — for reflection and fun.` };
 }
 
+// Quiet Cosmos skin (redesign §3/§7). Source of truth: app/src/theme/tokens.ts (`quietCosmosSkin`
+// light) — kept in sync manually; a public HTML page can't bundle Noto, so it uses a system sans
+// stack. bg #FAF9F7 · surface #FFFFFF · border #E7E3DC · text #1A1A1F/#6B6B72 · accent #4B57C4 ·
+// heritage #C2554A · premium #C79A3C · success #3F7A5E.
 const STYLE = `*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,'Noto Sans',system-ui,sans-serif;background:#F7F2E7;color:#1E1B16;line-height:1.5;
--webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;background:#FAF9F7;
+color:#1A1A1F;line-height:1.5;-webkit-text-size-adjust:100%}
 main{max-width:560px;margin:0 auto;padding:40px 24px 64px;text-align:center}
-.seal{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:10px;
-background:#C3272B;color:#F7F2E7;font-family:'Noto Serif SC',serif;font-size:32px;margin-bottom:24px}
-h1{font-family:'Noto Serif Display','Noto Serif',Georgia,serif;font-size:30px;font-weight:600;margin-bottom:24px}
+.seal{display:block;width:56px;height:56px;margin:0 auto 24px}
+h1{font-size:30px;font-weight:800;letter-spacing:-0.4px;margin-bottom:24px}
 .wheel{width:180px;height:180px;margin:8px auto 28px;position:relative}
-.cta{display:block;background:#C3272B;color:#F7F2E7;text-decoration:none;font-size:20px;font-weight:600;
-padding:18px 24px;border-radius:14px;margin:8px 0 28px;box-shadow:0 6px 20px rgba(195,39,43,.25)}
+.cta{display:block;background:#4B57C4;color:#FFFFFF;text-decoration:none;font-size:20px;font-weight:700;
+padding:18px 24px;border-radius:14px;margin:8px 0 28px;box-shadow:0 8px 24px rgba(75,87,196,.28)}
 .steps{list-style:none;text-align:left;max-width:340px;margin:0 auto 32px}
-.steps li{counter-increment:s;position:relative;padding:8px 0 8px 40px;color:#5A544A}
+.steps li{counter-increment:s;position:relative;padding:8px 0 8px 40px;color:#6B6B72}
 .steps li::before{content:counter(s);position:absolute;left:0;top:6px;width:26px;height:26px;border-radius:50%;
-background:#E6DCC6;color:#1E1B16;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
+background:#ECEDF9;color:#4B57C4;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .steps{counter-reset:s}
-hr{border:none;border-top:1px solid #E6DCC6;margin:24px 0}
-.about{font-size:15px;color:#5A544A;text-align:left}
+hr{border:none;border-top:1px solid #E7E3DC;margin:24px 0}
+.about{font-size:15px;color:#6B6B72;text-align:left}
 .about p{margin-bottom:10px}
 .privacy{color:#3F7A5E}
-.code{margin-top:16px}.code b{font-family:ui-monospace,monospace;letter-spacing:2px;color:#1E1B16;font-size:18px}
-#wc{position:fixed;inset:0;background:rgba(30,27,22,.92);color:#F7F2E7;display:flex;flex-direction:column;
+.code{margin-top:16px}.code b{font-family:ui-monospace,monospace;letter-spacing:2px;color:#1A1A1F;font-size:18px}
+#wc{position:fixed;inset:0;background:rgba(20,21,26,.92);color:#FFFFFF;display:flex;flex-direction:column;
 align-items:center;justify-content:center;text-align:center;padding:32px;z-index:9}
 #wc .arrow{position:absolute;top:14px;right:20px;font-size:40px}`;
 
+// CJK-free brand mark — the traced-palm Logomark stamp (heritage whisper), replacing the 相 chop.
+const SEAL_SVG = `<svg class="seal" viewBox="0 0 48 48" aria-hidden="true">
+<rect x="3" y="3" width="42" height="42" rx="10" fill="none" stroke="#C2554A" stroke-width="2.6"/>
+<g fill="none" stroke="#C2554A" stroke-width="3" stroke-linecap="round">
+<path d="M19.5 12.5 C14 18.5 13 28 18.5 36"/><path d="M11.5 24.5 C20 21.5 29.5 22.5 35.5 26"/>
+<path d="M12 18.5 C20 14 30 15 36.5 19.5"/></g></svg>`;
+
 const WHEEL_SVG = `<svg class="wheel" viewBox="0 0 180 180" aria-hidden="true">
-<circle cx="90" cy="90" r="76" fill="none" stroke="#E6DCC6" stroke-width="10"/>
-<circle cx="90" cy="90" r="76" fill="none" stroke="#C3272B" stroke-width="10" stroke-dasharray="300 200"
-stroke-linecap="round" transform="rotate(-90 90 90)" opacity="0.5"/>
-<text x="90" y="104" text-anchor="middle" font-family="Noto Serif Display,serif" font-size="56" fill="#B8912F">?</text>
+<circle cx="90" cy="90" r="76" fill="none" stroke="#E7E3DC" stroke-width="10"/>
+<circle cx="90" cy="90" r="76" fill="none" stroke="#4B57C4" stroke-width="10" stroke-dasharray="300 200"
+stroke-linecap="round" transform="rotate(-90 90 90)" opacity="0.55"/>
+<text x="90" y="108" text-anchor="middle" font-family="-apple-system,Segoe UI,Roboto,sans-serif" font-size="56"
+font-weight="800" fill="#C79A3C">?</text>
 </svg>`;
 
 /** Build the full teaser HTML document. Deterministic + escaped; targets < 50KB. */
@@ -83,7 +94,7 @@ export function buildInvitePage(o: InvitePageOpts): string {
 <style>${STYLE}</style></head>
 <body>${weChat}
 <main>
-<div class="seal">相</div>
+${SEAL_SVG}
 <h1>${name} wants to compare palms with you</h1>
 ${WHEEL_SVG}
 <a class="cta" id="cta" href="${esc(o.ctaUrl)}" onclick="arm()">See our compatibility</a>
@@ -104,7 +115,7 @@ export function buildInviteGonePage(reason: 'expired' | 'not_found' | 'revoked')
   const msg = reason === 'expired' ? 'This invite has expired.' : reason === 'revoked' ? 'This invite is no longer active.' : 'We couldn’t find this invite.';
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Palmly</title><meta property="og:title" content="Palmly"><style>${STYLE}</style></head>
-<body><main><div class="seal">相</div><h1>${esc(msg)}</h1>
+<body><main>${SEAL_SVG}<h1>${esc(msg)}</h1>
 <p class="about">Ask your friend to share a fresh link, or open Palmly to start your own reading.</p>
 <a class="cta" href="https://palmly.app">Open Palmly</a></main></body></html>`;
 }

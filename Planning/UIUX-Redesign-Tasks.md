@@ -11,9 +11,9 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R16b (server share card reskinned to Quiet Cosmos; test re-pinned; render-verified)
-- **Next task:** R16c (reskin the invite landing page `invite-page.ts` — Deno)
-- **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin tests + render/grep-verify assertions instead)
+- **Last completed:** R16c (invite landing page reskinned to Quiet Cosmos; test re-pinned; render-verified)
+- **Next task:** R16d (in-app invite-claim / pair-reveal recipient route)
+- **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin tests + render/grep-verify instead. Both server surfaces R16b/R16c now done.)
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
   `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
   `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
@@ -173,8 +173,8 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   palette (factor to ONE shared palette source so the app preview + posted image match),
   English line labels, CJK-free corner seal, sans headline. Re-pin `card-svg.test.ts`. Verify:
   render a sample card SVG → screenshot matches the app's share preview; Deno test green.
-- [ ] **R16c — Reskin the invite landing page** (`supabase/functions/_shared/invite-page.ts` +
-  `buildInviteGonePage`) — new palette/CTA/typography, CJK-free, English-first. Re-pin
+- [x] **R16c — Reskin the invite landing page** (`supabase/functions/_shared/invite-page.ts` +
+  `buildInviteGonePage`) _(2026-07-14)_ _(Deno test RUN [~] — deno not installed)_ — new palette/CTA/typography, CJK-free, English-first. Re-pin
   `invite-page.test.ts`. Verify: render the HTML → screenshot; Deno test green.
 - [ ] **R16d — Build the in-app invite-claim / pair-reveal recipient route** — the receiving
   end of the red-thread loop (currently no route exists though `scheme:"palmly"` is declared).
@@ -386,3 +386,14 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   SVG via Node type-stripping) + excluded `scripts/` from app tsconfig so it doesn't break `tsc`.
   Evidence: app `tsc`/`jest` 31/31/`lint` clean, assertion grep all-OK + no CJK + 12 paths,
   screenshot `docs/checkpoints/redesign/r16b-card.png`. — 2026-07-14
+- R16c — Invite landing page `invite-page.ts` reskinned to Quiet Cosmos: `STYLE` palette →
+  skin #2 (bg `#FAF9F7`, accent CTA `#4B57C4` + indigo shadow, step markers `#ECEDF9`/`#4B57C4`,
+  border `#E7E3DC`, text `#1A1A1F`/`#6B6B72`, privacy `#3F7A5E`), fonts serif → a system sans
+  stack (public HTML can't bundle Noto), h1 weight 800 + tracking; the 相 seal chop (both
+  `buildInvitePage` + `buildInviteGonePage`) → a CJK-free heritage `SEAL_SVG` (Logomark stamp);
+  the "?" mystery wheel recolored (ring → accent, "?" → premium gold, sans). Module LOGIC
+  unchanged; existing tests (content/behavior) still hold + added a Quiet-Cosmos/CJK-free
+  assertion to `invite-page.test.ts`. `deno` not installed → **Deno test RUN `[~]`**, but
+  verified assertions against the real generated HTML (grep) + rendered it. Added
+  `scripts/gen-invite.ts`. Evidence: assertions all-OK + no CJK, app `tsc`/`jest`/`lint`
+  unaffected, screenshot `docs/checkpoints/redesign/r16c-invite.png`. — 2026-07-14
