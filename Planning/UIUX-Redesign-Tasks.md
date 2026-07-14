@@ -11,29 +11,34 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R18 (Fortune home de-almanac'd — grouped sections, streak icon, empty state)
-- **Next task:** R19 (Chat thread redesign + fleshed fixture + typing indicator)
-- **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin + render/grep-verify.)
+- **Last completed:** R19 (Chat thread — grounded bubbles, typing indicator, empty state, send icon)
+- **Next task:** R20 (History shelf redesign + empty state)
+- **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin + render/grep-verify.
+  Web-export ScrollView top-aligns short content — chat/scroll screens need a taller capture; correct on device.)
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
   `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
   `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
   in app surfaces — the camera-overlay `OVERLAY` palette in `CaptureView` is a justified
   theme-independent exception), realistic English (no lorem, trim CJK/almanac).
-  **R19 = redesign the Chat thread + flesh the fixture.** Files: `src/features/chat/ChatThread.tsx`
-  (uses `SealBadge glyph="问"` as the gate seal → `Icon name="chat"`; a "↑" send glyph →
-  `Icon name="send"`; the chips + "Cites your…" grounding line), `src/features/chat/chat.ts`
-  (`PREVIEW_THREAD` — expand to a realistic 3–4 turn conversation; `PREVIEW_CHIPS` — make them
-  DISTINCT from already-asked questions, drop the duplicate first chip). Do: grounded chat bubbles
-  (user right / assistant left, elevation/tokens), a streaming/typing indicator (3-dot; reduce-
-  motion fallback → static "…"), elevate the "Cites your <line>" grounding footer, a premium
-  empty/first-run state (suggestion chips only, no messages). Read UIUX-specs §2.11 (chat bullet)
-  first. The chat route is `(home)/chat`. Verify: screenshot — full conversation (no void), typing
-  indicator, distinct chips; also a `/dev/chat-empty` preview for the first-run state. `SealBadge`
-  is deprecated — after R19 removes its last app call site (chat), only /dev/theme may reference
-  it; note if fully removable.
+  **R20 = redesign the History shelf.** File: `src/features/reading/HistoryShelf.tsx` (already
+  has the R9 `AppHeader` + one `PrivacyBadge`; a `ReadingRow` still uses CJK 掌/面 glyphs for the
+  palm/face kind). Do: replace the 掌/面 kind glyph with a small type line-icon (palm → `Icon`
+  e.g. `sparkle`/`life`; face → a different Icon — pick sensible; maybe add a `face` icon or reuse
+  `mind`); keep the privacy line ONCE (header badge — already done R9, verify still single); keep
+  the "unchanged" consistency brag on the `success` token (the `UnchangedBanner` — retint to
+  success); vary the thumbnails a little (they all use `signatureLines=['heart_line','fate_line']`
+  — fine, or vary per kind); **add the empty (zero-readings) state** (already has an `EmptyState`
+  — polish it to premium: icon tile + copy + a "Read my palm" CTA). Read the file first. The
+  route is `(home)/history`; add a `/dev/history-empty` preview (readings=[]). Verify: screenshot
+  — no per-row CJK, one privacy signal, premium empty state.
   **SCREENSHOTS:** `npx expo export --platform web` then
-  `node scripts/shoot.mjs ../docs/checkpoints/redesign "chat:390x900=r19-chat"`.
-  Then R20 (history), R21 (settings), R22–R24 (finalize).
+  `node scripts/shoot.mjs ../docs/checkpoints/redesign "history:390x900=r20-history"`. NOTE the
+  web-export ScrollView top-aligns short content — for scroll-y screens capture taller (e.g.
+  390x1200) so nothing is below the fold; it's correct on device.
+  **After R20:** R21 (settings suite — 5 screens; MethodologyScreen 一/二/三 + 心智命运/手相/面相
+  → 1/2/3 + English), R22 (fixture English sweep), R23 (a11y pass), R24 (finalize /dev/theme +
+  full suite). `SealBadge` now has ZERO app call sites (chat migrated) — only its own file +
+  barrel; safe to delete in R24 cleanup (or keep the deprecated shim).
   **Finalize-pass cleanups (R22/R24):** `fonts.cjk`/NotoSerifTC has ZERO default consumers →
   zh-only load; /dev/theme "Section markers" CJK demo + the chat `SealBadge` call (R19) to migrate.
 
@@ -187,7 +192,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   rename/drop the "Cinnabar red" lucky colour; designed streak component + svg icon (drop 🔥);
   **add the empty/first-run state.** Verify: premium + free screenshots — calm hierarchy, no
   CJK, no edge-clipped streak.
-- [ ] **R19 — Redesign the Chat thread + flesh the fixture** — expand `PREVIEW_THREAD` to a
+- [x] **R19 — Redesign the Chat thread + flesh the fixture** _(2026-07-14)_ _(typing-dot pulse motion [~])_ — expand `PREVIEW_THREAD` to a
   realistic 3–4 turn conversation; add a premium empty/first-run state + a streaming/typing
   indicator; make `PREVIEW_CHIPS` distinct from asked questions (drop the duplicate first
   chip); elevate the "Cites your…" grounding line; replace the "↑" glyph with the send icon and
@@ -425,3 +430,15 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   here" + Read-my-palm CTA). Added a `history` clock icon to the Icon set. Evidence: `tsc` clean,
   `jest` 31/31 (pillar contract intact), `expo lint` clean, no rendered CJK/emoji in fortune;
   screenshots `r18-premium.png` / `r18-free.png` / `r18-empty.png`. — 2026-07-14
+- R19 — Chat thread redesigned (`ChatThread.tsx` + `chat.ts`): the `问` gate seal → `Icon chat`
+  tile; the `↑` send glyph → `Icon send`; grounded bubbles (indigo user right / elevated
+  surfaceRaised assistant left) with the "Cites your <line>" footer elevated to a shield-icon +
+  `success`-tone row; a premium first-run empty state (chat-icon tile + "Ask anything about your
+  reading" + chips); a reanimated 3-dot typing indicator (native pulse; reduce-motion + web →
+  static graded-opacity dots). Expanded `PREVIEW_THREAD` to a realistic 4-turn conversation and
+  made `PREVIEW_CHIPS` distinct follow-ups (dropped the duplicate-of-first-question chip). Input
+  bg → surfaceSunken; chips → accentMuted pills. Added `/dev/chat-typing` + `/dev/chat-empty`
+  previews. Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, no CJK/SealBadge/↑ in chat;
+  screenshots `r19-chat.png` (full thread), `r19-typing.png` (dots), `r19-empty.png`. The
+  typing-dot pulse is `[~]` (web renders static); web-export ScrollView top-aligns (captured
+  taller — bounds correctly on device). — 2026-07-14

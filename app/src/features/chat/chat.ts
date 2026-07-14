@@ -28,10 +28,11 @@ export function citationLabel(featureKeys: string[]): string {
 }
 
 // ── Preview thread + chips for device-free web-screenshot verification (P9.T6). ──
+// Chips are follow-ups the user has NOT asked yet (distinct from the thread above).
 export const PREVIEW_CHIPS = [
-  'What does my deep heart line say about how I love?',
-  'My head line slopes to the Moon — what does that mean?',
-  'Does my life line show my energy for this year?',
+  'What should I look for in a partner?',
+  'Does my life line show my energy this year?',
+  'Any warning signs in my markings?',
 ];
 
 export const PREVIEW_THREAD: ChatMessage[] = [
@@ -41,5 +42,12 @@ export const PREVIEW_THREAD: ChatMessage[] = [
     role: 'assistant',
     text: 'Your deep, gently curving heart line points to a steady, wholehearted way of loving — you commit slowly but for keeps, and you feel things more intensely than you let on. In the classical reading, a deep heart line marks constancy over flightiness.',
     citations: ['heart_line.depth.deep'],
+  },
+  { id: 'm3', role: 'user', text: 'And my head line — does it clash with that?' },
+  {
+    id: 'm4',
+    role: 'assistant',
+    text: 'Not clashing — balancing. Your long head line slopes toward the Moon mount, so you think in images and feelings, not just logic. You love with imagination as well as loyalty: head and heart run close here, and that is a quiet strength.',
+    citations: ['head_line.slope.moon', 'heart_line.depth.deep'],
   },
 ];
