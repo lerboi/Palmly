@@ -16,13 +16,13 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V7 `[x]`. Last V0 foundation task V8 (dev/theme) remains before screens (V9+).
-  Prior round R1–R24 ("Quiet Cosmos") is complete + archived in `UIUX-Redesign-Tasks.md`.
+- **Status:** IN PROGRESS — **V0 FOUNDATION COMPLETE (V1–V8 `[x]`)**. Screen phase begins at V9. Prior
+  round R1–R24 ("Quiet Cosmos") is complete + archived in `UIUX-Redesign-Tasks.md`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V7** — AppHeader back press-spring + optional scroll divider (2026-07-15).
-- **Next task:** **V8 — Extend the `/dev/theme` harness to gate the new system** (last V0 task).
+- **Last completed:** **V8** — `/dev/theme` full-system harness; **V0 foundation complete** (2026-07-15).
+- **Next task:** **V9 — Launcher** (`app/src/app/index.tsx`) — first screen task.
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -206,12 +206,20 @@ schema/migration/secret changes — none of this touches the DB.
     `showDivider` header example. tsc + lint(0) + jest **38/38**;
     `docs/checkpoints/redesign/v7-header.png` (light+dark) shows the divider under "Scrolled content".
     Live press-spring `[~]`.
-- [ ] **V8 — Extend the `/dev/theme` harness to gate the new system**
+- [x] **V8 — Extend the `/dev/theme` harness to gate the new system** (2026-07-15)
   - Build: `app/src/app/dev/theme.tsx` — render pressed/active states, a pressable Card, the
     `danger`/`premium` buttons, the brand loader, the motion showcases (entrance/stagger sample,
     logomark + palm draw-on end-states), and the vermilion role swatches, all light+dark.
   - Verify: `expo export` + `/dev/theme` full-system screenshot (light+dark) shows every new
     primitive/state; `tsc`+`jest`+`lint` green.
+  - DONE: harness now gates the whole Vermilion system (built incrementally across V3–V7, finished
+    here). Added a **States** section — `accentPressed`/`premiumPressed`/`dangerPressed` swatches + a
+    selected/active card (accentMuted + accent border) — and a third **palm draw-on end-state** with a
+    caption. Already present: vermilion role swatches, full button matrix (primary/tonal/secondary/
+    ghost/**danger**/**premium**/icon/**loading brand-loader**/pill/disabled), pressable Card + 3
+    staggered-entrance cards, logomark matrix (ink/accent/onAccent/stamp/filled/**draw-on**), header +
+    **showDivider**, elevation, icon sheet. tsc + lint(0) + jest **38/38**; full-system screenshot
+    `docs/checkpoints/redesign/v8-devtheme-full.png` (light+dark). **V0 FOUNDATION COMPLETE (V1–V8).**
 
 ## PHASE V1 — The journey (user-journey order) — every surface: recolor + one motion beat + craft
 
@@ -381,3 +389,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V5 — Logomark: heart heaviest + two-tone paired against ink (accent-safe), heritage/onAccent mono (onAccent contrast fix), opt-in `animate` draw-on (web/reduce-motion static); `/dev/theme` matrix extended — tsc + lint(0) + jest 36/36; `v5-{launcher,logomark}.png` light+dark; no raw hex in Logomark — 2026-07-15
 - V6 — PalmDiagram: per-stroke `withDelay` stagger (classical order) + highlighted-glow bloom + `highlightColor` prop (default accent) + silhouette auto-drop ≤64px; geometry.ts label placement fixed (edge-margin anchor + gutter + heart/head nudge, `LabelAnchor` exposed → `textAnchor`) — tsc + lint(0) + jest 38/38 (geometry 9); `v6-welcome{,-320}.png` no clip/overlap, `v6-history.png` clean thumbs — 2026-07-15
 - V7 — AppHeader: `BackButton` reduce-motion-aware press-spring (icon 0.9, web/static safe) + optional `showDivider` bottom hairline; a11y "Back" unchanged; `/dev/theme` example — tsc + lint(0) + jest 38/38; `v7-header.png` light+dark shows the divider — 2026-07-15
+- V8 — `/dev/theme` full-system harness: added States (pressed swatches + selected card) + palm draw-on end-state; whole Vermilion system now gated in one surface (light+dark) — tsc + lint(0) + jest 38/38; `v8-devtheme-full.png`. **V0 foundation (V1–V8) complete** — 2026-07-15

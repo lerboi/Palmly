@@ -200,6 +200,41 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
 
       <Divider />
 
+      {/* Pressed / active states (V8 — the harness gates state, not just resting) */}
+      <Text variant="heading">States</Text>
+      <View style={{ gap: theme.spacing.md }}>
+        <View style={styles.swatchWrap}>
+          {(['accentPressed', 'premiumPressed', 'dangerPressed'] as const).map((role) => (
+            <View key={role} style={styles.swatchItem}>
+              <View
+                style={[styles.swatch, { backgroundColor: theme.colors[role], borderColor: theme.colors.border }]}
+              />
+              <Text variant="caption" tone="secondary">
+                {role}
+              </Text>
+            </View>
+          ))}
+        </View>
+        {/* Selected/active state — the accentMuted tint + accent border used app-wide */}
+        <Card
+          style={{
+            backgroundColor: theme.colors.accentMuted,
+            borderColor: theme.colors.accent,
+            borderWidth: theme.strokes.bold,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.spacing.md,
+          }}
+        >
+          <Icon name="check" size={20} color={theme.colors.accent} decorative />
+          <Text variant="bodyMedium" color={theme.colors.accent} style={{ flex: 1 }}>
+            Selected / active state
+          </Text>
+        </Card>
+      </View>
+
+      <Divider />
+
       {/* App header + privacy badge */}
       <Text variant="heading">Header &amp; privacy</Text>
       <AppHeader title="Your reading" onBack={() => {}} right={<PrivacyBadge />} />
@@ -332,12 +367,16 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
 
       <Divider />
 
-      {/* PalmDiagram — the traced-palm hero (labels off / on) */}
+      {/* PalmDiagram — the traced-palm hero (labels off / on / draw-on end-state) */}
       <Text variant="heading">Palm diagram</Text>
       <View style={styles.brandRow}>
         <PalmDiagram geometry={PREVIEW_GEOMETRY} size={120} animate={false} signatureLines={['heart_line', 'fate_line']} />
         <PalmDiagram geometry={PREVIEW_GEOMETRY} size={120} animate={false} showLabels highlightedLine="heart_line" />
+        <PalmDiagram geometry={PREVIEW_GEOMETRY} size={120} animate showLabels signatureLines={['heart_line', 'fate_line']} />
       </View>
+      <Text variant="caption" tone="secondary">
+        ↑ signature · labeled · draw-on end-state (stagger + bloom render live on device)
+      </Text>
 
       <Divider />
 
