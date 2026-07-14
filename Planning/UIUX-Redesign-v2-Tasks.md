@@ -16,16 +16,16 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V13 `[x]` (V0 + Launcher/Onboarding/Capture/Analyzing/Reveal).
-  Screen phase continues at V14 (Share). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
+- **Status:** IN PROGRESS — V1–V14 `[x]` (V0 + Launcher…Reveal + Share). Screen phase continues at
+  V15 (Pair-reveal + claim). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
 - **Dark screenshots (V9+):** build a dark bundle with `EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export`
   then run `shoot.mjs` (RNW can't switch scheme client-side in a static web export). Light = normal
   export. `/dev/theme` still renders both via `forceScheme`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V13** — Reveal (editorial serif hero, choreographed entrance, living pending, locked teasers, claret seal FAB, honest error) (2026-07-15).
-- **Next task:** **V14 — Share** (`features/reading/ShareView.tsx` + `(modals)/share.tsx` + `dev/share-compat.tsx`).
+- **Last completed:** **V14** — Share (draw-on palms, springy toggle/segments, real channels, compat card with heart-line thread + labeled ring + chips, editorial hero + filled seal) (2026-07-15).
+- **Next task:** **V15 — Pair-reveal + claim** (`features/reading/PairRevealView.tsx` + `(reading)/pair.tsx` + `(onboarding)/claim.tsx`).
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -342,7 +342,7 @@ schema/migration/secret changes — none of this touches the DB.
     error}{,-dark}.png` — serif hero, living pending, teasers, claret seal FAB, honest error. Live
     stagger/draw/breath/press/scroll-in `[~]`. (Section "echo their line" = the fixed per-section
     line-icons; a mini-palm echo per card was left out to avoid clutter/perf — noted.)
-- [ ] **V14 — Share** (`features/reading/ShareView.tsx` + `(modals)/share.tsx` + `dev/share-compat.tsx`)
+- [x] **V14 — Share** (`features/reading/ShareView.tsx` + `(modals)/share.tsx` + `dev/share-compat.tsx`)
   — remove `animate={false}` (palm draw-on back on) + crossfade the solo/compat variant swap; spring
   the `Toggle` thumb (`translateX`) + `Segment` (press-scale + animated selection indicator, wrap in
   `tablist`); make `CHANNELS` real `Pressable`s (onPress stub, `accessibilityRole/Label`, pressed
@@ -350,7 +350,17 @@ schema/migration/secret changes — none of this touches the DB.
   jump); bring **compat** to spec — `blurb`+`chips` props, red thread connecting **heart lines** in
   `accent`, labeled score ring; editorial hero headline + **filled** corner seal (heritage claret).
   Verify: screenshots solo + `/dev/share-compat` at 390×844 (+320) — tightened rhythm, thread+chips+
-  labeled ring, branded channels, filled seal; grep no `animate={false}`, no raw hex; motion `[~]`.
+  labeled ring, branded channels, filled seal; grep no `animate={false}`, no raw hex; motion `[~]`. (2026-07-15)
+  - DONE: both preview palms `animate` (draw-on); solo/compat now **crossfade** (`FadeIn` keyed) in a
+    **top-anchored** slot (no tab-switch jump). `Toggle` thumb **springs** via `translateX`; `Segment`
+    gets a press-scale, the row is a `tablist`, each tab a `tab`. `CHANNELS` are real `ChannelButton`
+    `Pressable`s (press-spring, `accentMuted` circle, a11y label). **Compat** to spec — new `blurb` +
+    `chips` props (dimension pills), both palms **highlight `heart_line`** (accent) tied by the claret
+    `RedThread animate`, a **labeled** `ScoreRing` ("COMPATIBILITY" below the ring — moved out to avoid
+    arc overlap). Card headline → **editorial serif** (24px) + a **filled** claret corner seal
+    (`Logomark stamp filled tone=heritage`). tsc + lint(0) + jest **39/39**; grep no `animate={false}`
+    / no raw hex in ShareView. Screens `docs/checkpoints/redesign/v14-share-{solo,compat}{,-dark}.png`
+    + `compat-320`. Live crossfade/toggle-spring/press/draw/thread `[~]`.
 - [ ] **V15 — Pair-reveal + claim** (`features/reading/PairRevealView.tsx` + `(reading)/pair.tsx` +
   `(onboarding)/claim.tsx`) — build the **second choreographed peak**: palms slide in from opposite
   edges (Animated.View translateX + `animate` true), the **red thread draws (~800ms)**, the **score
@@ -468,3 +478,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V11 — Capture: ready guide + shutter ring from `theme.colors.accent` (gold killed), ~800ms ring fill, press-spring on controls, uniform 320×320 guide, a11y live-region + announce, new `help` icon (no raw `?`), branded staggered primer (consent verbatim) — tsc + lint(0) + jest 38/38; `v11-{primer,palm,face}{,-dark}.png` + primer-320, vermilion/coral guide, undistorted — 2026-07-15
 - V12 — Analyzing: palm self-draws per revealed line, live gradient ring (sweep + accent→accentPressed + breathing glow), animated step dots, crossfading message, rotating+elevated social-proof chip (`socialProofAt`), still-Palmly failed state (faint palm + danger tone + entrance), header wired — tsc + lint(0) + jest 39/39 (rotation test); `v12-{analyzing,failed}{,-dark}.png` — 2026-07-15
 - V13 — Reveal: editorial serif hero, draw→headline→90ms card stagger, living "drawing" pending (self-draw + breath + rotating reassurance), distinct section icons (no triple sparkle), claret Logomark-stamp seal FAB, locked-card teasers (faded), honest error (faint palm, Try again/Go back, no sparkle) + `/dev/reveal-error` — tsc + lint(0) + jest 39/39; `v13-{reveal,reveal-full,reveal-320,pending,error}{,-dark}.png` — 2026-07-15
+- V14 — Share: palms draw on, solo/compat crossfade in a top-anchored slot, spring toggle thumb + segment press-scale (tablist), real tappable channels, compat card (heart-line accent + claret thread + labeled ScoreRing + chips), editorial 24px headline + filled claret seal — tsc + lint(0) + jest 39/39; `v14-share-{solo,compat}{,-dark}.png` + compat-320 — 2026-07-15
