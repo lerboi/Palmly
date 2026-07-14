@@ -11,8 +11,8 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R11 (launcher redesign — Logomark + English tagline + accent CTA, no CJK)
-- **Next task:** R12 (onboarding: welcome / how-it-works / hand-select)
+- **Last completed:** R12 (onboarding welcome / how-it-works / hand-select — real screens)
+- **Next task:** R13 (capture primer / palm / face — native camera, use fixtures + mark [~])
 - **Blocked on:** —
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
   `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
@@ -30,6 +30,14 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
   cleanups for the finalize pass (R22/R24): `fonts.cjk`/NotoSerifTC now has ZERO default consumers
   → module can go zh-only load; the /dev/theme "Section markers" CJK demo + remaining `SealBadge`
   call sites (chat/reveal) get migrated in their screen tasks (R15/R19).
+  --- R13 NEXT: build the 3 `(capture)` placeholders → real UI: `primer.tsx` (calm
+  permission/consent primer — photo-deleted reassurance + "Allow camera" / "Upload instead"),
+  `palm.tsx` + `face.tsx` (guided capture states: align / hold / captured with a modern framing
+  guide + new-accent active/locked). The live camera (`expo-camera`) does NOT render in web
+  export — build with FIXTURE stand-ins (a placeholder framing region, not a real feed) so the
+  LAYOUT is screenshot-able, and mark the live-camera leg `[~]`. Read the `(capture)` route files
+  + UIUX-specs §2.2 (capture) first. Verify: screenshots of each state; no `PlaceholderScreen` in
+  `(capture)`.
 
 ---
 
@@ -135,11 +143,11 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
 - [x] **R11 — Redesign the launcher** (`app/src/app/index.tsx`) — logomark + English tagline
   ("Read your palm from a single photo"); new-accent primary CTA; no CJK. Verify: screenshot,
   no CJK on first screen. _(2026-07-14)_
-- [ ] **R12 — Build onboarding welcome / how-it-works / hand-select** (3 `(onboarding)`
+- [x] **R12 — Build onboarding welcome / how-it-works / hand-select** (3 `(onboarding)`
   placeholders → real screens): brand moment (logomark reveal + value prop), a 3-step
   explainer using line-icons + the upgraded PalmDiagram, a two-card hand-select with elevation
   + selected state. Realistic English copy. Verify: dev route-map walks all three; no
-  `PlaceholderScreen`.
+  `PlaceholderScreen`. _(2026-07-14)_
 - [ ] **R13 — Build capture primer / palm / face** (3 `(capture)` placeholders → real UI):
   calm permission/consent primer (photo-deleted reassurance + Allow / upload-instead), guided
   palm + face capture states (align/hold/captured) with a modern framing guide + new-accent
@@ -315,3 +323,11 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   tagline and the `SealBadge`. Tokens throughout. Evidence: `tsc` clean, `jest` 31/31, `expo
   lint` clean, grep finds no CJK in `index.tsx`, screenshot
   `docs/checkpoints/redesign/r11-launcher.png` — calm premium first screen, no CJK. — 2026-07-14
+- R12 — Onboarding built (3 `(onboarding)` placeholders → real screens): `welcome.tsx` (A1 —
+  PalmDiagram hero w/ English labels + reframed value prop "Rooted in centuries of palmistry",
+  back + Skip), `how-it-works.tsx` (A2 — three elevated icon step-cards camera/sparkle/heart +
+  the D2 trust line in a sunken shield card), `hand-select.tsx` (A3 — two elevated selectable
+  hand cards with accent selected-state + mirrored left-hand diagram + cultural note, CTA "Read
+  my palm"). All tokens, realistic English, no CJK/PlaceholderScreen. Evidence: `tsc` clean,
+  `jest` 31/31, `expo lint` clean, grep clean, screenshots `r12-welcome.png` / `r12-how.png` /
+  `r12-hand.png`. — 2026-07-14
