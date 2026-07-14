@@ -1,12 +1,11 @@
-import { PlaceholderScreen } from '@/components/PlaceholderScreen';
+import { HistoryShelf } from '@/features/reading/HistoryShelf';
+import { PREVIEW_HISTORY } from '@/features/reading/history';
 
+/**
+ * Readings shelf (UIUX §2.11 / §2.5, P6.T4). Renders {@link HistoryShelf}. Seeded with preview
+ * readings so the screen is buildable + device-free-verifiable (web screenshot); once readings exist
+ * it loads the user's own rows. `showUnchanged` demonstrates the repeat-scan consistency brag.
+ */
 export default function History() {
-  return (
-    <PlaceholderScreen
-      group="(home)"
-      title="Your readings"
-      note="Reading history shelf, re-open stored readings (UIUX §2.5, P6.T4)"
-      links={[{ href: '/reveal', label: 'Open a reading' }]}
-    />
-  );
+  return <HistoryShelf readings={PREVIEW_HISTORY} showUnchanged />;
 }
