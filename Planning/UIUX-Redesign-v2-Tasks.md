@@ -16,16 +16,20 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V19 `[x]` (V0 + Launcher…Chat + History). Screen phase ends at V20
-  (Settings), then V2 phase (V21–V23). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
+- **Status:** IN PROGRESS — V1–V20 `[x]` (V0 + Launcher…Chat + History + Settings). Screen phase
+  COMPLETE (V9–V20); next is the V2 phase (V21–V23). Prior round R1–R24 archived in
+  `UIUX-Redesign-Tasks.md`.
 - **Dark screenshots (V9+):** build a dark bundle with `EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export`
   then run `shoot.mjs` (RNW can't switch scheme client-side in a static web export). Light = normal
   export. `/dev/theme` still renders both via `forceScheme`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V19** — History (legible type-distinct thumbnails, type-chips, Logomark empty, red-thread banner) (2026-07-15).
-- **Next task:** **V20 — Settings** (`features/settings/{SettingsHub,MethodologyScreen,NotificationSettings,PrivacyCenter,LegalScreen,settingsUi}.tsx`).
+- **Last completed:** **V20** — Settings (press-spring `SettingRow` + leading-icon chips + elevated
+  groups; commercial Plan row; animated methodology timeline; danger delete-confirm; deduped
+  `PrivacyTrustCard`; fixed inert Language row) (2026-07-15).
+- **Next task:** **V21 — Server surfaces** (`supabase/functions/_shared/{card-svg,invite-page}.ts` +
+  a new shared `_shared/palette.ts` + their Deno tests).
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -473,7 +477,7 @@ schema/migration/secret changes — none of this touches the DB.
     a **claret `thread`** ornament (§3.2 — readings tied). Row a11y label now names the type. tsc +
     lint(0) + jest **39/39** (geometry green); grep no raw hex. Screens
     `docs/checkpoints/redesign/v19-history{,-dark}.png` + `-empty{,-dark}`. Stagger/press/entrance `[~]`.
-- [ ] **V20 — Settings** (`features/settings/{SettingsHub,MethodologyScreen,NotificationSettings,
+- [x] **V20 — Settings** (`features/settings/{SettingsHub,MethodologyScreen,NotificationSettings,
   PrivacyCenter,LegalScreen,settingsUi}.tsx`) — the highest-leverage fix in `settingsUi.tsx
   SettingRow`: press feedback + a `leadingIcon` prop + `SettingGroup` `elevation="sm"` (feeds every
   screen); wire icons across the suite; give the **Plan row commercial identity** (premium badge when
@@ -484,7 +488,32 @@ schema/migration/secret changes — none of this touches the DB.
   view confirm; **dedup** the privacy trust card (adopt `PrivacyBadge`); fix the dead/inert rows
   (Language no-op chevron, static timing rows). Verify: screenshots `/settings`,`/methodology`,
   `/notifications`,`/privacy`,`/legal` at 390×844 (+320), light+dark, both plan states; grep no CJK/
-  raw hex, `danger` variant used (no `backgroundColor` override); motion `[~]`.
+  raw hex, `danger` variant used (no `backgroundColor` override); motion `[~]`. (2026-07-15)
+  - DONE: **`SettingRow`** (feeds every screen) now has a shared reduce-motion-aware **press-spring**
+    (0.98, held-state effect; web/reduce-motion → the `surfaceSunken` pressed tint, which is also the
+    reduce-motion feedback), a **`leadingIcon`** prop (rendered in a 28px `accentMuted` chip, accent
+    glyph) and an optional `caption`; **`SettingGroup`** is now `elevation="sm"` (lifted grouped
+    cards). Wired accent leading icons across the whole suite (Plan→sparkle, Restore→history,
+    Notifications→bell, Language→**globe**, How Palmly reads→help, Privacy→shield, Terms/Privacy
+    Policy→**document**, Version→**info**; notif toggles sparkle/heart/bell; Keep-scan→camera) — 3
+    new in-house glyphs (`globe`/`document`/`info`, each with an a11y label). **Plan row commercial
+    identity** — a `PlanRow` (built on `SettingRow`): free = accent **"Upgrade"** pill + value pitch
+    ("Unlock the full almanac, compatibility & chat"); premium = champagne **"Active"** badge (check +
+    `premium`/`onPremium`), never a grey "Free". **MethodologyScreen** rebuilt as an **animated
+    timeline** — numbered `accent` nodes joined by a `border` connector rail, a feature icon per step
+    (camera/palm/elements), tokenized badges, per-index `FadeInDown` stagger (kept the nodes accent,
+    NOT heritage, per §3.2 — the "heritage tint" was optional). **Delete** is first-class — the
+    already-`variant="danger"` Button confirm now **animates in** (`FadeInDown`, gated); scroll-into-
+    view is the native leg `[~]`. **Deduped** the two hand-rolled trust cards into one shared
+    **`PrivacyTrustCard`** (the PrivacyBadge shield+success signal at card scale) adopted by both
+    Privacy + Methodology. **Inert rows fixed** — Language is now display-only (value "English", no
+    fake chevron); the Timing rows stay plain informational value rows (a real time picker is a device
+    feature, out of scope). Added `/dev/settings-premium` + `/dev/privacy-confirm` previews (registered
+    in the route map). tsc + lint(0) + jest **39/39**; grep: no raw hex / no CJK in `features/settings`,
+    no `backgroundColor: danger` override. Screens `docs/checkpoints/redesign/v20-{settings,
+    settings-premium,methodology,notifications,privacy,privacy-confirm,legal}{,-dark}.png` +
+    `v20-{settings,methodology}-320.png` (no clip). Press-spring / stagger / confirm-entrance /
+    scroll-into-view `[~]`. **SCREEN PHASE (V9–V20) COMPLETE.**
 
 ## PHASE V2 — Server surfaces, accessibility, finalize
 
@@ -544,3 +573,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V17 — Fortune: Avoid→danger (two-reds resolved, only red-thread keeps heritage), lucky_color Indigo→Jade green, hero FortuneCard (accent chip + promoted essence + staggered unfold), branded animated a11y StreakStrip (accent flame), first-run PalmDiagram hero, English day-pillar whisper (`dayPillarEn`) — tsc + lint(0) + jest 39/39; `v17-fortune{,-320,-dark,-free,-empty}.png` — 2026-07-15
 - V18 — Chat: Logomark avatar on assistant/typing bubbles, palm citation in accent (replaces green shield/success), Logomark empty state (distinct from gate), staggered bubbles + typing crossfade, speaker tails, chip press-spring+entrance+fade, send press-spring, input focus, KeyboardAvoidingView, showDivider — tsc + lint(0) + jest 39/39; `v18-chat-{typing,empty}{,-dark}.png` — 2026-07-15
 - V19 — History: legible tiled thumbnails (silhouette off, palm-vs-face distinct, accent lines), vermilion type-chips, elevation inversion fixed (empty md→sm), Logomark empty state + entrance, UnchangedBanner claret-thread ornament (green stays semantic) — tsc + lint(0) + jest 39/39; `v19-history{,-dark,-empty}.png` — 2026-07-15
+- V20 — Settings: `SettingRow` press-spring + `leadingIcon` accent chips + `caption`, `SettingGroup` elevation sm; icons wired across the suite (3 new glyphs globe/document/info); commercial `PlanRow` (accent "Upgrade" pill free / champagne "Active" badge premium); MethodologyScreen animated timeline (accent nodes + connector rail + feature icons + stagger); animated `variant="danger"` delete-confirm; deduped shared `PrivacyTrustCard`; fixed inert Language row; `/dev/settings-premium` + `/dev/privacy-confirm` — tsc + lint(0) + jest 39/39; grep no raw hex/CJK/danger-override; `v20-{settings,settings-premium,methodology,notifications,privacy,privacy-confirm,legal}{,-dark}.png` + `-320`. **Screen phase (V9–V20) complete** — 2026-07-15

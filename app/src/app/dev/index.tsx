@@ -72,6 +72,8 @@ const GROUPS: { title: string; routes: { href: string; label: string }[] }[] = [
       { href: '/dev/fortune-free', label: 'fortune · free' },
       { href: '/dev/fortune-empty', label: 'fortune · first-run' },
       { href: '/dev/history-empty', label: 'history · empty' },
+      { href: '/dev/settings-premium', label: 'settings · premium' },
+      { href: '/dev/privacy-confirm', label: 'privacy · delete confirm' },
     ],
   },
 ];

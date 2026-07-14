@@ -27,9 +27,9 @@ export function NotificationSettings() {
       <AppHeader title="Notifications" onBack={() => router.back()} />
 
       <SettingGroup title="What you’ll hear about">
-        <SettingRow first label="Daily fortune" right={sw(fortune, setFortune)} />
-        <SettingRow label="Compatibility & social" right={sw(social, setSocial)} />
-        <SettingRow label="Offers & updates" right={sw(offers, setOffers)} />
+        <SettingRow first leadingIcon="sparkle" label="Daily fortune" right={sw(fortune, setFortune)} />
+        <SettingRow leadingIcon="heart" label="Compatibility & social" right={sw(social, setSocial)} />
+        <SettingRow leadingIcon="bell" label="Offers & updates" right={sw(offers, setOffers)} />
       </SettingGroup>
 
       <SettingGroup title="Timing">

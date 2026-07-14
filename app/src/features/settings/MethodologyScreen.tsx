@@ -1,17 +1,48 @@
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { AppHeader, Card, Icon, Screen, Text } from '@/components/ui';
-import { useTheme } from '@/theme';
+import { AppHeader, Icon, Screen, Text } from '@/components/ui';
+import type { IconName } from '@/components/ui';
+import { useReducedMotion, useTheme } from '@/theme';
+import { PrivacyTrustCard } from './settingsUi';
+
+interface StepDef {
+  icon: IconName;
+  title: string;
+  body: string;
+}
+
+/** The three-step "how a reading is made" pipeline (UIUX §2.5) — landmarks → traced lines → classics. */
+const STEPS: StepDef[] = [
+  {
+    icon: 'camera',
+    title: 'We map your hand',
+    body: 'On your device, we detect your hand’s landmarks — the joints and creases — and check the framing, so a blurry or non-hand photo never becomes a reading.',
+  },
+  {
+    icon: 'palm',
+    title: 'We trace your lines',
+    body: 'Your major lines — heart, head, life and fate — are traced into an engraved diagram. From here we work only from that diagram; your photo is deleted within a day.',
+  },
+  {
+    icon: 'elements',
+    title: 'We read the classics',
+    body: 'Your traced features are matched to centuries of palmistry and face-reading descriptions — so the same palm always yields the same reading.',
+  },
+];
 
 /**
- * "How Palmly reads" (UIUX §2.5 methodology, redesign R21) — transparency as differentiation:
- * landmarks → traced lines → classical interpretation, plus the trust guarantees. English-first,
- * no CJK (numbered steps, English line + tradition names).
+ * "How Palmly reads" (UIUX §2.5 methodology, redesign v2 V20) — transparency as differentiation,
+ * now an **animated timeline**: numbered accent nodes joined by a connector rail, a feature icon per
+ * step, staggered entrance, and the shared privacy trust card. English-first, no CJK. No crystal balls.
  */
 export function MethodologyScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
+  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
+
   return (
     <Screen scroll>
       <AppHeader title="How Palmly reads" onBack={() => router.back()} />
@@ -19,64 +50,76 @@ export function MethodologyScreen() {
         Transparency is the point — here is exactly how your reading is made. No crystal balls.
       </Text>
 
-      <Step
-        n={1}
-        title="We map your hand"
-        body="On your device, we detect your hand’s landmarks — the joints and creases — and check the framing, so a blurry or non-hand photo never becomes a reading."
-      />
-      <Step
-        n={2}
-        title="We trace your lines"
-        body="Your major lines — heart, head, life and fate — are traced into an engraved diagram. From here we work only from that diagram; your photo is deleted within a day."
-      />
-      <Step
-        n={3}
-        title="We read the classics"
-        body="Your traced features are matched to centuries of palmistry and face-reading descriptions — so the same palm always yields the same reading."
-      />
+      <View style={{ marginBottom: theme.spacing.xl }}>
+        {STEPS.map((s, i) => (
+          <TimelineStep key={s.title} step={s} index={i} last={i === STEPS.length - 1} shouldAnimate={shouldAnimate} />
+        ))}
+      </View>
 
-      <Card elevation="sm" style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-          <Icon name="shield" size={18} color={theme.colors.success} decorative />
-          <Text variant="bodyMedium" tone="success">
-            Your photo is deleted after your reading
-          </Text>
-        </View>
+      <PrivacyTrustCard headline="Your photo is deleted after your reading">
         <Text variant="body" tone="secondary">
           Same palm, same reading — your lines don’t lie.
         </Text>
         <Text variant="body" tone="secondary">
           For reflection and entertainment — not fortune-telling, medical, or financial advice.
         </Text>
-      </Card>
+      </PrivacyTrustCard>
     </Screen>
   );
 }
 
-function Step({ n, title, body }: { n: number; title: string; body: string }) {
+/** One timeline step — a numbered accent node + connector rail on the left, feature icon + copy on
+ *  the right. The connector `flex:1` fills the row height down to the next node. */
+function TimelineStep({ step, index, last, shouldAnimate }: { step: StepDef; index: number; last: boolean; shouldAnimate: boolean }) {
   const theme = useTheme();
+  const node = 36;
   return (
-    <View style={{ flexDirection: 'row', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
-      <View
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: 16,
-          backgroundColor: theme.colors.accentMuted,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Text variant="bodyMedium" color={theme.colors.accent}>
-          {n}
-        </Text>
+    <Animated.View
+      entering={
+        shouldAnimate ? FadeInDown.delay(index * theme.motion.stagger.reveal).duration(theme.motion.duration.base) : undefined
+      }
+      style={{ flexDirection: 'row', gap: theme.spacing.md }}
+    >
+      {/* Left rail — the numbered node (the tokenized step badge) + a connector to the next step. */}
+      <View style={{ alignItems: 'center', width: node }}>
+        <View
+          style={{
+            width: node,
+            height: node,
+            borderRadius: node / 2,
+            backgroundColor: theme.colors.accent,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text variant="bodyMedium" color={theme.colors.onAccent}>
+            {index + 1}
+          </Text>
+        </View>
+        {!last ? (
+          <View
+            style={{
+              flex: 1,
+              width: theme.strokes.bold,
+              minHeight: theme.spacing.md,
+              backgroundColor: theme.colors.border,
+              marginVertical: theme.spacing.xs,
+            }}
+          />
+        ) : null}
       </View>
-      <View style={{ flex: 1 }}>
-        <Text variant="heading">{title}</Text>
+
+      <View style={{ flex: 1, paddingBottom: last ? 0 : theme.spacing.xl }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, minHeight: node }}>
+          <Icon name={step.icon} size={18} color={theme.colors.accent} decorative />
+          <Text variant="heading" style={{ flex: 1 }}>
+            {step.title}
+          </Text>
+        </View>
         <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.xs }}>
-          {body}
+          {step.body}
         </Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }

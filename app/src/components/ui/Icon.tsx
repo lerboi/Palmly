@@ -33,7 +33,10 @@ export type IconName =
   | 'palm'
   | 'face'
   | 'help'
-  | 'elements';
+  | 'elements'
+  | 'globe'
+  | 'document'
+  | 'info';
 
 // Geometry only — stroke/fill/caps come from the shared <G> below.
 const PATHS: Record<IconName, ReactNode> = {
@@ -177,6 +180,30 @@ const PATHS: Record<IconName, ReactNode> = {
       <Circle cx="12" cy="12.5" r="1.4" fill="currentColor" stroke="none" />
     </G>
   ),
+  globe: (
+    <G>
+      <Circle cx="12" cy="12" r="9" />
+      <Path d="M12 3 C7 6 7 18 12 21 C17 18 17 6 12 3 Z" />
+      <Path d="M3.5 9.5 H20.5" />
+      <Path d="M3.5 14.5 H20.5" />
+    </G>
+  ),
+  document: (
+    <G>
+      <Path d="M6 3 H14 L18 7 V21 H6 Z" />
+      <Path d="M14 3 V7 H18" />
+      <Path d="M9 12 H15" />
+      <Path d="M9 15.5 H15" />
+      <Path d="M9 8.5 H11" />
+    </G>
+  ),
+  info: (
+    <G>
+      <Circle cx="12" cy="12" r="9" />
+      <Path d="M12 11 V16.5" />
+      <Circle cx="12" cy="7.6" r="0.95" fill="currentColor" stroke="none" />
+    </G>
+  ),
 };
 
 const DEFAULT_LABELS: Record<IconName, string> = {
@@ -204,6 +231,9 @@ const DEFAULT_LABELS: Record<IconName, string> = {
   face: 'Face reading',
   help: 'Help',
   elements: 'Elements',
+  globe: 'Language',
+  document: 'Document',
+  info: 'Information',
 };
 
 export interface IconProps {
