@@ -16,16 +16,16 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V12 `[x]` (V0 foundation + Launcher/Onboarding/Capture/Analyzing).
-  Screen phase continues at V13 (Reveal). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
+- **Status:** IN PROGRESS — V1–V13 `[x]` (V0 + Launcher/Onboarding/Capture/Analyzing/Reveal).
+  Screen phase continues at V14 (Share). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
 - **Dark screenshots (V9+):** build a dark bundle with `EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export`
   then run `shoot.mjs` (RNW can't switch scheme client-side in a static web export). Light = normal
   export. `/dev/theme` still renders both via `forceScheme`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V12** — Analyzing (self-drawing palm, live gradient ring + breath, animated dots, rotating chip, warm failed state) (2026-07-15).
-- **Next task:** **V13 — Reveal** (`features/reading/RevealView.tsx` + `reveal.ts` + `dev/reveal-pending.tsx`).
+- **Last completed:** **V13** — Reveal (editorial serif hero, choreographed entrance, living pending, locked teasers, claret seal FAB, honest error) (2026-07-15).
+- **Next task:** **V14 — Share** (`features/reading/ShareView.tsx` + `(modals)/share.tsx` + `dev/share-compat.tsx`).
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -315,7 +315,7 @@ schema/migration/secret changes — none of this touches the DB.
     grep: no `animate={false}` in AnalyzingView. Screens
     `docs/checkpoints/redesign/v12-{analyzing,failed}{,-dark}.png` — gradient ring + breath, traced
     lines, animated dots, rotating chip, warm failed state. Live sweep/draw/breath/crossfade `[~]`.
-- [ ] **V13 — Reveal** (`features/reading/RevealView.tsx` + `reveal.ts` + `dev/reveal-pending.tsx`) —
+- [x] **V13 — Reveal** (`features/reading/RevealView.tsx` + `reveal.ts` + `dev/reveal-pending.tsx`) —
   hero headline → **`variant="editorialHeadline"`** (the one sanctioned serif, this screen only);
   choreograph entrance (draw → headline rise → **90ms** section stagger); rebuild **pending** into a
   living "drawing" moment (drop `animate={false}`, pass signature lines, breathing pulse, rotating
@@ -325,7 +325,23 @@ schema/migration/secret changes — none of this touches the DB.
   `PREVIEW_READING` body currently `''`); fix the **error identity** (drop `sparkle`; make "Try again"
   honest, not a silent `back()`); add a `/dev/reveal-error` preview. Verify: screenshots reveal +
   pending + error at 390×844 (+320) — serif hero, living pending, teasers, warm error; grep no
-  `sparkle` in error, `editorialHeadline` present; entrance/scroll-spring `[~]`.
+  `sparkle` in error, `editorialHeadline` present; entrance/scroll-spring `[~]`. (2026-07-15)
+  - DONE: hero headline → **`editorialHeadline`** (the one serif); palm draws on then headline +
+    every card **stagger** in via `FadeInDown.delay(i·stagger.reveal=90ms)`. **Pending** rebuilt into
+    a living "Drawing your reading…" moment — palm self-draws (signature lines) + **breathes**
+    (`withRepeat`) + a **rotating** reassurance (`useRotating`, web holds line 0). `SECTION_ICON` fixed
+    to distinct icons (hand_shape→**palm**, markings the only `sparkle`; face-offer→**face**) — the
+    triple-sparkle is gone. Share FAB → a **branded claret seal** (`Logomark stamp filled tone=heritage`)
+    with a press-spring + `FadeIn` entrance (§3.2: seal in heritage, not accent). **Locked cards** now
+    tease — real title + a faded/truncated `teaser` (added to `reveal.ts` + the two locked previews) +
+    "Unlock with Premium". **Error** identity fixed — dropped the misleading `sparkle` for a faint
+    palm ghost (still-Palmly); **honest** CTAs: "Try again" only when `onRetry` exists + an explicit
+    "Go back" (no silent `back()`). New `/dev/reveal-error` (passes a real `onRetry`) + added to the
+    dev route map. tsc + lint(0) + jest **39/39**; grep: `editorialHeadline` present, no `sparkle` in
+    the error path. Screens `docs/checkpoints/redesign/v13-{reveal,reveal-full,reveal-320,pending,
+    error}{,-dark}.png` — serif hero, living pending, teasers, claret seal FAB, honest error. Live
+    stagger/draw/breath/press/scroll-in `[~]`. (Section "echo their line" = the fixed per-section
+    line-icons; a mini-palm echo per card was left out to avoid clutter/perf — noted.)
 - [ ] **V14 — Share** (`features/reading/ShareView.tsx` + `(modals)/share.tsx` + `dev/share-compat.tsx`)
   — remove `animate={false}` (palm draw-on back on) + crossfade the solo/compat variant swap; spring
   the `Toggle` thumb (`translateX`) + `Segment` (press-scale + animated selection indicator, wrap in
@@ -451,3 +467,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V10 — Onboarding: welcome label-free hero + Logomark + stagger; how-it-works staggered step cards + icon pop; hand-select press-spring + animated selection + radiogroup; claim drawn red thread + symmetric accent avatars (brand mark for "you") + privacy line; onboarding slide transition; opt-in `RedThread animate` — tsc + lint(0) + jest 38/38; `v10-*{,-dark,-320}.png` (4 routes, light+dark) — 2026-07-15
 - V11 — Capture: ready guide + shutter ring from `theme.colors.accent` (gold killed), ~800ms ring fill, press-spring on controls, uniform 320×320 guide, a11y live-region + announce, new `help` icon (no raw `?`), branded staggered primer (consent verbatim) — tsc + lint(0) + jest 38/38; `v11-{primer,palm,face}{,-dark}.png` + primer-320, vermilion/coral guide, undistorted — 2026-07-15
 - V12 — Analyzing: palm self-draws per revealed line, live gradient ring (sweep + accent→accentPressed + breathing glow), animated step dots, crossfading message, rotating+elevated social-proof chip (`socialProofAt`), still-Palmly failed state (faint palm + danger tone + entrance), header wired — tsc + lint(0) + jest 39/39 (rotation test); `v12-{analyzing,failed}{,-dark}.png` — 2026-07-15
+- V13 — Reveal: editorial serif hero, draw→headline→90ms card stagger, living "drawing" pending (self-draw + breath + rotating reassurance), distinct section icons (no triple sparkle), claret Logomark-stamp seal FAB, locked-card teasers (faded), honest error (faint palm, Try again/Go back, no sparkle) + `/dev/reveal-error` — tsc + lint(0) + jest 39/39; `v13-{reveal,reveal-full,reveal-320,pending,error}{,-dark}.png` — 2026-07-15

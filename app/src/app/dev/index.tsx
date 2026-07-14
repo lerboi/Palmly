@@ -65,6 +65,7 @@ const GROUPS: { title: string; routes: { href: string; label: string }[] }[] = [
     routes: [
       { href: '/dev/analyzing-failed', label: 'analyzing · failed' },
       { href: '/dev/reveal-pending', label: 'reveal · pending' },
+      { href: '/dev/reveal-error', label: 'reveal · error' },
       { href: '/dev/share-compat', label: 'share · compatibility' },
       { href: '/dev/chat-typing', label: 'chat · typing' },
       { href: '/dev/chat-empty', label: 'chat · first-run' },
