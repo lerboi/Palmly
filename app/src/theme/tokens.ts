@@ -5,6 +5,9 @@
  */
 
 // ── Palette (UIUX §1.2 table) ─────────────────────────────────────────
+// Raw "Ink & Cinnabar" material hexes. Kept as the source for skin #1 below and referenced
+// by the /dev/theme swatch strip. Components never read these directly — they read the
+// role-based semantic colors in theme.ts, which map onto a skin.
 export const palette = {
   paper: '#F7F2E7', // rice paper — light background
   ink: '#1E1B16', // warm ink black — primary text / dark-mode background
@@ -23,6 +26,102 @@ export const palette = {
   goldPressed: '#9A7826',
   overlayScrim: 'rgba(30,27,22,0.55)', // ink scrim for modals/vignette
 } as const;
+
+// ── Skins (role-based) ────────────────────────────────────────────────
+/**
+ * A **skin** is a full role → hex map for both light and dark. Roles are named by *purpose*
+ * (bg, surface, accent…), not by heritage material, so the entire look is one swappable
+ * object. `theme.ts` assembles a `Theme` from `activeSkin` and layers back-compat aliases on
+ * top. Redesign north star: `Planning/UIUX-Redesign.md` §3.
+ *
+ * The 18 roles below are the design contract the whole UI references.
+ */
+export interface SkinColors {
+  bg: string; // app background
+  surface: string; // cards, sheets (flat)
+  surfaceRaised: string; // lifted cards, paywall, streak, sheets (pair with shadow)
+  surfaceSunken: string; // insets, chat input, track backgrounds
+  border: string; // hairline dividers / outlines
+  textPrimary: string; // headlines, body
+  textSecondary: string; // secondary / caption
+  textTertiary: string; // disabled / hint
+  accent: string; // primary CTAs, active states, links, selected
+  accentPressed: string; // pressed CTA
+  accentMuted: string; // tonal button bg, selected tint
+  onAccent: string; // text / icon on accent
+  heritageAccent: string; // softened cinnabar — palm-line highlight, red-thread, seal only
+  premium: string; // champagne / amber — the rare premium marker
+  premiumPressed: string; // pressed premium
+  onPremium: string; // text on premium
+  success: string; // verified / "unchanged" consistency brag
+  danger: string; // destructive confirm
+  scrim: string; // modal / backdrop overlay
+}
+
+export interface Skin {
+  name: string;
+  light: SkinColors;
+  dark: SkinColors;
+}
+
+/**
+ * Skin #1 — "Ink & Cinnabar" (the heritage palette). Kept for parity / the optional zh
+ * "traditional view". Maps the §1.2 materials onto the role contract so that, while it is the
+ * active skin, the app looks pixel-identical to the pre-redesign build. New roles that had no
+ * prior equivalent (surfaceRaised, surfaceSunken, textTertiary, accentMuted, danger) are given
+ * sensible heritage-toned values; they are unused until later tasks adopt them.
+ */
+export const inkCinnabarSkin: Skin = {
+  name: 'Ink & Cinnabar',
+  light: {
+    bg: palette.paper,
+    surface: palette.paperCard,
+    surfaceRaised: palette.paperCard,
+    surfaceSunken: '#F0E9D8',
+    border: palette.paperEdge,
+    textPrimary: palette.ink,
+    textSecondary: palette.inkWash,
+    textTertiary: '#8A8375',
+    accent: palette.cinnabar,
+    accentPressed: palette.cinnabarPressed,
+    accentMuted: '#F3E0DA',
+    onAccent: palette.paper,
+    heritageAccent: palette.cinnabar,
+    premium: palette.gold,
+    premiumPressed: palette.goldPressed,
+    onPremium: palette.ink,
+    success: palette.jade,
+    danger: palette.cinnabar,
+    scrim: palette.overlayScrim,
+  },
+  dark: {
+    bg: palette.ink,
+    surface: palette.inkCard,
+    surfaceRaised: palette.inkCard,
+    surfaceSunken: '#1A1712',
+    border: palette.inkEdge,
+    textPrimary: palette.paper,
+    textSecondary: palette.inkWashDark,
+    textTertiary: '#6E675A',
+    accent: palette.cinnabar,
+    accentPressed: palette.cinnabarPressed,
+    accentMuted: '#3A241F',
+    onAccent: palette.paper,
+    heritageAccent: palette.cinnabar,
+    premium: palette.gold,
+    premiumPressed: palette.goldPressed,
+    onPremium: palette.ink,
+    success: palette.jade,
+    danger: palette.cinnabar,
+    scrim: palette.overlayScrim,
+  },
+};
+
+/**
+ * The active skin. **R1 keeps this at Ink & Cinnabar so nothing changes visually yet.**
+ * R2 swaps it to the "Quiet Cosmos" skin (a single-line change here).
+ */
+export const activeSkin: Skin = inkCinnabarSkin;
 
 // ── Spacing — 4px base scale (spec-silent; Decision Log 2026-07-11) ───
 export const spacing = {

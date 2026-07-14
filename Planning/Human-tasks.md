@@ -15,15 +15,17 @@ evidence).
 
 ## 🔴 Blocking now — each unblocks agent work that is currently stalled
 
-- [ ] **H1 — A physical Android device (or emulator).** Enable USB debugging (Developer Options →
-  USB debugging) and plug it in; or install Android Studio and create an emulator (AVD).
-  - **Why it matters:** it's the single biggest unblocker. It finishes **P1.T4** (install the dev
-    build already built — see note below) and lets the loop start **P2, the native landmark
-    spike — the project's #1-risk, kill-or-pivot phase**. P2's verify explicitly requires a real
-    mid-range Android (frame-rate on hardware), so web/CI cannot substitute. All camera UX
-    (P4), the reveal UI (P6), and the 2-device viral loop (P8) also need real devices.
-  - Once attached: the loop will `eas build -p android --profile development` (or reuse the queued
-    build) and verify install + launch.
+- [x] **H1 — Android emulator running the app.** ✅ 2026-07-14 — Android Studio + SDK installed;
+  Pixel-7 x86_64 AVD created; **Palmly runs on it via a local dev build** (onboarding screen renders,
+  no crash — screenshot verified). This satisfies **P1.T4** (dev build installs + launches) and
+  unblocks all non-camera on-device UI work (P6 reveal, P7 paywall, P9 fortune/chat UI, P10 settings).
+  - **Local dev loop (see `docs/SETUP.md#local-android` + the [[palmly-local-android-build]] memory):**
+    `cd app && npx expo start --dev-client` then press **a** (JS/UI changes hot-reload — no rebuild).
+    Native/dependency changes → `npx expo run:android` (incremental, fast after the first). Requires
+    **JDK 17** (pinned in `~/.gradle/gradle.properties`; JDK 21 breaks the Gradle-9 toolchain resolver).
+  - **Still needs a REAL device (not the emulator):** **P2 native landmark spike** (MediaPipe frame-rate
+    on hardware — emulators have no real camera/GPU) and all camera capture (P4). Get a physical
+    Android phone before P2. iOS remains EAS-cloud + a physical iPhone, later.
 
 - [x] **H2 — PostHog + Sentry projects.** ✅ 2026-07-14 — both created and **verified live**: a
   test PostHog capture → `HTTP 200 {"status":"Ok"}`, a test Sentry envelope → `HTTP 200` + event id.

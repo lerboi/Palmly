@@ -8,7 +8,7 @@ How to go from a fresh clone to a running app + backend. Env/secret details live
 | Tool | Version (verified) | Notes |
 |---|---|---|
 | Node | 22.x | matches CI (`node-version: 22`) |
-| Java (JDK) | 21 | for local Android Gradle builds |
+| Java (JDK) | **17** | for local Android Gradle builds. **JDK 21 breaks the build** — Expo SDK 56 pins Gradle 9, whose toolchain auto-downloader (foojay) crashes on `IBM_SEMERU`. Pin JDK 17 via `org.gradle.java.home` in `~/.gradle/gradle.properties`. (The Node backend test harness is unaffected by JDK version.) |
 | Expo / EAS account | — | `EXPO_TOKEN` for CLI/CI (see ENVIRONMENT §4) |
 | **Physical Android device** (or emulator) | — | **required** for the native camera/landmark work (P2+) and to install dev builds; there is no camera on web |
 | Docker Desktop | 28.x | for local Supabase (`supabase start`), P3+ |
@@ -50,6 +50,42 @@ npx expo start --dev-client   # Metro dev server; open the dev build and connect
 iOS dev builds also go through EAS cloud (`--platform ios`) and need an Apple account
 (deferred — see P0.T4). EAS profiles are in `app/eas.json`
 (`development` / `preview` / `production`); EAS Update channels are configured.
+
+### Local Android
+
+Building the dev build **locally** (faster iteration than EAS cloud) on Windows. One-time setup
+(verified working 2026-07-14):
+
+1. **Android Studio** → installs the SDK to `%LOCALAPPDATA%\Android\Sdk`; create an AVD (e.g. Pixel 7,
+   a system image **with Google Play**). Also install **Android SDK Command-line Tools** (SDK Manager →
+   SDK Tools, or the `cmdline-tools` zip) — Gradle needs `sdkmanager` to auto-provision NDK/CMake.
+2. **JDK 17** (Temurin) — required. Point Gradle at it globally in `~/.gradle/gradle.properties`:
+   ```
+   org.gradle.java.home=C:/path/to/jdk-17
+   org.gradle.java.installations.auto-download=false
+   ```
+   (JDK 21 fails: Gradle 9's foojay toolchain resolver hits the removed `IBM_SEMERU` field.)
+3. Build + run:
+   ```bash
+   cd app
+   npx expo run:android         # first build ~15-20 min (compiles native + pulls NDK/CMake); then fast
+   # day-to-day (JS/UI only, no native change):
+   npx expo start --dev-client  # then press "a" to open on the emulator; hot-reloads
+   ```
+   Dev-client first launch shows Expo's developer menu — tap **Continue** (Ctrl+M reopens it).
+
+Gotchas: a local debug build and an **EAS**-built APK are signed differently → to swap, `adb uninstall
+com.palmly.app` first. The **emulator has no real camera/GPU**, so the P2 MediaPipe frame-rate spike +
+P4 capture need a **physical** Android phone; everything else (onboarding, reading/paywall/fortune/chat
+UI) runs on the emulator. Full detail: the `palmly-local-android-build` agent memory.
+
+> **Red screen "Error loading app: Failed to download remote update"?** The dev build took the
+> `expo-updates` on-launch path instead of Metro — it tried to fetch an OTA from `u.expo.dev`, but none
+> is published (`eas update` never run) and a dev-client APK has no embedded fallback bundle. Fix:
+> **don't cold-launch from the app-drawer icon** — run `npx expo start --dev-client` and press **`a`**
+> (or in the dev launcher "Enter URL manually" → `http://10.0.2.2:8081`). Use `--dev-client`, never a
+> plain `expo start`/`npm start`. This is a dev launch-flow issue only; a shipped preview/prod build
+> showing the same text would instead need `eas update` to publish a bundle.
 
 ## Backend (Supabase, from P3) — Docker-free
 

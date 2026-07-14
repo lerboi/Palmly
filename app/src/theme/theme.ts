@@ -1,62 +1,54 @@
 /**
- * Semantic themes. Components read semantic roles (background, text, accent…), never raw
- * palette entries, so dark mode and future re-skins are a single-file change.
- * Dark mode per UIUX §1.2: ink background / paper text; cinnabar + gold unchanged.
+ * Semantic themes. Components read semantic roles (bg, textPrimary, accent…), never raw
+ * palette entries, so dark mode and future re-skins are a single-file change. Roles come from
+ * `activeSkin` (see tokens.ts); this file only maps a skin → `Theme` and layers **back-compat
+ * aliases** so consumers still on the old names (`background`, `text`, `gold`, `jade`, `seal`)
+ * keep compiling while they migrate. Redesign north star: `Planning/UIUX-Redesign.md` §3.
  */
-import { palette, spacing, radii, strokes, typography, fonts } from './tokens';
+import { activeSkin, spacing, radii, strokes, typography, fonts, type SkinColors } from './tokens';
 
 export type ColorScheme = 'light' | 'dark';
 
-export interface ThemeColors {
+/**
+ * The color surface exposed to components: the full role contract (`SkinColors`) plus a small
+ * set of **deprecated aliases** kept alive so no consumer breaks in one step. Migrate off the
+ * aliases toward the roles they point at:
+ *   `background`→`bg`, `text`→`textPrimary`, `gold`→`premium`, `onGold`→`onPremium`,
+ *   `jade`→`success`, `seal`→`heritageAccent`.
+ */
+export interface ThemeColors extends SkinColors {
+  /** @deprecated use `bg` */
   background: string;
-  surface: string; // cards, sheets
-  text: string; // primary — always high-contrast (never cinnabar under 18pt)
-  textSecondary: string;
-  accent: string; // cinnabar
-  accentPressed: string;
-  onAccent: string; // text/icon on a cinnabar fill
+  /** @deprecated use `textPrimary` */
+  text: string;
+  /** @deprecated use `premium` */
   gold: string;
+  /** @deprecated use `premiumPressed` */
   goldPressed: string;
+  /** @deprecated use `onPremium` */
   onGold: string;
-  jade: string; // success / verified
-  border: string; // hairlines
-  scrim: string; // modal / vignette overlay
-  seal: string; // the cinnabar chop
+  /** @deprecated use `success` */
+  jade: string;
+  /** @deprecated use `heritageAccent` */
+  seal: string;
 }
 
-const lightColors: ThemeColors = {
-  background: palette.paper,
-  surface: palette.paperCard,
-  text: palette.ink,
-  textSecondary: palette.inkWash,
-  accent: palette.cinnabar,
-  accentPressed: palette.cinnabarPressed,
-  onAccent: palette.paper,
-  gold: palette.gold,
-  goldPressed: palette.goldPressed,
-  onGold: palette.ink,
-  jade: palette.jade,
-  border: palette.paperEdge,
-  scrim: palette.overlayScrim,
-  seal: palette.cinnabar,
-};
+/** Expand a skin's role map with the back-compat aliases. */
+function toThemeColors(roles: SkinColors): ThemeColors {
+  return {
+    ...roles,
+    background: roles.bg,
+    text: roles.textPrimary,
+    gold: roles.premium,
+    goldPressed: roles.premiumPressed,
+    onGold: roles.onPremium,
+    jade: roles.success,
+    seal: roles.heritageAccent,
+  };
+}
 
-const darkColors: ThemeColors = {
-  background: palette.ink,
-  surface: palette.inkCard,
-  text: palette.paper,
-  textSecondary: palette.inkWashDark,
-  accent: palette.cinnabar,
-  accentPressed: palette.cinnabarPressed,
-  onAccent: palette.paper,
-  gold: palette.gold,
-  goldPressed: palette.goldPressed,
-  onGold: palette.ink,
-  jade: palette.jade,
-  border: palette.inkEdge,
-  scrim: palette.overlayScrim,
-  seal: palette.cinnabar,
-};
+const lightColors: ThemeColors = toThemeColors(activeSkin.light);
+const darkColors: ThemeColors = toThemeColors(activeSkin.dark);
 
 export interface Theme {
   scheme: ColorScheme;
