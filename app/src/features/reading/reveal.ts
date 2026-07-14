@@ -111,7 +111,7 @@ export const PREVIEW_READING: Reading = {
     },
     {
       key: 'markings',
-      title: 'Rare markings — 三才纹 & more',
+      title: 'Rare markings — stars, crosses & more',
       body: '',
       depth_level: 2,
       tags: ['markings.star'],

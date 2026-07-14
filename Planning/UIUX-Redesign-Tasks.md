@@ -11,35 +11,34 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R14 (Analyzing loader — progress ring + step dots + calm failed/retry state)
-- **Next task:** R15 (redesign the Reveal screen — de-CJK section cards, pending/error state)
+- **Last completed:** R15 (Reveal screen — icon-led de-CJK cards, thread/lock/share icons, pending/error)
+- **Next task:** R16 (Share modal + modernize compat/red-thread)
 - **Blocked on:** —
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
   `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
   `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
   in app surfaces — the camera-overlay `OVERLAY` palette in `CaptureView` is a justified
   theme-independent exception), realistic English (no lorem, trim CJK/almanac).
-  **R15 = redesign the Reveal screen** (`src/features/reading/RevealView.tsx` + `reveal.ts`).
-  Current CJK/heritage to fix: `SECTION_GLYPH` (掌/心… per section) → map each section to a
-  feature `Icon` (heart/mind/life/path — see `SECTION_LINE` for the line→section mapping);
-  `CompareCard` uses 🔴 + "Compare with a friend 🔴" → drop the emoji, use `Icon name="thread"`
-  in heritageAccent; `LockedCard` uses the 锁 glyph + gold box → use `Icon name="lock"` +
-  `premium` tone; the floating share `SealBadge glyph="分"` → `Icon name="share"` (keep a single
-  small `Logomark` stamp only on the share CARD, not here); `FaceOfferCard` "面相" title →
-  English-lead ("Your face tells the other half"); section `traditionFootnote` may carry CJK
-  (三才纹 etc.) — English-lead. Headline already sans (R3). Vary/reduce the repeated 92px
-  section thumbnails (maybe show the diagram only on 1–2 cards, or shrink). **Add a pending/error
-  state** (reveal invoked before data / load error — a calm placeholder). Keep ONE privacy line
-  (already `PrivacyBadge` in TrustFooter from R9). AppHeader back already added (R9). Read
-  `reveal.ts` for `SECTION_GLYPH`/`SECTION_LINE`/`traditionFootnote`/`PREVIEW_READING`.
-  Verify: screenshot (`reveal:390x900=r15-reveal`) — no decorative CJK, headline fits, one
-  privacy line; grep no 🔴/锁/CJK in RevealView.
+  **R16 = build the Share modal + modernize compat/red-thread.** `(modals)/share` is currently a
+  `PlaceholderScreen` → build a real share sheet: preview card(s) with the traced PalmDiagram as
+  ~60% hero + a small `Logomark variant="stamp"` corner seal (the ONE place the stamp belongs),
+  a modern channel row (Icon-based: message/copy-link/more — use `Icon` names, e.g. `share`,
+  `chat`, `check`), and a **compatibility variant** with a lightened red-thread drawn in SVG
+  (heritageAccent, NOT 🔴) + a score ring (reuse the ProgressRing idea from `AnalyzingView`, or a
+  small circular score). Provide a share-preview FIXTURE. Also modernize `FortuneHome`
+  RedThreadRow (grep `RedThread`/🔴 in `src/features/fortune/FortuneHome.tsx`) — RevealView
+  CompareCard already done in R15 (uses `Icon name="thread"`). Read `(modals)/share.tsx`,
+  `(modals)/_layout.tsx`, and UIUX-specs §2.6/§2.7 (share/compat) first. Verify: screenshots of
+  the share sheet + compat variant; grep shows no 🔴 anywhere in `src`. Native share-sheet APIs
+  are device-only → build the in-app preview + a fixture, mark any native `Share.share()` leg `[~]`.
+  **NOTE:** R16b/R16c/R16d follow (server card-svg reskin, invite-page reskin, in-app invite-claim
+  route) — R16b/c edit `supabase/functions/_shared/*` + re-pin Deno tests (run Deno tests too).
   **SCREENSHOTS:** `npx expo export --platform web` then
-  `node scripts/shoot.mjs ../docs/checkpoints/redesign "<route:WxH=name>"`. Only `dev/theme`
-  renders desktop; other `dev/*` previews render mobile now. ROOT launcher = EMPTY route.
+  `node scripts/shoot.mjs ../docs/checkpoints/redesign "share:390x844=r16-share"`. Only
+  `dev/theme` renders desktop; other `dev/*` previews render mobile. ROOT launcher = EMPTY route.
   **Finalize-pass cleanups (R22/R24):** `fonts.cjk`/NotoSerifTC has ZERO default consumers →
   module can go zh-only load; /dev/theme "Section markers" CJK demo + remaining `SealBadge` call
-  sites (chat R19) still to migrate.
+  site (chat R19) still to migrate.
 
 ---
 
@@ -160,7 +159,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   animation; add a progress ring / step indicator; give the message vertical presence; reframe
   `analyzing.ts` copy off ethnicity. **Also design the `failed`/retry state** (`useScanStatus`
   models it). Verify: happy + failed screenshots; no empty/unfinished read. _(2026-07-14)_ _(smooth ring/self-draw motion [~])_
-- [ ] **R15 — Redesign the Reveal screen** — remove cinnabar CJK section glyphs → feature
+- [x] **R15 — Redesign the Reveal screen** _(2026-07-14)_ — remove cinnabar CJK section glyphs → feature
   line-icons; sans-first headline (fixes the 34px serif wrap); vary/drop the repeated 92px
   thumbnails; standard lock icon (drop 锁); share icon (keep the seal special, one mark);
   English-lead 面相/三才纹 titles; recolor the highlighted line; **add a pending/error state.**
@@ -353,3 +352,14 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   mobile). Evidence: `tsc` clean, `jest` 31/31 (analyzing logic contract intact), `expo lint`
   clean, screenshots `r14-analyzing.png` (ring + step dots + traced palm) + `r14-failed.png`
   (calm retry). Smooth ring/self-draw motion is `[~]` (static state verified). — 2026-07-14
+- R15 — Reveal screen redesigned (`RevealView.tsx` + `reveal.ts` fixture): section cards are now
+  icon-led (a `FeatureIcon` tile per section — `SECTION_ICON` maps heart/head/life/fate/hand/
+  markings → heart/mind/life/path/sparkle) with elevation, dropping the repeated 92px per-card
+  diagrams and the cinnabar CJK glyphs; `CompareCard` uses `Icon name="thread"` (heritage) not
+  🔴; `LockedCard` uses `Icon name="lock"` (premium) + "Unlock with Premium" + chevron, not the
+  锁 box; the floating share is a single accent FAB with `Icon name="share"` (not the 分 seal);
+  `FaceOfferCard` + the markings fixture title are English-lead (面相/三才纹 gone); disclaimer →
+  tertiary tone. Added calm `pending` + `error` states (`state` prop) with a `/dev/reveal-pending`
+  preview. Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, grep shows no CJK/🔴/锁 in
+  RevealView; screenshots `r15-reveal.png` (full — hero, icon cards, thread CompareCard, lock
+  Go-deeper, one privacy line) + `r15-pending.png`. — 2026-07-14
