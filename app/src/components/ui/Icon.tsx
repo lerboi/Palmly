@@ -31,7 +31,8 @@ export type IconName =
   | 'sparkle'
   | 'history'
   | 'palm'
-  | 'face';
+  | 'face'
+  | 'help';
 
 // Geometry only — stroke/fill/caps come from the shared <G> below.
 const PATHS: Record<IconName, ReactNode> = {
@@ -161,6 +162,13 @@ const PATHS: Record<IconName, ReactNode> = {
       <Circle cx="14.5" cy="11" r="0.9" fill="currentColor" stroke="none" />
     </G>
   ),
+  help: (
+    <G>
+      <Circle cx="12" cy="12" r="9" />
+      <Path d="M9.3 9.2 A2.8 2.8 0 1 1 12.3 12.1 C11.6 12.6 11.4 13.2 11.4 14" />
+      <Circle cx="11.4" cy="16.6" r="0.95" fill="currentColor" stroke="none" />
+    </G>
+  ),
 };
 
 const DEFAULT_LABELS: Record<IconName, string> = {
@@ -186,6 +194,7 @@ const DEFAULT_LABELS: Record<IconName, string> = {
   history: 'History',
   palm: 'Palm reading',
   face: 'Face reading',
+  help: 'Help',
 };
 
 export interface IconProps {
