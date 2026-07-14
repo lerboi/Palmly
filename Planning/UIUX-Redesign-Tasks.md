@@ -11,23 +11,25 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R10 — **FOUNDATION PHASE R1–R10 COMPLETE.** PalmDiagram upgraded (hand
-  silhouette + weighted ink + English labels + native draw-on).
-- **Next task:** R11 (first SCREEN task — the journey begins)
+- **Last completed:** R11 (launcher redesign — Logomark + English tagline + accent CTA, no CJK)
+- **Next task:** R12 (onboarding: welcome / how-it-works / hand-select)
 - **Blocked on:** —
-- **Notes for next run:** Foundation done — the design system is ready. Screen tasks R11–R21 now
-  rebuild each surface using the primitives: `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`
-  (19 names in `IconName`)/`Logomark`/`AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`. All via
-  design tokens (no raw hexes), realistic English content (no lorem, trim CJK/almanac).
-  R11 = redesign the launcher `app/src/app/index.tsx`: Logomark + English tagline ("Read your
-  palm from a single photo"), new-accent primary CTA, NO CJK (it currently calls
-  `<SealBadge glyph="掌"/>` → replace with `<Logomark/>`, and likely has a CJK tagline → English).
-  Verify: screenshot, no CJK on first screen. **SCREENSHOTS: `npx expo export --platform web`
-  then `node scripts/shoot.mjs ../docs/checkpoints/redesign "index:390x844=r11-launcher"` — CDP
-  mobile emulation renders a true 390px phone viewport.** Migration cleanups still pending for a
-  finalize pass (R22/R24): `fonts.cjk`/NotoSerifTC now has ZERO default consumers → module can go
-  zh-only load; the /dev/theme "Section markers" CJK demo + remaining `SealBadge` call sites
-  (launcher/chat/reveal) get migrated in their screen tasks.
+- **Notes for next run:** Screen tasks rebuild each surface with the primitives:
+  `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
+  `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`. All via tokens (no raw hexes), realistic
+  English content (no lorem, trim CJK/almanac). R12 = build the 3 `(onboarding)` placeholders →
+  real screens: `welcome.tsx` (brand moment: Logomark reveal + value prop), `how-it-works.tsx`
+  (3-step explainer using line-icons + the upgraded PalmDiagram), `hand-select.tsx` (two-card
+  hand-select with elevation + selected state). They currently render `<PlaceholderScreen/>` —
+  read one to see its props, and read `Planning/UIUX-specs.md` for the onboarding flow/content.
+  Realistic English copy. Verify: dev route-map walks all three; no `PlaceholderScreen` in
+  `(onboarding)`; screenshots. **SCREENSHOTS: `npx expo export --platform web` then
+  `node scripts/shoot.mjs ../docs/checkpoints/redesign "welcome:390x844=r12-welcome"
+  "how-it-works:390x844=r12-how" "hand-select:390x844=r12-hand"`. For the ROOT launcher route use
+  an EMPTY route (`":390x844=name"`) — `/index` hits expo-router's not-found.** Migration
+  cleanups for the finalize pass (R22/R24): `fonts.cjk`/NotoSerifTC now has ZERO default consumers
+  → module can go zh-only load; the /dev/theme "Section markers" CJK demo + remaining `SealBadge`
+  call sites (chat/reveal) get migrated in their screen tasks (R15/R19).
 
 ---
 
@@ -130,9 +132,9 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
 
 ## PHASE R1 — The journey (built + placeholder), in user-journey order
 
-- [ ] **R11 — Redesign the launcher** (`app/src/app/index.tsx`) — logomark + English tagline
+- [x] **R11 — Redesign the launcher** (`app/src/app/index.tsx`) — logomark + English tagline
   ("Read your palm from a single photo"); new-accent primary CTA; no CJK. Verify: screenshot,
-  no CJK on first screen.
+  no CJK on first screen. _(2026-07-14)_
 - [ ] **R12 — Build onboarding welcome / how-it-works / hand-select** (3 `(onboarding)`
   placeholders → real screens): brand moment (logomark reveal + value prop), a 3-step
   explainer using line-icons + the upgraded PalmDiagram, a two-card hand-select with elevation
@@ -307,3 +309,9 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   `docs/checkpoints/redesign/r10-reveal.png` + `r10-analyzing.png` — a premium hand-like diagram
   (not floating strokes), no CJK labels, accent-highlighted lines. Native draw-on motion is
   `[~]` (web renders the static end-state; the animation plays on device). — 2026-07-14
+- R11 — Launcher (`app/src/app/index.tsx`) rebuilt as the brand moment: `Logomark` (accent) +
+  "Palmly" wordmark + English tagline "Read your palm from a single photo." + a single indigo
+  "Get started" CTA + "For reflection & entertainment" caption; dropped the CJK `手相·面相`
+  tagline and the `SealBadge`. Tokens throughout. Evidence: `tsc` clean, `jest` 31/31, `expo
+  lint` clean, grep finds no CJK in `index.tsx`, screenshot
+  `docs/checkpoints/redesign/r11-launcher.png` — calm premium first screen, no CJK. — 2026-07-14
