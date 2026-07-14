@@ -248,7 +248,7 @@ function CompatPreview({
 }
 
 /** The red thread between two palms — a lightened heritage curve with two knot nodes. */
-function RedThread() {
+export function RedThread() {
   const theme = useTheme();
   return (
     <Svg width={72} height={60} viewBox="0 0 72 60">
@@ -265,21 +265,22 @@ function RedThread() {
   );
 }
 
-function ScoreRing({ score }: { score: number }) {
+export function ScoreRing({ score, size = 96 }: { score: number; size?: number }) {
   const theme = useTheme();
-  const d = 96;
-  const r = d / 2 - 6;
+  const d = size;
+  const sw = Math.max(6, Math.round(size / 16));
+  const r = d / 2 - sw / 2 - 2;
   const c = 2 * Math.PI * r;
   return (
     <View style={{ width: d, height: d, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={d} height={d} style={{ position: 'absolute' }}>
-        <Circle cx={d / 2} cy={d / 2} r={r} stroke={theme.colors.border} strokeWidth={6} fill="none" />
+        <Circle cx={d / 2} cy={d / 2} r={r} stroke={theme.colors.border} strokeWidth={sw} fill="none" />
         <Circle
           cx={d / 2}
           cy={d / 2}
           r={r}
           stroke={theme.colors.premium}
-          strokeWidth={6}
+          strokeWidth={sw}
           fill="none"
           strokeLinecap="round"
           strokeDasharray={c}
@@ -287,7 +288,7 @@ function ScoreRing({ score }: { score: number }) {
           transform={`rotate(-90 ${d / 2} ${d / 2})`}
         />
       </Svg>
-      <Text variant="numeral" color={theme.colors.premium}>
+      <Text variant="numeral" color={theme.colors.premium} style={{ fontSize: Math.round(size * 0.34) }}>
         {score}
       </Text>
     </View>

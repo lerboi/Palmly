@@ -11,32 +11,28 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R16c (invite landing page reskinned to Quiet Cosmos; test re-pinned; render-verified)
-- **Next task:** R16d (in-app invite-claim / pair-reveal recipient route)
-- **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin tests + render/grep-verify instead. Both server surfaces R16b/R16c now done.)
+- **Last completed:** R16d (claim landing + compatibility pair-reveal recipient routes) — full red-thread loop done
+- **Next task:** R17 (Paywall modal — RevenueCat-native leg [~])
+- **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin + render/grep-verify.)
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
   `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
   `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
   in app surfaces — the camera-overlay `OVERLAY` palette in `CaptureView` is a justified
   theme-independent exception), realistic English (no lorem, trim CJK/almanac).
-  **R16c = reskin the invite landing page** — `supabase/functions/_shared/invite-page.ts` (+ any
-  `buildInviteGonePage`), the public HTML at `palmly.app/i/{token}` (first impression for every
-  invited non-user; currently `#F7F2E7` bg / `#C3272B` CTA+seal / 相 glyph / serif). Reskin to
-  Quiet Cosmos: bg `#FAF9F7`, accent CTA `#4B57C4`, heritage stamp `#C2554A`, textPrimary
-  `#1A1A1F`, sans (system sans stack — the HTML can't bundle Noto, so use a clean
-  `-apple-system, "Segoe UI", Roboto, sans-serif` stack), CJK-free (drop 相 → the palm-lines
-  logomark inline SVG, reuse the 3 paths from `card-svg.ts`/`Logomark`). English-first copy.
-  **Re-pin `invite-page.test.ts`** to the new markup (grep it for asserted hexes/glyphs/strings).
-  **Deno is NOT installed here → the Deno test RUN is `[~]`**: re-pin the test, then verify by
-  rendering the HTML → screenshot. VERIFY TRICK (worked for R16b): the module is pure — write
-  `app/scripts/gen-invite.ts` that imports `buildInvitePage(...)`, writes the HTML to a temp file,
-  then Chrome-screenshot it: `"/c/Program Files/Google/Chrome/Application/chrome.exe" --headless=new
-  --disable-gpu --hide-scrollbars --window-size=430,900 "--screenshot=<ABS out>.png" "file:///<ABS html>"`.
-  Run the generator with `node --experimental-strip-types scripts/gen-invite.ts` (scripts/ is now
-  excluded from app tsconfig, so a .ts there won't break `npm run typecheck`). Then grep the
-  generated HTML to confirm the re-pinned assertions + no CJK. Do NOT change the module's LOGIC —
-  only the HTML skin. Then R16d (in-app invite-claim/pair-reveal recipient route — a real app
-  route + fixture; screenshot via shoot.mjs). Do NOT change DB/edge logic.
+  **R17 = build the Paywall modal** — `(modals)/paywall.tsx` is a `PlaceholderScreen` → a clean
+  modern paywall (read UIUX-specs §2.8 first). Structure: a value stack (personal — "Your palm
+  has more to say", peek of the user's locked sections), plan cards with elevation + rounded-rect
+  (annual pre-selected w/ per-month framing + a "SAVE 40%" **premium/gold** seal — gold is the
+  single premium marker; monthly beside it), a plain inclusion list (daily almanac · unlimited
+  compatibility · deep-dive lines · chat), one confident primary CTA in the **accent** (NO
+  cinnabar fill), restore-purchases + legal links, and a close "✕" (Icon `close`) top-left.
+  Launch config = **no trial, direct purchase** (U3). Provide plan-card FIXTURES (names/prices —
+  use realistic SEA-ish pricing, no-trial copy). The RevenueCat Paywalls-v2 native render is
+  device-only → build the in-app layout with fixtures and mark the RevenueCat leg `[~]`.
+  Verify: phone-size screenshot; no cinnabar fill; gold used only as the premium marker.
+  **SCREENSHOTS:** `npx expo export --platform web` then
+  `node scripts/shoot.mjs ../docs/checkpoints/redesign "paywall:390x900=r17-paywall"`.
+  Then R18 (fortune de-almanac), R19 (chat), R20 (history), R21 (settings), R22–R24 (finalize).
   **Finalize-pass cleanups (R22/R24):** `fonts.cjk`/NotoSerifTC has ZERO default consumers →
   zh-only load; /dev/theme "Section markers" CJK demo + the chat `SealBadge` call (R19) to migrate.
 
@@ -176,7 +172,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
 - [x] **R16c — Reskin the invite landing page** (`supabase/functions/_shared/invite-page.ts` +
   `buildInviteGonePage`) _(2026-07-14)_ _(Deno test RUN [~] — deno not installed)_ — new palette/CTA/typography, CJK-free, English-first. Re-pin
   `invite-page.test.ts`. Verify: render the HTML → screenshot; Deno test green.
-- [ ] **R16d — Build the in-app invite-claim / pair-reveal recipient route** — the receiving
+- [x] **R16d — Build the in-app invite-claim / pair-reveal recipient route** _(2026-07-14)_ _(native deep-link resolution + thread/count-up motion [~])_ — the receiving
   end of the red-thread loop (currently no route exists though `scheme:"palmly"` is declared).
   A claim/landing screen + the compatibility pair-reveal screen (score ring + both-sides
   narrative), seeded with a fixture. Verify: dev route-map reaches it; screenshots.
@@ -397,3 +393,13 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   verified assertions against the real generated HTML (grep) + rendered it. Added
   `scripts/gen-invite.ts`. Evidence: assertions all-OK + no CJK, app `tsc`/`jest`/`lint`
   unaffected, screenshot `docs/checkpoints/redesign/r16c-invite.png`. — 2026-07-14
+- R16d — Built the recipient end of the red-thread loop: `(onboarding)/claim.tsx` (a personalized
+  landing — two-avatar red-thread motif inviter↔"You", "{Mei} is waiting", explainer, "Scan my
+  palm" CTA + "Have an invite? Enter code" recovery) and `(reading)/pair.tsx` →
+  `features/reading/PairRevealView.tsx` (two traced palms + red thread, a large gold `ScoreRing`
+  "82", "You & Mei", five English sub-score bars Emotion/Mind/Energy/Destiny/Elements — de-CJK'd
+  from 心智命运五行, a both-sides "Where you click / stretch" narrative, See-full-reading + Share
+  CTAs). Exported `ScoreRing`(+size)/`RedThread` from `ShareView` for reuse. Both reachable via the
+  `/dev` route map. Native deep-link resolution (`scheme:"palmly"`→claim) + the thread-draw/
+  score count-up are `[~]` (static end-state verified). Evidence: `tsc` clean, `jest` 31/31,
+  `expo lint` clean, no CJK; screenshots `r16d-claim.png` + `r16d-pair.png`. — 2026-07-14

@@ -13,6 +13,7 @@ const GROUPS: { title: string; routes: { href: string; label: string }[] }[] = [
       { href: '/welcome', label: 'welcome' },
       { href: '/how-it-works', label: 'how-it-works' },
       { href: '/hand-select', label: 'hand-select' },
+      { href: '/claim', label: 'claim (invite recipient)' },
     ],
   },
   {
@@ -28,6 +29,7 @@ const GROUPS: { title: string; routes: { href: string; label: string }[] }[] = [
     routes: [
       { href: '/analyzing', label: 'analyzing' },
       { href: '/reveal', label: 'reveal' },
+      { href: '/pair', label: 'pair reveal (compatibility)' },
     ],
   },
   {
