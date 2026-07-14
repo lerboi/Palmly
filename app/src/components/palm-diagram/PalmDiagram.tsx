@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Platform, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect } from 'react';
+import { Platform, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 import Animated, {
   Easing,
@@ -9,7 +9,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
-import { useTheme } from '@/theme';
+import { useTheme, useReducedMotion } from '@/theme';
 import { buildDiagram, ENGLISH_LINE_LABEL, LINE_LABEL, type DiagramStroke, type LineGeometry } from './geometry';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -64,16 +64,7 @@ export function PalmDiagram({
   const strokes = buildDiagram(geometry, { size, highlightedLine, signatureLines });
   const u = (n: number) => (n * size) / 1000;
 
-  const [reduceMotion, setReduceMotion] = useState(false);
-  useEffect(() => {
-    let active = true;
-    AccessibilityInfo.isReduceMotionEnabled().then((v) => active && setReduceMotion(v));
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
-    return () => {
-      active = false;
-      sub.remove();
-    };
-  }, []);
+  const reduceMotion = useReducedMotion();
 
   // Fail-safe: progress starts fully drawn (1) so the diagram is never blank if the worklet
   // doesn't run (web / reanimated absent). The draw-on re-triggers it on native.

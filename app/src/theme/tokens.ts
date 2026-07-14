@@ -292,6 +292,31 @@ export const shadow = {
 } as const;
 export type ShadowKey = keyof typeof shadow;
 
+// ── Motion — the animation foundation (redesign v2 §4.1) ──────────────
+/**
+ * Shared motion contract: durations, easing curves, springs, and per-index stagger. Consumed via
+ * `theme.motion` so every surface animates with the same physics instead of ad-hoc magic numbers.
+ * Reduce-motion / web render the STATIC end-state — see `useReducedMotion` + the standard gate
+ * `shouldAnimate = !reduceMotion && Platform.OS !== 'web'` (§4.2).
+ *
+ * `easing` holds **cubic-bezier control points** (pure data, so this module stays reanimated-free
+ * and the token contract test needs no worklet runtime). Build a reanimated curve at the call
+ * site: `Easing.bezier(...theme.motion.easing.standard)`. `spring` configs pass straight into
+ * `withSpring(to, theme.motion.spring.press)`.
+ */
+export const motion = {
+  duration: { instant: 0, fast: 120, base: 220, slow: 360, draw: 1200 },
+  easing: {
+    standard: [0.2, 0, 0, 1], // general in/out — most transitions
+    decelerate: [0, 0, 0.2, 1], // entrances — fast start, gentle land
+  },
+  spring: {
+    press: { damping: 18, stiffness: 320, mass: 0.6 }, // taps: snappy scale
+    entrance: { damping: 20, stiffness: 180, mass: 1 }, // cards / screens: settle in
+  },
+  stagger: { list: 60, reveal: 90 }, // per-index delay (ms)
+} as const;
+
 // ── Stroke widths — engraved / woodblock line style (UIUX §1.2) ───────
 export const strokes = {
   hairline: 1,

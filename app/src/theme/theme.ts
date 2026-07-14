@@ -13,6 +13,7 @@ import {
   typography,
   fonts,
   shadow,
+  motion,
   type SkinColors,
 } from './tokens';
 
@@ -68,6 +69,7 @@ export interface Theme {
   typography: typeof typography;
   fonts: typeof fonts;
   shadow: typeof shadow;
+  motion: typeof motion;
 }
 
 export const lightTheme: Theme = {
@@ -79,6 +81,7 @@ export const lightTheme: Theme = {
   typography,
   fonts,
   shadow,
+  motion,
 };
 
 export const darkTheme: Theme = {
@@ -90,6 +93,7 @@ export const darkTheme: Theme = {
   typography,
   fonts,
   shadow,
+  motion,
 };
 
 export const themes: Record<ColorScheme, Theme> = {

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { useEffect } from 'react';
+import { Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, {
   Easing,
@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { AppHeader, Button, Icon, Screen, Text } from '@/components/ui';
-import { useTheme } from '@/theme';
+import { useTheme, useReducedMotion } from '@/theme';
 import { type ChatMessage, citationLabel } from './chat';
 
 export interface ChatThreadProps {
@@ -226,14 +226,7 @@ function TypingBubble() {
 
 function TypingDot({ index }: { index: number }) {
   const theme = useTheme();
-  const [reduceMotion, setReduceMotion] = useState(false);
-  useEffect(() => {
-    let active = true;
-    AccessibilityInfo.isReduceMotionEnabled().then((v) => active && setReduceMotion(v));
-    return () => {
-      active = false;
-    };
-  }, []);
+  const reduceMotion = useReducedMotion();
   const animate = !reduceMotion && Platform.OS !== 'web';
   const opacity = useSharedValue(0.4);
   useEffect(() => {

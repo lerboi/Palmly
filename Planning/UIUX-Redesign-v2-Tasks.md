@@ -16,13 +16,13 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1 `[x]`. V0 foundation continues (V2–V8) before screens (V9+). Prior
+- **Status:** IN PROGRESS — V1–V2 `[x]`. V0 foundation continues (V3–V8) before screens (V9+). Prior
   round R1–R24 ("Quiet Cosmos") is complete + archived in `UIUX-Redesign-Tasks.md`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V1** — Vermilion skin #3 + `activeSkin`, token contract re-pinned (2026-07-15).
-- **Next task:** **V2 — Motion foundation: `motion` tokens + shared `useReducedMotion` hook**.
+- **Last completed:** **V2** — `motion` tokens + shared `useReducedMotion` hook (2026-07-15).
+- **Next task:** **V3 — Button: press-spring, `danger`/`premium` variants, brand loader, tokenize**.
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -91,7 +91,7 @@ schema/migration/secret changes — none of this touches the DB.
     def + its parity test assertion (north star §3/§8 keep #2 for rollback) — no component/active path
     uses indigo. Brand-asset generator (`app/scripts/gen-brand-assets.mjs`) still hardcodes indigo;
     deferred to V9 (Launcher) where the mark is regenerated + screenshotted.
-- [ ] **V2 — Motion foundation: `motion` tokens + shared `useReducedMotion` hook**
+- [x] **V2 — Motion foundation: `motion` tokens + shared `useReducedMotion` hook** (2026-07-15)
   - Build: add the `motion` token group (§4.1: `duration`, `easing`, `spring.press`/`.entrance`,
     `stagger.list`/`.reveal`) to `tokens.ts` and surface it on `Theme` in `theme.ts`. Create
     `useReducedMotion()` (in `app/src/theme` or `app/src/hooks`), re-export it, and refactor the two
@@ -100,6 +100,15 @@ schema/migration/secret changes — none of this touches the DB.
   - Verify: add a jest test pinning `motion.duration`; `tsc`+`jest`+`lint` green; grep shows
     `isReduceMotionEnabled` appears ONLY in the hook, and PalmDiagram/ChatThread import the hook;
     web export of the palm + chat unchanged (static end-states).
+  - DONE: `motion` group added to `tokens.ts` (duration ladder, easing as pure cubic-bezier tuples
+    so the token module stays reanimated-free, press/entrance springs, list/reveal stagger) +
+    surfaced on `Theme` (light+dark). `useReducedMotion()` created in `app/src/theme`, barrel-exported,
+    and both inline copies refactored onto it. `motion.test.ts` pins the contract. tsc + lint(0) +
+    jest **36/36**. Grep: `isReduceMotionEnabled` lives ONLY in `useReducedMotion.ts` (other hits are
+    doc comments); PalmDiagram + ChatThread import + call the hook. Web export unchanged: palm static
+    end-state (`v2-theme-palm.png`) + chat (`v2-chat-typing.png`,`v2-chat-empty.png`) render identical
+    to pre-refactor (diff is a pure hook extraction — same `animate` gate + opacity/layout). Live
+    reanimated legs stay `[~]` device-pending.
 - [ ] **V3 — Button: press-spring, `danger`/`premium` variants, brand loader, tokenize**
   - Build: `app/src/components/ui/Button.tsx` — wrap content in a reanimated `Animated.View` that
     springs `scale`→~0.97 on pressIn / back on pressOut (`motion.spring.press`, gated by
@@ -313,3 +322,4 @@ schema/migration/secret changes — none of this touches the DB.
 _(append one line per completed task: `V# — <what> — <evidence> — <date>`)_
 
 - V1 — Added `vermilionSkin` (skin #3) + `activeSkin`; retired indigo (kept #1/#2 + all aliases); re-pinned `tokens.test.ts` to the Vermilion contract — tsc + lint(0) + jest 31/31; `docs/checkpoints/redesign/v1-theme{,-full,-palm}.png` light+dark show vermilion swatches/buttons/markers/palm, no indigo — 2026-07-15
+- V2 — Added `motion` tokens (duration/easing-tuples/spring/stagger) surfaced on `Theme` + shared `useReducedMotion()` hook; refactored PalmDiagram + ChatThread onto it — tsc + lint(0) + jest 36/36 (motion.test.ts); grep confirms hook is sole `isReduceMotionEnabled` caller; palm/chat static end-states unchanged (`v2-*.png`) — 2026-07-15
