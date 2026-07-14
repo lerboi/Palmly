@@ -16,16 +16,16 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V14 `[x]` (V0 + Launcher…Reveal + Share). Screen phase continues at
-  V15 (Pair-reveal + claim). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
+- **Status:** IN PROGRESS — V1–V15 `[x]` (V0 + Launcher…Share + Pair/claim). Screen phase continues
+  at V16 (Paywall). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
 - **Dark screenshots (V9+):** build a dark bundle with `EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export`
   then run `shoot.mjs` (RNW can't switch scheme client-side in a static web export). Light = normal
   export. `/dev/theme` still renders both via `forceScheme`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V14** — Share (draw-on palms, springy toggle/segments, real channels, compat card with heart-line thread + labeled ring + chips, editorial hero + filled seal) (2026-07-15).
-- **Next task:** **V15 — Pair-reveal + claim** (`features/reading/PairRevealView.tsx` + `(reading)/pair.tsx` + `(onboarding)/claim.tsx`).
+- **Last completed:** **V15** — Pair-reveal (slide-in palms, drawing thread, counting score ring, fanning icon'd sub-scores) + claim verified (2026-07-15).
+- **Next task:** **V16 — Paywall** (`features/paywall/PaywallView.tsx` + `(modals)/paywall.tsx`).
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -361,7 +361,7 @@ schema/migration/secret changes — none of this touches the DB.
     (`Logomark stamp filled tone=heritage`). tsc + lint(0) + jest **39/39**; grep no `animate={false}`
     / no raw hex in ShareView. Screens `docs/checkpoints/redesign/v14-share-{solo,compat}{,-dark}.png`
     + `compat-320`. Live crossfade/toggle-spring/press/draw/thread `[~]`.
-- [ ] **V15 — Pair-reveal + claim** (`features/reading/PairRevealView.tsx` + `(reading)/pair.tsx` +
+- [x] **V15 — Pair-reveal + claim** (`features/reading/PairRevealView.tsx` + `(reading)/pair.tsx` +
   `(onboarding)/claim.tsx`) — build the **second choreographed peak**: palms slide in from opposite
   edges (Animated.View translateX + `animate` true), the **red thread draws (~800ms)**, the **score
   ring counts up** 0→N (gold), sub-scores **fan in** (width 0→value, `withDelay(i*90)`) with
@@ -371,7 +371,20 @@ schema/migration/secret changes — none of this touches the DB.
   avatar + the drawn thread + the privacy trust line; press-spring the payoff CTAs. Verify:
   screenshots `/(reading)/pair` + `/(onboarding)/claim` at 390×844 (+320) show the full static
   end-state (thread drawn, bars full+iconed, score placed, trust line); grep reduce-motion gate + two
-  distinct a11y labels; choreography/haptic `[~]`.
+  distinct a11y labels; choreography/haptic `[~]`. (2026-07-15)
+  - DONE: PairRevealView — palms **slide in** from opposite edges (`SlideInLeft`/`SlideInRight`) + draw
+    on (`animate`), each with a **distinct a11y label** ("Your palm" / "{partner}'s palm"); `RedThread
+    animate`; the **`ScoreRing` counts up** 0→N + its arc sweeps (new `animate` prop + `useCountUp`
+    hook + `AnimatedCircle` in ShareView; web/reduce-motion → static N) and is the **headline** (148px,
+    "COMPATIBILITY"); the score region carries a **spoken summary** ("You and Mei — 82 out of 100
+    compatible"). Sub-scores **fan in** (width 0→value, `withDelay(i·90)`) each with a **dimension
+    icon** — added a new **`elements`** glyph (pentagon + centre) to the icon set (Emotion→heart,
+    Mind→mind, Energy→life, Destiny→path, Elements→elements). Payoff CTAs press-spring (V3 Button).
+    Success haptic deferred `[~]` (dep). **Claim** already met the spec in V10 (Logomark brand-artifact
+    avatar + `RedThread animate` + `PrivacyBadge` trust line + press-spring CTAs) — re-verified, no
+    change. tsc + lint(0) + jest **39/39**; grep: `useReducedMotion` gate + two distinct palm labels.
+    Screens `docs/checkpoints/redesign/v15-{pair,pair-320,claim}{,-dark}.png`. Choreography/count-up/
+    fan/haptic `[~]`.
 - [ ] **V16 — Paywall** (`features/paywall/PaywallView.tsx` + `(modals)/paywall.tsx`) — add a
   **personalized traced-palm hero** (their locked lines highlighted; accept a geometry/lockedLines
   fixture — spec §2.8 "their diagram, their line names", not a generic feature list); vermilion CTA +
@@ -479,3 +492,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V12 — Analyzing: palm self-draws per revealed line, live gradient ring (sweep + accent→accentPressed + breathing glow), animated step dots, crossfading message, rotating+elevated social-proof chip (`socialProofAt`), still-Palmly failed state (faint palm + danger tone + entrance), header wired — tsc + lint(0) + jest 39/39 (rotation test); `v12-{analyzing,failed}{,-dark}.png` — 2026-07-15
 - V13 — Reveal: editorial serif hero, draw→headline→90ms card stagger, living "drawing" pending (self-draw + breath + rotating reassurance), distinct section icons (no triple sparkle), claret Logomark-stamp seal FAB, locked-card teasers (faded), honest error (faint palm, Try again/Go back, no sparkle) + `/dev/reveal-error` — tsc + lint(0) + jest 39/39; `v13-{reveal,reveal-full,reveal-320,pending,error}{,-dark}.png` — 2026-07-15
 - V14 — Share: palms draw on, solo/compat crossfade in a top-anchored slot, spring toggle thumb + segment press-scale (tablist), real tappable channels, compat card (heart-line accent + claret thread + labeled ScoreRing + chips), editorial 24px headline + filled claret seal — tsc + lint(0) + jest 39/39; `v14-share-{solo,compat}{,-dark}.png` + compat-320 — 2026-07-15
+- V15 — Pair-reveal: palms slide in (SlideInLeft/Right) + draw on w/ distinct a11y labels, RedThread draws, ScoreRing counts up 0→N (new `animate` + `useCountUp`) as the headline + spoken summary, sub-scores fan in with dimension icons (new `elements` glyph); claim verified (V10 met spec) — tsc + lint(0) + jest 39/39; `v15-{pair,pair-320,claim}{,-dark}.png` — 2026-07-15

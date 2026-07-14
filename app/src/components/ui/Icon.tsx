@@ -32,7 +32,8 @@ export type IconName =
   | 'history'
   | 'palm'
   | 'face'
-  | 'help';
+  | 'help'
+  | 'elements';
 
 // Geometry only — stroke/fill/caps come from the shared <G> below.
 const PATHS: Record<IconName, ReactNode> = {
@@ -169,6 +170,13 @@ const PATHS: Record<IconName, ReactNode> = {
       <Circle cx="11.4" cy="16.6" r="0.95" fill="currentColor" stroke="none" />
     </G>
   ),
+  // The five elements (五行) — a pentagon with a centre point, drawn abstractly.
+  elements: (
+    <G>
+      <Path d="M12 3 L20.5 9.2 L17.2 19.3 L6.8 19.3 L3.5 9.2 Z" />
+      <Circle cx="12" cy="12.5" r="1.4" fill="currentColor" stroke="none" />
+    </G>
+  ),
 };
 
 const DEFAULT_LABELS: Record<IconName, string> = {
@@ -195,6 +203,7 @@ const DEFAULT_LABELS: Record<IconName, string> = {
   palm: 'Palm reading',
   face: 'Face reading',
   help: 'Help',
+  elements: 'Elements',
 };
 
 export interface IconProps {

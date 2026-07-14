@@ -18,6 +18,26 @@ import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+/** Count a number 0→target over ~0.9s on native; web / reduce-motion hold the target. The lazy
+ *  initial + interval-only setState keeps the React-Compiler lint happy (no synchronous set in the
+ *  effect body). */
+function useCountUp(target: number, active: boolean): number {
+  const [n, setN] = useState(() => (active ? 0 : target));
+  useEffect(() => {
+    if (!active) return;
+    const steps = 22;
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setN(i >= steps ? target : Math.round((target * i) / steps));
+      if (i >= steps) clearInterval(id);
+    }, 40);
+    return () => clearInterval(id);
+  }, [active, target]);
+  return n;
+}
 
 export interface ShareViewProps {
   geometry: LineGeometry;
@@ -398,19 +418,45 @@ export function RedThread({ animate = false }: { animate?: boolean }) {
 }
 
 /** The compatibility score ring — a gold arc + the big numeral, with an optional caption label
- *  shown BELOW the ring so a long label never collides with the arc. */
-export function ScoreRing({ score, size = 96, label }: { score: number; size?: number; label?: string }) {
+ *  shown BELOW the ring so a long label never collides with the arc. Pass `animate` for the pair
+ *  peak: the arc sweeps + the number counts up 0→N (native; web / reduce-motion → static end). */
+export function ScoreRing({
+  score,
+  size = 96,
+  label,
+  animate = false,
+}: {
+  score: number;
+  size?: number;
+  label?: string;
+  animate?: boolean;
+}) {
   const theme = useTheme();
+  const reduceMotion = useReducedMotion();
+  const shouldAnimate = animate && !reduceMotion && Platform.OS !== 'web';
   const d = size;
   const sw = Math.max(6, Math.round(size / 16));
   const r = d / 2 - sw / 2 - 2;
   const c = 2 * Math.PI * r;
+
+  const shown = useCountUp(score, shouldAnimate);
+  const progress = useSharedValue(shouldAnimate ? 0 : score / 100);
+  useEffect(() => {
+    if (!shouldAnimate) {
+      progress.value = score / 100;
+      return;
+    }
+    progress.value = 0;
+    progress.value = withTiming(score / 100, { duration: 900, easing: Easing.out(Easing.cubic) });
+  }, [shouldAnimate, score, progress]);
+  const arcProps = useAnimatedProps(() => ({ strokeDashoffset: c * (1 - progress.value) }));
+
   return (
     <View style={{ alignItems: 'center', gap: theme.spacing.xs }}>
       <View style={{ width: d, height: d, alignItems: 'center', justifyContent: 'center' }}>
         <Svg width={d} height={d} style={{ position: 'absolute' }}>
           <Circle cx={d / 2} cy={d / 2} r={r} stroke={theme.colors.border} strokeWidth={sw} fill="none" />
-          <Circle
+          <AnimatedCircle
             cx={d / 2}
             cy={d / 2}
             r={r}
@@ -419,12 +465,12 @@ export function ScoreRing({ score, size = 96, label }: { score: number; size?: n
             fill="none"
             strokeLinecap="round"
             strokeDasharray={c}
-            strokeDashoffset={c * (1 - score / 100)}
+            animatedProps={arcProps}
             transform={`rotate(-90 ${d / 2} ${d / 2})`}
           />
         </Svg>
         <Text variant="numeral" color={theme.colors.premium} style={{ fontSize: Math.round(size * 0.34) }}>
-          {score}
+          {shown}
         </Text>
       </View>
       {label ? (
