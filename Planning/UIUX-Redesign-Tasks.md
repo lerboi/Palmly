@@ -11,19 +11,18 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R7 (Logomark brand mark; SealBadge→shim; regenerated app-icon/splash/favicon)
-- **Next task:** R8
+- **Last completed:** R8 (deleted the dead Expo-template scaffold cluster + orphan branded assets)
+- **Next task:** R9
 - **Blocked on:** —
-- **Notes for next run:** R8 = remove the dead Expo-template scaffold cluster on the SECOND
-  theme system. Delete (verify no real-screen import first — grep each): `components/ui/collapsible.tsx`,
-  `components/themed-text.tsx`, `themed-view.tsx`, `animated-icon.tsx(.web)`, `hint-row.tsx`,
-  `web-badge.tsx`, `external-link.tsx`, and the orphan `@/constants/theme.ts` +
-  `@/hooks/use-theme.ts`/`use-color-scheme.ts` (a separate `useTheme` + blue `#3c87f7`), plus
-  Expo-branded assets (`expo-logo.png`, `logo-glow.png`, `react-logo*.png`, `expo-badge*.png` if
-  present, `tabIcons/`?). KEEP anything a real screen imports. `SealBadge` is now a deprecated
-  shim over `Logomark` — DON'T delete it in R8 (screen tasks R11/R15/R19 still call it); it's not
-  part of the Expo template cluster. Verify: `tsc` + `eslint` clean, grep finds no imports of
-  removed modules. `fonts.cjk` now has ONE consumer left: PalmDiagram (R10). Foundation R1–R10 first.
+- **Notes for next run:** R9 = shared `AppHeader` + nav shell + dedupe the privacy line. Build an
+  `AppHeader` (back affordance using the new `Icon name="back"` + optional title) and adopt it
+  across reveal/chat/history/fortune/settings (they're `headerShown:false` + inline serif titles
+  today). Reduce the repeated "✓ Photo deleted" chrome to ONE prominent placement per surface
+  (grep `Photo deleted`/`deleted` to find dupes). Put AppHeader in `components/ui/`. Read the
+  current screens first (RevealView, ChatThread, HistoryShelf, FortuneHome, settings/*). Verify:
+  screenshots show a header + back; grep shows the privacy string once per screen. Then R10 =
+  PalmDiagram upgrade (last foundation task; `fonts.cjk`'s only remaining consumer — de-CJK the
+  labels there and NotoSerifTC can move to zh-only load). Foundation R1–R10 before screen tasks.
 
 ---
 
@@ -102,7 +101,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
     share-card corner only. Author a new app-icon + splash asset set.
   - Verify: harness renders the logomark light+dark; grep confirms Noto Serif TC no longer
     required to render the brand mark; app.json icon/splash point at the new assets.
-- [ ] **R8 — Remove the dead-scaffold cluster (bigger than just collapsible)**
+- [x] **R8 — Remove the dead-scaffold cluster (bigger than just collapsible)** _(2026-07-14)_
   - Build: delete/rebuild the Expo-template legacy cluster on the *second* theme system:
     `components/ui/collapsible.tsx`, `themed-text.tsx`, `themed-view.tsx`,
     `animated-icon.tsx(.web)`, `hint-row.tsx`, `web-badge.tsx`, `external-link.tsx`, plus the
@@ -273,3 +272,11 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   `docs/checkpoints/redesign/r7-logomark.png` (mark/accent/stamp/filled, light+dark) + generated
   `assets/images/icon.png` + `splash-icon.png` viewed in isolation. On-device launcher/splash
   render is `[~]` (can't observe a home-screen icon device-free). — 2026-07-14
+- R8 — Deleted the dead Expo-template scaffold cluster (second theme system): `animated-icon`
+  `.tsx/.web.tsx/.module.css`, `external-link`, `hint-row`, `themed-text`, `themed-view`,
+  `ui/collapsible`, `web-badge`, orphan `constants/theme.ts`, `hooks/use-theme.ts` +
+  `use-color-scheme.ts/.web.ts` (a separate `useTheme` + blue `#3c87f7`), and the Expo-branded
+  assets `expo-logo`/`logo-glow`/`expo-badge`/`expo-badge-white`/`react-logo{,@2x,@3x}`. All were
+  self-referential (grep-verified no real-screen importer); `PlaceholderScreen` + `SealBadge`
+  shim kept. Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, grep finds no imports of any
+  removed module. Only the real design system remains under `components/`. — 2026-07-14
