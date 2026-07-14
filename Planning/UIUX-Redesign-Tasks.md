@@ -11,16 +11,19 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R5 (Button: tonal/loading/icon variants, rounded-rect default + pill, token disabled/pressed)
-- **Next task:** R6
+- **Last completed:** R6 (Icon component + 19-icon line set; barrel-exported; dev icon sheet)
+- **Next task:** R7
 - **Blocked on:** —
-- **Notes for next run:** R6 = in-house svg line-icon set in `react-native-svg` (already a dep,
-  15.15.4). Build an `Icon` component + set: heart, mind, life, path, lock, share, send, streak,
-  thread, chevron, back (+ any others screens need). EACH needs an `accessibilityLabel`. No new
-  library. Put it under `app/src/components/ui/` (barrel is `components/ui/index.ts`). Then wire
-  the dev/theme Buttons `icon` slot + a new "Icons" sheet section to use the real Icon (replaces
-  the placeholder dot). PalmDiagram already uses react-native-svg — mirror its import style.
-  Screenshot tool: `app/scripts/shoot.mjs` (`route:WxH=outname`). Foundation R1–R10 first.
+- **Notes for next run:** R7 = rebuild `SealBadge.tsx` → a CJK-free `Logomark` (stylized
+  palm + three lines) in react-native-svg; expose a small `stamp` size for the share-card
+  corner only; author a new app-icon + splash asset set (app.json `icon`/adaptiveIcon
+  foreground/splash image point at the new assets). `Icon` set exists now (`@/components/ui`,
+  names in `IconName`). SealBadge is still used by /dev/theme header + the "Card & seal"
+  section — swap those to Logomark. SealBadge also still references `fonts.cjk`; once it's gone,
+  only PalmDiagram (R10) keeps `fonts.cjk`. NOTE for R7 asset authoring: PNG icon/splash assets
+  are binary — generating them device-free is hard; if blocked, build the `Logomark` SVG + mark
+  the raster app-icon/splash export leg `[~]` (device/asset-pipeline pending), same honesty
+  convention as camera/paywall. Screenshot: `app/scripts/shoot.mjs`. Foundation R1–R10 first.
 
 ---
 
@@ -88,7 +91,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
     intents to the new accent.
   - Verify: harness renders the full matrix (primary/secondary/ghost/tonal × default/pressed/
     disabled/loading/with-icon) screenshot; `tsc`/`jest` green.
-- [ ] **R6 — In-house svg line-icon set (replace emoji + CJK glyphs)**
+- [x] **R6 — In-house svg line-icon set (replace emoji + CJK glyphs)** _(2026-07-14)_
   - Build: an `Icon` component + set in `react-native-svg`: heart, mind, life, path, lock,
     share, send, streak, thread, chevron, back (+ any others screens need). Each with an
     `accessibilityLabel`. No new library.
@@ -251,3 +254,11 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   tonal fill flips its label to onAccent. Extended /dev/theme to the full matrix. Evidence:
   `tsc` clean, `jest` 31/31, `expo lint` clean, screenshot
   `docs/checkpoints/redesign/r5-buttons.png` (light+dark) — all variants + states render. — 2026-07-14
+- R6 — In-house line-icon set: `Icon.tsx` (react-native-svg, 24×24 stroke paths via a shared
+  `<G>`) with 19 icons (heart/mind/life/path/lock/share/send/streak/thread/chevron/back/check/
+  close/chat/camera/upload/bell/shield/sparkle), each with a default `accessibilityLabel` +
+  `decorative` opt-out; barrel-exported `Icon`/`IconName`. Wired the Button `icon` slot (real
+  sparkle) + a dev/theme "Icons" sheet incl. an accent-recolor row. No new library. Evidence:
+  `tsc` clean, `jest` 31/31, `expo lint` clean, screenshot
+  `docs/checkpoints/redesign/r6-icons.png` — 19 distinct line icons recolor correctly in
+  light+dark. — 2026-07-14

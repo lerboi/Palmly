@@ -1,5 +1,6 @@
 import { View, ScrollView, StyleSheet } from 'react-native';
-import { Button, Card, SealBadge, Text } from '@/components/ui';
+import { Button, Card, Icon, SealBadge, Text } from '@/components/ui';
+import type { IconName } from '@/components/ui';
 import {
   ThemeProvider,
   useTheme,
@@ -63,6 +64,28 @@ const MARKERS = [
   { cjk: '智', en: 'Head' },
   { cjk: '命', en: 'Life' },
   { cjk: '运', en: 'Fate' },
+];
+
+const ICON_NAMES: IconName[] = [
+  'heart',
+  'mind',
+  'life',
+  'path',
+  'lock',
+  'share',
+  'send',
+  'streak',
+  'thread',
+  'chevron',
+  'back',
+  'check',
+  'close',
+  'chat',
+  'camera',
+  'upload',
+  'bell',
+  'shield',
+  'sparkle',
 ];
 
 function PanelBody({ scheme }: { scheme: ColorScheme }) {
@@ -159,21 +182,34 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
           label="With icon"
           variant="primary"
           fullWidth
-          icon={
-            <View
-              style={{
-                width: 14,
-                height: 14,
-                borderRadius: 7,
-                backgroundColor: theme.colors.onAccent,
-              }}
-            />
-          }
+          icon={<Icon name="sparkle" size={18} color={theme.colors.onAccent} decorative />}
         />
         <Button label="Analyzing…" variant="primary" loading fullWidth />
         <Button label="Pill shape" variant="primary" shape="pill" fullWidth />
         <Button label="Disabled primary" variant="primary" disabled fullWidth />
         <Button label="Disabled secondary" variant="secondary" disabled fullWidth />
+      </View>
+
+      <Divider />
+
+      {/* Icon set */}
+      <Text variant="heading">Icons</Text>
+      <View style={styles.iconSheet}>
+        {ICON_NAMES.map((n) => (
+          <View key={n} style={styles.iconItem}>
+            <Icon name={n} size={24} color={theme.colors.textPrimary} />
+            <Text variant="caption" tone="secondary">
+              {n}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <View style={styles.iconRowAccent}>
+        <Icon name="heart" size={22} color={theme.colors.heritageAccent} />
+        <Icon name="thread" size={22} color={theme.colors.heritageAccent} />
+        <Icon name="check" size={22} color={theme.colors.success} />
+        <Icon name="lock" size={22} color={theme.colors.premium} />
+        <Icon name="sparkle" size={22} color={theme.colors.accent} />
       </View>
 
       <Divider />
@@ -250,4 +286,7 @@ const styles = StyleSheet.create({
   markerRow: { flexDirection: 'row', gap: 20 },
   marker: { alignItems: 'center', gap: 2 },
   sealRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 },
+  iconSheet: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  iconItem: { width: 56, alignItems: 'center', gap: 4 },
+  iconRowAccent: { flexDirection: 'row', gap: 16, marginTop: 12 },
 });
