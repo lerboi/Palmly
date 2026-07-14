@@ -159,16 +159,47 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
 
       <Divider />
 
+      {/* Card elevation */}
+      <Text variant="heading">Elevation</Text>
+      <View style={{ gap: theme.spacing.md }}>
+        <Card>
+          <Text variant="caption" tone="secondary">
+            flat (default)
+          </Text>
+          <Text variant="body">A hairline rule, no lift.</Text>
+        </Card>
+        <Card elevation="sm">
+          <Text variant="caption" tone="secondary">
+            elevation sm
+          </Text>
+          <Text variant="body">A whisper of a shadow.</Text>
+        </Card>
+        <Card elevation="md">
+          <Text variant="caption" tone="secondary">
+            elevation md
+          </Text>
+          <Text variant="body">The default lifted card.</Text>
+        </Card>
+        <Card elevation="lg">
+          <Text variant="caption" tone="secondary">
+            elevation lg
+          </Text>
+          <Text variant="body">A sheet / paywall lift.</Text>
+        </Card>
+      </View>
+
+      <Divider />
+
       {/* Card + seals */}
       <Text variant="heading">Card &amp; seal</Text>
-      <Card>
+      <Card elevation="md">
         <Text variant="body">
           Your photo is analyzed, then deleted. What stays is your reading.
         </Text>
         <View style={styles.sealRow}>
           <SealBadge glyph="掌" size={36} />
           <SealBadge glyph="印" size={36} variant="outline" />
-          <Text variant="caption" tone="jade">
+          <Text variant="caption" tone="success">
             ✓ verified
           </Text>
         </View>

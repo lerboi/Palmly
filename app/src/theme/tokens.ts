@@ -192,16 +192,45 @@ export const spacing = {
   huge: 64,
 } as const;
 
-// ── Corner radii ──────────────────────────────────────────────────────
+// ── Corner radii (redesign §5: soft, premium rounded-rects) ───────────
 export const radii = {
   none: 0,
-  sm: 4,
-  md: 8,
-  lg: 12,
+  sm: 8,
+  md: 12, // ★ default corner for cards + buttons
+  lg: 16,
   xl: 20,
-  seal: 6, // the square cinnabar chop
-  pill: 999,
+  seal: 6, // the small heritage stamp (share-card corner only)
+  pill: 999, // now optional, not forced on every button
 } as const;
+
+// ── Elevation / shadow scale (redesign §5) ────────────────────────────
+// Subtle, premium lift. iOS reads the `shadow*` props; Android reads `elevation`. Pair a
+// shadow with the `surfaceRaised` role so cards also lift on dark (where shadows barely show).
+export const shadow = {
+  none: {},
+  sm: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  md: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  lg: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.16,
+    shadowRadius: 28,
+    elevation: 10,
+  },
+} as const;
+export type ShadowKey = keyof typeof shadow;
 
 // ── Stroke widths — engraved / woodblock line style (UIUX §1.2) ───────
 export const strokes = {

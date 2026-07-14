@@ -5,7 +5,16 @@
  * aliases** so consumers still on the old names (`background`, `text`, `gold`, `jade`, `seal`)
  * keep compiling while they migrate. Redesign north star: `Planning/UIUX-Redesign.md` §3.
  */
-import { activeSkin, spacing, radii, strokes, typography, fonts, type SkinColors } from './tokens';
+import {
+  activeSkin,
+  spacing,
+  radii,
+  strokes,
+  typography,
+  fonts,
+  shadow,
+  type SkinColors,
+} from './tokens';
 
 export type ColorScheme = 'light' | 'dark';
 
@@ -58,6 +67,7 @@ export interface Theme {
   strokes: typeof strokes;
   typography: typeof typography;
   fonts: typeof fonts;
+  shadow: typeof shadow;
 }
 
 export const lightTheme: Theme = {
@@ -68,6 +78,7 @@ export const lightTheme: Theme = {
   strokes,
   typography,
   fonts,
+  shadow,
 };
 
 export const darkTheme: Theme = {
@@ -78,6 +89,7 @@ export const darkTheme: Theme = {
   strokes,
   typography,
   fonts,
+  shadow,
 };
 
 export const themes: Record<ColorScheme, Theme> = {

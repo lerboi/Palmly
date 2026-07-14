@@ -3,11 +3,12 @@
 // one or more routes at a given viewport. Reusable across the UIUX-Redesign task loop.
 //
 // Usage:
-//   node scripts/shoot.mjs <outDir> <route:w x h> [<route:wxh> ...]
+//   node scripts/shoot.mjs <outDir> <route:WxH[=name]> [<route:WxH[=name]> ...]
 // Example:
-//   node scripts/shoot.mjs ../docs/checkpoints/redesign dev/theme:780x844 index:390x844
+//   node scripts/shoot.mjs ../docs/checkpoints/redesign dev/theme:780x844=r4-elevation index:390x844
 //
-// Each spec is `route:WIDTHxHEIGHT`; the PNG is written as <outDir>/<route-with-dashes>.png.
+// Each spec is `route:WIDTHxHEIGHT` with an optional `=name` override for the output file.
+// Without `=name` the PNG is written as <outDir>/<route-with-dashes>.png.
 import http from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -42,9 +43,10 @@ if (args.length < 2) {
 }
 const outDir = path.resolve(process.cwd(), args[0]);
 const specs = args.slice(1).map((s) => {
-  const [route, dim] = s.split(':');
-  const [w, h] = (dim || '390x844').split('x').map(Number);
-  return { route, w, h };
+  const [route, rest] = s.split(':');
+  const [dim, name] = (rest || '390x844').split('=');
+  const [w, h] = dim.split('x').map(Number);
+  return { route, w, h, name };
 });
 
 function serve() {
@@ -99,8 +101,8 @@ const server = await serve();
 const { port } = server.address();
 await mkdir(outDir, { recursive: true });
 try {
-  for (const { route, w, h } of specs) {
-    const out = path.join(outDir, route.replace(/\//g, '-') + '.png');
+  for (const { route, w, h, name } of specs) {
+    const out = path.join(outDir, (name || route.replace(/\//g, '-')) + '.png');
     const url = `http://127.0.0.1:${port}/${route}`;
     await shoot(url, out, w, h);
     console.log(`shot ${route} @ ${w}x${h} -> ${out}`);

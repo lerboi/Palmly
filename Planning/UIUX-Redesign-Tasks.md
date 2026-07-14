@@ -11,17 +11,18 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R3 (sans-first type scale; Noto Sans 700/800 added; editorial serif optional)
-- **Next task:** R4
+- **Last completed:** R4 (shadow scale + Card `elevation` prop + radii bump md=12/lg=16)
+- **Next task:** R5
 - **Blocked on:** —
-- **Notes for next run:** R4 = elevation. Add `shadow.sm/md/lg` (iOS `shadow*` + Android
-  `elevation`) to tokens, wire an `elevation` prop on `Card.tsx` (keep a flat option), and make
-  `radii.md` = 12 the default corner (currently `radii.md` is 8 / `radii.lg` is 12 — bump md→12,
-  add a distinct value; check every `radii.md`/`radii.lg` consumer so nothing shifts unexpectedly).
-  Note: `surfaceRaised` role already exists (R1). Screenshot tool: `app/scripts/shoot.mjs`;
-  workflow `npx expo export --platform web` then `node scripts/shoot.mjs ../docs/checkpoints/redesign <route:WxH>`.
-  Font modules still load NotoSerifTC (PalmDiagram R10 + SealBadge R7 still use `fonts.cjk`);
-  move it to zh-only load once those last two consumers are de-CJK'd. Foundation R1–R10 first.
+- **Notes for next run:** R5 = broaden the `Button` primitive. Read `app/src/components/ui/Button.tsx`
+  first. Add: rounded-rect radius as the new default (`radii.md`) + a `pill` option; `tonal`,
+  `loading`, `icon` variants; explicit disabled/pressed tokens (not opacity-only —
+  `accentMuted`/`accentPressed`/`surfaceSunken` exist now). Map intents to the new accent
+  (already indigo via tokens). The dev/theme Buttons section already renders primary/secondary/
+  ghost/disabled — extend it to the full matrix for the R5 screenshot. Icons: R5 may want the
+  `icon` variant slot but the real Icon set arrives in R6 — a placeholder/optional `icon` node
+  prop is fine now. Screenshot tool: `app/scripts/shoot.mjs` — `route:WxH=outname` supported.
+  Foundation R1–R10 before screen tasks.
 
 ---
 
@@ -79,7 +80,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
     <18pt accent guard.
   - Verify: `/dev/theme` shows sans headlines; grep confirms no default use of `fonts.cjk`;
     `tsc`/`jest` green.
-- [ ] **R4 — Elevation/shadow scale + surfaceRaised + rounded-rect radii; Card elevation**
+- [x] **R4 — Elevation/shadow scale + surfaceRaised + rounded-rect radii; Card elevation** _(2026-07-14)_
   - Build: add `shadow.sm/md/lg` (iOS + Android `elevation`) + `surfaceRaised`; add an
     `elevation` prop to `Card.tsx` (keep flat option); make `radii.md 12` the default corner.
   - Verify: harness renders a lifted card next to a flat card, light+dark.
@@ -238,3 +239,10 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   tones (kept gold/jade/onGold aliases). Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean,
   screenshot `docs/checkpoints/redesign/dev-theme.png` — sans headlines, sans numeral, one
   optional serif hero. — 2026-07-14
+- R4 — Elevation: added `shadow.sm/md/lg` (iOS `shadow*` + Android `elevation`) to tokens +
+  `Theme`; `Card` gained an `elevation` prop (flat by default; any lift switches fill to
+  `surfaceRaised` + drops the hairline). Bumped radii per §5 (`sm 8`, `md 12` = default card/
+  button corner, `lg 16`) and pointed `Card` at `radii.md` (12, visually identical to the old
+  `lg`). Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, screenshot
+  `docs/checkpoints/redesign/r4-elevation.png` — flat vs sm/md/lg cards lift correctly in
+  light (soft shadow) + dark (lighter raised fill). — 2026-07-14
