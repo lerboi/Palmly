@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import { PostHog } from 'posthog-react-native';
+import { Platform } from 'react-native';
 
 /**
  * Thin, typed analytics + crash facade (mvp_spec §5.8 — required from day one, not bolted on later:
@@ -36,6 +37,8 @@ let initialized = false;
  */
 export function initAnalytics(): void {
   if (initialized) return;
+  // Skip during the Expo web static export (node SSR) — the vendor SDKs touch window/native at init.
+  if (Platform.OS === 'web' && typeof window === 'undefined') return;
   initialized = true;
 
   if (SENTRY_DSN) {

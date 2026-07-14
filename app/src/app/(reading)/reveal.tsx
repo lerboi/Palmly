@@ -1,17 +1,11 @@
-import { PlaceholderScreen } from '@/components/PlaceholderScreen';
+import { RevealView } from '@/features/reading/RevealView';
+import { PREVIEW_GEOMETRY, PREVIEW_READING } from '@/features/reading/reveal';
 
+/**
+ * Reading reveal (UIUX §2.5, P6.T3). Renders {@link RevealView}. For now it is seeded with a
+ * representative reading so the screen is buildable + device-free-verifiable (web screenshot); once
+ * capture (P4) runs on a real phone this loads the real `readings` row via the scan id.
+ */
 export default function Reveal() {
-  return (
-    <PlaceholderScreen
-      group="(reading)"
-      title="Your reading"
-      note="E · hero self-draw, section cards, locked depth, share/compat/face offers (UIUX §2.5, P6.T3)"
-      links={[
-        { href: '/share', label: 'Share this reading (modal)' },
-        { href: '/paywall', label: 'Unlock deep dive (paywall modal)' },
-        { href: '/face', label: 'Also read my face' },
-        { href: '/fortune', label: 'Go to daily fortune' },
-      ]}
-    />
-  );
+  return <RevealView reading={PREVIEW_READING} geometry={PREVIEW_GEOMETRY} />;
 }
