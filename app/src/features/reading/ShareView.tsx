@@ -1,12 +1,20 @@
-import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Platform, Pressable, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
+import Animated, {
+  Easing,
+  useAnimatedProps,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { AppHeader, Button, Icon, Logomark, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
-import { useTheme } from '@/theme';
+import { useReducedMotion, useTheme } from '@/theme';
+
+const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 export interface ShareViewProps {
   geometry: LineGeometry;
@@ -248,16 +256,36 @@ function CompatPreview({
 }
 
 /** The red thread between two palms — a lightened heritage curve with two knot nodes. */
-export function RedThread() {
+/**
+ * The red-thread-of-fate motif (heritage claret — the ONLY non-seal heritage use, §3.2). Pass
+ * `animate` to draw the thread on (~800ms, native only; reduce-motion / web → the static drawn
+ * end-state). Used on claim, share/compat, and pair-reveal.
+ */
+export function RedThread({ animate = false }: { animate?: boolean }) {
   const theme = useTheme();
+  const reduceMotion = useReducedMotion();
+  const shouldAnimate = animate && !reduceMotion && Platform.OS !== 'web';
+  const THREAD_LEN = 86; // approx path length → seeds the draw-on dash
+  const progress = useSharedValue(1);
+  useEffect(() => {
+    if (!shouldAnimate) {
+      progress.value = 1;
+      return;
+    }
+    progress.value = 0;
+    progress.value = withTiming(1, { duration: 800, easing: Easing.inOut(Easing.cubic) });
+  }, [shouldAnimate, progress]);
+  const threadProps = useAnimatedProps(() => ({ strokeDashoffset: THREAD_LEN * (1 - progress.value) }));
   return (
     <Svg width={72} height={60} viewBox="0 0 72 60">
-      <Path
+      <AnimatedPath
         d="M4 30 C22 8, 50 52, 68 30"
         fill="none"
         stroke={theme.colors.heritageAccent}
         strokeWidth={3}
         strokeLinecap="round"
+        strokeDasharray={THREAD_LEN}
+        animatedProps={threadProps}
       />
       <Circle cx={4} cy={30} r={4} fill={theme.colors.heritageAccent} />
       <Circle cx={68} cy={30} r={4} fill={theme.colors.heritageAccent} />

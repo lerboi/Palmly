@@ -1,13 +1,14 @@
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { router, type Href } from 'expo-router';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { AppHeader, Button, Card, Icon, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
-import { useTheme } from '@/theme';
+import { useReducedMotion, useTheme } from '@/theme';
 
 /**
- * Onboarding A2 (UIUX §2.1, redesign R12) — the three-step explainer (scan → we trace your
- * lines → your reading) with line-icons, and the D2 trust line stated before we ask for the
- * camera. English-first, no CJK.
+ * Onboarding A2 (UIUX §2.1, redesign R12 / v2 V10) — the three-step explainer (scan → we trace
+ * your lines → your reading) with line-icons, staggered in with an icon pop, and the D2 trust line
+ * stated before we ask for the camera. English-first, no CJK.
  */
 const STEPS: { icon: IconName; title: string; body: string }[] = [
   {
@@ -29,15 +30,23 @@ const STEPS: { icon: IconName; title: string; body: string }[] = [
 
 export default function HowItWorks() {
   const theme = useTheme();
+  const reduceMotion = useReducedMotion();
+  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
+  const pop = (i: number) =>
+    shouldAnimate ? ZoomIn.delay(i * theme.motion.stagger.reveal + 120).duration(theme.motion.duration.base) : undefined;
+  const rise = (i: number) =>
+    shouldAnimate ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base) : undefined;
+
   return (
     <Screen scroll>
       <AppHeader title="How it works" onBack={() => router.back()} />
 
       <View style={{ gap: theme.spacing.md }}>
         {STEPS.map((step, i) => (
-          <Card key={step.title} elevation="sm">
+          <Card key={step.title} elevation="sm" entranceIndex={i}>
             <View style={{ flexDirection: 'row', gap: theme.spacing.md, alignItems: 'center' }}>
-              <View
+              <Animated.View
+                entering={pop(i)}
                 style={{
                   width: 48,
                   height: 48,
@@ -48,7 +57,7 @@ export default function HowItWorks() {
                 }}
               >
                 <Icon name={step.icon} size={24} color={theme.colors.accent} decorative />
-              </View>
+              </Animated.View>
               <View style={{ flex: 1 }}>
                 <Text variant="caption" tone="tertiary">
                   Step {i + 1}
@@ -63,14 +72,16 @@ export default function HowItWorks() {
         ))}
       </View>
 
-      <Card elevation="none" style={{ marginTop: theme.spacing.lg, backgroundColor: theme.colors.surfaceSunken }}>
-        <View style={{ flexDirection: 'row', gap: theme.spacing.sm, alignItems: 'flex-start' }}>
-          <Icon name="shield" size={20} color={theme.colors.success} decorative />
-          <Text variant="body" tone="secondary" style={{ flex: 1 }}>
-            Your photo is analyzed, then deleted. What stays is your reading.
-          </Text>
-        </View>
-      </Card>
+      <Animated.View entering={rise(STEPS.length)}>
+        <Card elevation="none" style={{ marginTop: theme.spacing.lg, backgroundColor: theme.colors.surfaceSunken }}>
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm, alignItems: 'flex-start' }}>
+            <Icon name="shield" size={20} color={theme.colors.success} decorative />
+            <Text variant="body" tone="secondary" style={{ flex: 1 }}>
+              Your photo is analyzed, then deleted. What stays is your reading.
+            </Text>
+          </View>
+        </Card>
+      </Animated.View>
 
       <Button
         label="Choose your hand"
