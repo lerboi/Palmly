@@ -13,7 +13,7 @@
     "android": {
       "package": "com.palmly.app",
       "adaptiveIcon": {
-        "backgroundColor": "#C3272B",
+        "backgroundColor": "#FAF9F7",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -28,11 +28,11 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F7F2E7",
+          "backgroundColor": "#FAF9F7",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "dark": {
-            "backgroundColor": "#1E1B16",
+            "backgroundColor": "#14151A",
             "image": "./assets/images/splash-icon.png"
           }
         }

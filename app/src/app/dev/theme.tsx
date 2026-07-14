@@ -3,8 +3,9 @@ import { Button, Card, SealBadge, Text } from '@/components/ui';
 import {
   ThemeProvider,
   useTheme,
-  palette,
+  activeSkin,
   type ColorScheme,
+  type SkinColors,
   type TypographyVariant,
 } from '@/theme';
 
@@ -30,13 +31,21 @@ function SchemePanel({ scheme }: { scheme: ColorScheme }) {
   );
 }
 
-const SWATCHES: { name: string; value: string }[] = [
-  { name: 'paper', value: palette.paper },
-  { name: 'ink', value: palette.ink },
-  { name: 'ink-wash', value: palette.inkWash },
-  { name: 'cinnabar', value: palette.cinnabar },
-  { name: 'gold', value: palette.gold },
-  { name: 'jade', value: palette.jade },
+/** The role tokens to show in the swatch strip (a representative slice of the §3 contract). */
+const SWATCH_ROLES: (keyof SkinColors)[] = [
+  'bg',
+  'surface',
+  'surfaceSunken',
+  'border',
+  'textPrimary',
+  'textSecondary',
+  'accent',
+  'accentPressed',
+  'accentMuted',
+  'heritageAccent',
+  'premium',
+  'success',
+  'danger',
 ];
 
 const TYPE_SAMPLES: { variant: TypographyVariant; label: string }[] = [
@@ -67,32 +76,35 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
       <View style={styles.headerRow}>
         <SealBadge glyph="掌" size={44} />
         <View style={{ flex: 1 }}>
-          <Text variant="title">Ink &amp; Cinnabar</Text>
+          <Text variant="title">{activeSkin.name}</Text>
           <Text variant="caption" tone="secondary">
-            {scheme.toUpperCase()} · 水墨 × 朱砂
+            {scheme.toUpperCase()} · role-based tokens
           </Text>
         </View>
       </View>
 
       <Divider />
 
-      {/* Color tokens */}
+      {/* Color tokens (role-based §3) */}
       <Text variant="heading">Tokens</Text>
       <View style={styles.swatchWrap}>
-        {SWATCHES.map((s) => (
-          <View key={s.name} style={styles.swatchItem}>
-            <View
-              style={[
-                styles.swatch,
-                { backgroundColor: s.value, borderColor: theme.colors.border },
-              ]}
-            />
-            <Text variant="caption">{s.name}</Text>
-            <Text variant="caption" tone="secondary">
-              {s.value}
-            </Text>
-          </View>
-        ))}
+        {SWATCH_ROLES.map((role) => {
+          const value = theme.colors[role];
+          return (
+            <View key={role} style={styles.swatchItem}>
+              <View
+                style={[
+                  styles.swatch,
+                  { backgroundColor: value, borderColor: theme.colors.border },
+                ]}
+              />
+              <Text variant="caption">{role}</Text>
+              <Text variant="caption" tone="secondary">
+                {value}
+              </Text>
+            </View>
+          );
+        })}
       </View>
 
       <Divider />

@@ -118,10 +118,66 @@ export const inkCinnabarSkin: Skin = {
 };
 
 /**
- * The active skin. **R1 keeps this at Ink & Cinnabar so nothing changes visually yet.**
- * R2 swaps it to the "Quiet Cosmos" skin (a single-line change here).
+ * Skin #2 — "Quiet Cosmos" (redesign north star §3). Calm & premium: warm-white paper, one
+ * quiet twilight-indigo accent, softened cinnabar demoted to a heritage whisper, champagne
+ * premium. Dark gets explicit dark-tuned accents (never a reused saturated light hex).
+ *
+ * ★ The single most defining tunable is `accent` (light `#4B57C4` / dark `#8B95F0`) — change
+ * those two hexes and re-run the harness screenshot to re-feel the whole app (§3).
+ * Values §3 leaves implicit for a scheme (e.g. dark `onAccent`, `premiumPressed`) are chosen
+ * for AA contrast: the dark accent is a light periwinkle, so text on it is near-black.
  */
-export const activeSkin: Skin = inkCinnabarSkin;
+export const quietCosmosSkin: Skin = {
+  name: 'Quiet Cosmos',
+  light: {
+    bg: '#FAF9F7',
+    surface: '#FFFFFF',
+    surfaceRaised: '#FFFFFF',
+    surfaceSunken: '#F2F0EC',
+    border: '#E7E3DC',
+    textPrimary: '#1A1A1F',
+    textSecondary: '#6B6B72',
+    textTertiary: '#9A9AA0',
+    accent: '#4B57C4',
+    accentPressed: '#3E49AA',
+    accentMuted: '#ECEDF9',
+    onAccent: '#FFFFFF',
+    heritageAccent: '#C2554A',
+    premium: '#C79A3C',
+    premiumPressed: '#AE842F',
+    onPremium: '#1A1A1F',
+    success: '#3F7A5E',
+    danger: '#C0392B',
+    scrim: 'rgba(20,21,26,0.4)',
+  },
+  dark: {
+    bg: '#14151A',
+    surface: '#1E2027',
+    surfaceRaised: '#24262F',
+    surfaceSunken: '#191B21',
+    border: '#2E313B',
+    textPrimary: '#F4F4F6',
+    textSecondary: '#A9A9B2',
+    textTertiary: '#6E6E77',
+    accent: '#8B95F0',
+    accentPressed: '#A3ACF5',
+    accentMuted: '#23253A',
+    onAccent: '#14151A', // dark text on the light periwinkle accent (AA)
+    heritageAccent: '#D98A7E',
+    premium: '#D9B25A',
+    premiumPressed: '#E4C06E',
+    onPremium: '#14151A',
+    success: '#5AA981',
+    danger: '#E06B5E',
+    scrim: 'rgba(0,0,0,0.55)',
+  },
+};
+
+/**
+ * The active skin — **Quiet Cosmos** (redesign default, R2). Swap this one line back to
+ * `inkCinnabarSkin` for the optional zh "traditional view" / a future re-skin.
+ */
+export const activeSkin: Skin = quietCosmosSkin;
 
 // ── Spacing — 4px base scale (spec-silent; Decision Log 2026-07-11) ───
 export const spacing = {

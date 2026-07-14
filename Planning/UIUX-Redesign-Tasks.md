@@ -10,15 +10,18 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 
 ## STATE
 
-- **Active skin:** Ink & Cinnabar (skin #1) — role contract now in place; R2 swaps to Quiet Cosmos (skin #2).
-- **Last completed:** R1 (role-based token system + skin object + back-compat aliases)
-- **Next task:** R2
+- **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
+- **Last completed:** R2 (Quiet Cosmos palette live; twilight-indigo accent; app.json off cinnabar)
+- **Next task:** R3
 - **Blocked on:** —
-- **Notes for next run:** R2 adds the Quiet Cosmos skin values (§3 light+dark) and flips
-  `activeSkin` in `tokens.ts` — a one-line switch, since the role map already exists. Then fix
-  `app.json` icon/splash colors and take the FIRST redesign screenshot (this is where visuals
-  actually change). Foundation tasks R1–R10 must land before screen tasks. Keep the app
-  functionally intact (backend wiring, auth, realtime, device-gated stubs). Visual/UX only.
+- **Notes for next run:** Palette is done. R3 = sans-first typography: repoint
+  display/title/heading/numeral off Noto Serif Display → Noto Sans weight ramp; drop Noto
+  Serif TC from the default scale; revisit the `Text.tsx` <18pt accent guard (indigo passes
+  AA at more sizes than cinnabar). `Text` `variant="accent"` still uses `fonts.cjk` — repoint
+  it. Reusable screenshot tool now exists: `app/scripts/shoot.mjs` (serves `dist/`, drives
+  headless Chrome). Workflow: `npx expo export --platform web` then
+  `node scripts/shoot.mjs ../docs/checkpoints/redesign <route:WxH>`. The /dev/theme harness is
+  captured at 820-wide (two 390 panels). Foundation R1–R10 before screen tasks.
 
 ---
 
@@ -63,7 +66,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
     `Text` `Tone='gold'|'jade'|'onGold'` names working so no consumer breaks.
   - Verify: `tsc --noEmit` + `jest` green; rewrite `app/src/theme/__tests__/tokens.test.ts`
     to assert the new role contract; grep shows consumers still compile.
-- [ ] **R2 — Add the "Quiet Cosmos" palette values + dark-tuned accent; fix app.json colors**
+- [x] **R2 — Add the "Quiet Cosmos" palette values + dark-tuned accent; fix app.json colors** _(2026-07-14)_
   - Build: add skin #2 with the §3 hexes (light + dark) and make it active. Give dark accents
     explicit dark-tuned values. Update `app.json` `android.adaptiveIcon.backgroundColor` and
     the `expo-splash-screen` colors off cinnabar/rice-paper.
@@ -220,3 +223,9 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   `onGold`→`onPremium`, `jade`→`success`, `seal`→`heritageAccent`). Rewrote `tokens.test.ts`
   to pin the role contract + alias mapping. Evidence: `tsc --noEmit` clean, `jest` 30/30
   (7 suites), `expo lint` clean. — 2026-07-14
+- R2 — Quiet Cosmos skin (skin #2) added with §3 light+dark hexes incl. explicit dark-tuned
+  accents (light periwinkle `#8B95F0` + near-black `onAccent`); flipped `activeSkin` to it;
+  `app.json` adaptive-icon bg `#C3272B`→`#FAF9F7` and splash `#F7F2E7/#1E1B16`→`#FAF9F7/#14151A`;
+  `/dev/theme` swatch strip now renders the 13 role tokens from the live theme. Evidence: `tsc`
+  clean, `jest` 31/31, `expo lint` clean, screenshot `docs/checkpoints/redesign/dev-theme.png`
+  (light+dark) — indigo primary CTA, no cinnabar fill, calm dark bg. — 2026-07-14

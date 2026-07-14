@@ -1,5 +1,13 @@
 /// <reference types="jest" />
-import { spacing, strokes, typography, inkCinnabarSkin, activeSkin, type SkinColors } from '../tokens';
+import {
+  spacing,
+  strokes,
+  typography,
+  inkCinnabarSkin,
+  quietCosmosSkin,
+  activeSkin,
+  type SkinColors,
+} from '../tokens';
 import { lightTheme, darkTheme, type ThemeColors } from '../theme';
 
 /**
@@ -35,21 +43,31 @@ const ROLE_KEYS: (keyof SkinColors)[] = [
 const isColor = (v: string) => /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$|^rgba?\(/.test(v);
 
 describe('design tokens — role-based skin contract (redesign §3)', () => {
-  it('defines every semantic role for light + dark in the active skin', () => {
-    for (const scheme of ['light', 'dark'] as const) {
-      for (const role of ROLE_KEYS) {
-        const value = activeSkin[scheme][role];
-        expect(typeof value).toBe('string');
-        expect(isColor(value)).toBe(true);
+  it('defines every semantic role for light + dark in both skins', () => {
+    for (const skin of [inkCinnabarSkin, quietCosmosSkin]) {
+      for (const scheme of ['light', 'dark'] as const) {
+        for (const role of ROLE_KEYS) {
+          const value = skin[scheme][role];
+          expect(typeof value).toBe('string');
+          expect(isColor(value)).toBe(true);
+        }
       }
     }
   });
 
-  it('keeps Ink & Cinnabar as the active skin (R1 changes nothing visually yet)', () => {
-    expect(activeSkin).toBe(inkCinnabarSkin);
-    expect(activeSkin.name).toBe('Ink & Cinnabar');
-    // The heritage accent is still the softened-later cinnabar in skin #1.
-    expect(activeSkin.light.accent).toBe('#C3272B');
+  it('makes Quiet Cosmos the active skin (redesign default, R2)', () => {
+    expect(activeSkin).toBe(quietCosmosSkin);
+    expect(activeSkin.name).toBe('Quiet Cosmos');
+    // ★ the one tunable that sets the whole feel — twilight indigo, not cinnabar.
+    expect(activeSkin.light.accent).toBe('#4B57C4');
+    expect(activeSkin.dark.accent).toBe('#8B95F0');
+    // Heritage cinnabar survives only as a softened whisper.
+    expect(activeSkin.light.heritageAccent).toBe('#C2554A');
+  });
+
+  it('keeps Ink & Cinnabar available as skin #1 for the traditional view', () => {
+    expect(inkCinnabarSkin.name).toBe('Ink & Cinnabar');
+    expect(inkCinnabarSkin.light.accent).toBe('#C3272B');
   });
 
   it('exposes back-compat aliases mapped onto the new roles', () => {
