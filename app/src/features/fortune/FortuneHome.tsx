@@ -1,10 +1,13 @@
-import { useState } from 'react';
-import { View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Platform, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
+import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import { Button, Card, Icon, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
-import { useTheme } from '@/theme';
+import { useReducedMotion, useTheme } from '@/theme';
+import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { FortuneCard } from './FortuneCard';
 import { type Fortune, almanacDate } from './fortune';
 
@@ -20,10 +23,10 @@ export interface FortuneHomeProps {
 }
 
 /**
- * Returning-user home (UIUX §2.11, redesign R18) — weekday + date header (the ganzhi day-pillar is
- * demoted to the optional zh view, not shown here), a subtle streak strip, today's fortune card
- * (free/premium), a pending-compatibility red-thread row, and entries to the readings shelf and
- * chat. English-first, no CJK. A first-run user sees a calm "start your first reading" state.
+ * Returning-user home (UIUX §2.11, redesign R18 / v2 V17) — weekday + date header with the ganzhi
+ * day-pillar surfaced as an English whisper ("Wood Rat"), a branded animated streak strip, today's
+ * fortune hero card (free/premium), a pending-compatibility red-thread row, and entries to the
+ * readings shelf and chat. English-first, no CJK. A first-run user sees a traced-palm hero.
  */
 export function FortuneHome({ fortune, premium, streak, partnerName, firstRun, now }: FortuneHomeProps) {
   const theme = useTheme();
@@ -35,9 +38,14 @@ export function FortuneHome({ fortune, premium, streak, partnerName, firstRun, n
     <Screen scroll>
       <View style={{ marginBottom: theme.spacing.lg }}>
         <Text variant="display">{date.weekday}</Text>
-        <Text variant="bodyLarge" tone="secondary">
-          {date.gregorian}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <Text variant="bodyLarge" tone="secondary">
+            {date.gregorian}
+          </Text>
+          <Text variant="caption" tone="tertiary">
+            · {date.pillarEn} day
+          </Text>
+        </View>
       </View>
 
       {firstRun ? (
@@ -55,22 +63,12 @@ export function FortuneHome({ fortune, premium, streak, partnerName, firstRun, n
   );
 }
 
+/** First-run — a traced-palm hero (their reading-to-be), not a stock empty card. */
 function FirstRunState({ onScan }: { onScan: () => void }) {
   const theme = useTheme();
   return (
     <Card elevation="md" style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-      <View
-        style={{
-          width: 72,
-          height: 72,
-          borderRadius: theme.radii.xl,
-          backgroundColor: theme.colors.accentMuted,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Icon name="sparkle" size={34} color={theme.colors.accent} decorative />
-      </View>
+      <PalmDiagram geometry={PREVIEW_GEOMETRY} size={160} signatureLines={['heart_line', 'fate_line']} animate />
       <Text variant="title" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
         Your daily fortune starts here
       </Text>
@@ -82,15 +80,43 @@ function FirstRunState({ onScan }: { onScan: () => void }) {
   );
 }
 
+/** A branded streak strip — an accent flame (streak IS accent, §3.2) that gently breathes, the
+ *  day-dot run, and a spoken label. */
 function StreakStrip({ streak }: { streak: number }) {
   const theme = useTheme();
+  const reduceMotion = useReducedMotion();
+  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
   const days = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6'];
+
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    if (!shouldAnimate) {
+      pulse.value = 1;
+      return;
+    }
+    pulse.value = withRepeat(withTiming(1.15, { duration: 900, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [shouldAnimate, pulse]);
+  const flameStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.md }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
-        <Icon name="streak" size={18} color={theme.colors.heritageAccent} decorative />
-        <Text variant="bodyMedium">{streak}-day streak</Text>
-      </View>
+    <View
+      accessibilityRole="text"
+      accessibilityLabel={`${streak}-day fortune streak`}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.sm,
+        backgroundColor: theme.colors.surfaceSunken,
+        borderRadius: theme.radii.pill,
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: theme.spacing.sm,
+        marginBottom: theme.spacing.md,
+      }}
+    >
+      <Animated.View style={flameStyle}>
+        <Icon name="streak" size={18} color={theme.colors.accent} decorative />
+      </Animated.View>
+      <Text variant="bodyMedium">{streak}-day streak</Text>
       <View style={{ flexDirection: 'row', gap: 6, marginLeft: 'auto' }}>
         {days.map((id, i) => (
           <View

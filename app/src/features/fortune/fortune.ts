@@ -26,23 +26,39 @@ function gregorianToJDN(y: number, m: number, d: number): number {
   return d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
 }
 
+function pillarIndex(date: Date): number {
+  const jdn = gregorianToJDN(date.getFullYear(), date.getMonth() + 1, date.getDate());
+  return (((jdn + 49) % 60) + 60) % 60;
+}
+
 /** The ganzhi day pillar (stem+branch) for a calendar date — same anchor as the backend `dayPillar`. */
 export function dayPillarCn(date: Date): string {
-  const jdn = gregorianToJDN(date.getFullYear(), date.getMonth() + 1, date.getDate());
-  const index = (((jdn + 49) % 60) + 60) % 60;
+  const index = pillarIndex(date);
   return STEM_CN[index % 10] + BRANCH_CN[index % 12];
+}
+
+// English-first romanization of the day pillar — the stem's element + the branch's zodiac animal
+// (redesign §2: the ganzhi is surfaced as an English "whisper", never the CJK glyphs).
+const STEM_EL = ['Wood', 'Wood', 'Fire', 'Fire', 'Earth', 'Earth', 'Metal', 'Metal', 'Water', 'Water'];
+const BRANCH_ANIMAL = ['Rat', 'Ox', 'Tiger', 'Rabbit', 'Dragon', 'Snake', 'Horse', 'Goat', 'Monkey', 'Rooster', 'Dog', 'Pig'];
+/** English day-pillar whisper, e.g. "Wood Rat" — for the almanac header (no CJK). */
+export function dayPillarEn(date: Date): string {
+  const index = pillarIndex(date);
+  return `${STEM_EL[index % 10]} ${BRANCH_ANIMAL[index % 12]}`;
 }
 
 export interface AlmanacDate {
   weekday: string; // "Monday"
   gregorian: string; // "July 14"
-  pillar: string; // ganzhi day pillar, e.g. "jia-zi" (zh traditional view only; not rendered)
+  pillar: string; // ganzhi day pillar, e.g. "甲子日" (zh traditional view only; not rendered)
+  pillarEn: string; // English whisper, e.g. "Wood Rat" (rendered as the day-pillar whisper)
 }
 export function almanacDate(date: Date): AlmanacDate {
   return {
     weekday: date.toLocaleDateString('en-US', { weekday: 'long' }),
     gregorian: date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
     pillar: `${dayPillarCn(date)}日`,
+    pillarEn: dayPillarEn(date),
   };
 }
 
@@ -66,6 +82,6 @@ export const PREVIEW_FORTUNE: Fortune = {
   do: ['Sign what’s ready', 'Reach out first', 'Tidy one loose end'],
   dont: ['Lend impulsively', 'Argue over trifles', 'Skip your rest'],
   lucky_direction: 'Southeast',
-  lucky_color: 'Indigo',
+  lucky_color: 'Jade green',
   lucky_hours: '7–9am · 3–5pm',
 };

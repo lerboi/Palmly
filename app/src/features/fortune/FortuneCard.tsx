@@ -1,26 +1,46 @@
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Button, Card, Icon, Text } from '@/components/ui';
-import { useTheme } from '@/theme';
+import { useReducedMotion, useTheme } from '@/theme';
 import { DIRECTION_ARROW, type Fortune } from './fortune';
 
 /**
- * The daily fortune card (UIUX §2.11, redesign R18). Free shows the `overall` essence + an unlock
- * CTA; premium expands the Do/Avoid lists, love/career/wealth lines, and the lucky
- * direction/colour/hours (U4 gating), grouped into distinct sections with real spacing.
- * English-first, no CJK. Reused as the paywall's "your fortune preview".
+ * The daily fortune card (UIUX §2.11, redesign R18 / v2 V17) — a true hero (`elevation="md"` +
+ * surfaceRaised): an accent-chip header, the free `overall` essence promoted to the visual anchor,
+ * and an unlock CTA. Premium **unfolds** the Do/Avoid lists (Avoid in `danger`, not heritage — the
+ * claret is reserved for the red-thread, §3.2), the career/love/wealth lines, and the lucky
+ * direction/colour/hours (U4 gating), each section staggering in. English-first, no CJK.
  */
 export function FortuneCard({ fortune, premium, onUnlock }: { fortune: Fortune; premium: boolean; onUnlock?: () => void }) {
   const theme = useTheme();
+  const reduceMotion = useReducedMotion();
+  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
+  const unfold = (i: number) =>
+    shouldAnimate ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base) : undefined;
+
   return (
-    <Card elevation="sm" style={{ marginBottom: theme.spacing.md }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.sm }}>
-        <Icon name="sparkle" size={20} color={theme.colors.accent} decorative />
-        <Text variant="heading">Today&apos;s fortune</Text>
+    <Card elevation="md" style={{ marginBottom: theme.spacing.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
+        <View
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: theme.radii.sm,
+            backgroundColor: theme.colors.accentMuted,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name="sparkle" size={18} color={theme.colors.accent} decorative />
+        </View>
+        <Text variant="caption" tone="tertiary" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
+          Today&apos;s fortune
+        </Text>
       </View>
-      <Text variant="bodyLarge" tone="secondary">
-        {fortune.overall}
-      </Text>
+
+      {/* The free essence — the visual anchor. */}
+      <Text variant="bodyLarge">{fortune.overall}</Text>
 
       {!premium ? (
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.md, alignItems: 'flex-start' }}>
@@ -34,26 +54,26 @@ export function FortuneCard({ fortune, premium, onUnlock }: { fortune: Fortune; 
         </View>
       ) : (
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.lg }}>
-          <View style={{ flexDirection: 'row', gap: theme.spacing.lg }}>
+          <Animated.View entering={unfold(0)} style={{ flexDirection: 'row', gap: theme.spacing.lg }}>
             <DoDont title="Do" items={fortune.do} tone="success" />
-            <DoDont title="Avoid" items={fortune.dont} tone="heritage" />
-          </View>
+            <DoDont title="Avoid" items={fortune.dont} tone="danger" />
+          </Animated.View>
 
           <Divider />
 
-          <View style={{ gap: theme.spacing.md }}>
+          <Animated.View entering={unfold(1)} style={{ gap: theme.spacing.md }}>
             <Aspect label="Career" text={fortune.career} />
             <Aspect label="Love" text={fortune.love} />
             <Aspect label="Wealth" text={fortune.wealth} />
-          </View>
+          </Animated.View>
 
           <Divider />
 
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xl }}>
+          <Animated.View entering={unfold(2)} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
             <Lucky label="Direction" value={`${DIRECTION_ARROW[fortune.lucky_direction] ?? ''} ${fortune.lucky_direction}`} />
             <Lucky label="Colour" value={fortune.lucky_color} />
             <Lucky label="Hours" value={fortune.lucky_hours} />
-          </View>
+          </Animated.View>
         </View>
       )}
     </Card>
@@ -65,18 +85,33 @@ function Divider() {
   return <View style={{ height: theme.strokes.hairline, backgroundColor: theme.colors.border }} />;
 }
 
-function DoDont({ title, items, tone }: { title: string; items: string[]; tone: 'success' | 'heritage' }) {
+/** Shared uppercase section eyebrow (Aspect + Lucky both use it). */
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <Text variant="caption" tone="tertiary" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
+      {children}
+    </Text>
+  );
+}
+
+function DoDont({ title, items, tone }: { title: string; items: string[]; tone: 'success' | 'danger' }) {
   const theme = useTheme();
-  const color = tone === 'success' ? theme.colors.success : theme.colors.heritageAccent;
+  const color = tone === 'success' ? theme.colors.success : theme.colors.danger;
+  const marker = tone === 'success' ? '✓' : '✕';
   return (
     <View style={{ flex: 1, gap: theme.spacing.xs }}>
       <Text variant="heading" color={color}>
         {title}
       </Text>
-      {items.map((it) => (
-        <Text key={it} variant="small" tone="secondary">
-          {it}
-        </Text>
+      {items.map((it, i) => (
+        <View key={`${title}-${i}`} style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
+          <Text variant="small" color={color}>
+            {marker}
+          </Text>
+          <Text variant="small" tone="secondary" style={{ flex: 1 }}>
+            {it}
+          </Text>
+        </View>
       ))}
     </View>
   );
@@ -85,9 +120,7 @@ function DoDont({ title, items, tone }: { title: string; items: string[]; tone: 
 function Aspect({ label, text }: { label: string; text: string }) {
   return (
     <View style={{ gap: 2 }}>
-      <Text variant="caption" tone="tertiary" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
-        {label}
-      </Text>
+      <SectionLabel>{label}</SectionLabel>
       <Text variant="body">{text}</Text>
     </View>
   );
@@ -95,10 +128,8 @@ function Aspect({ label, text }: { label: string; text: string }) {
 
 function Lucky({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ gap: 2 }}>
-      <Text variant="caption" tone="tertiary" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
-        {label}
-      </Text>
+    <View style={{ gap: 2, minWidth: 84 }}>
+      <SectionLabel>{label}</SectionLabel>
       <Text variant="bodyMedium">{value}</Text>
     </View>
   );

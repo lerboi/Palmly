@@ -16,16 +16,16 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V16 `[x]` (V0 + Launcher…Pair + Paywall). Screen phase continues at
-  V17 (Fortune). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
+- **Status:** IN PROGRESS — V1–V17 `[x]` (V0 + Launcher…Paywall + Fortune). Screen phase continues at
+  V18 (Chat). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
 - **Dark screenshots (V9+):** build a dark bundle with `EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export`
   then run `shoot.mjs` (RNW can't switch scheme client-side in a static web export). Light = normal
   export. `/dev/theme` still renders both via `forceScheme`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V16** — Paywall (personalized palm hero + line names, feature icons, spring plans, stable price hierarchy, claret seal) (2026-07-15).
-- **Next task:** **V17 — Fortune** (`features/fortune/FortuneHome.tsx` + `FortuneCard.tsx` + `fortune.ts`).
+- **Last completed:** **V17** — Fortune (two-reds resolved, hero card, branded streak, palm first-run, day-pillar whisper) (2026-07-15).
+- **Next task:** **V18 — Chat** (`features/chat/ChatThread.tsx` + `chat.ts`).
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -407,7 +407,7 @@ schema/migration/secret changes — none of this touches the DB.
     lint(0) + jest **39/39**; grep no raw hex, `useReducedMotion` gates present. Screens
     `docs/checkpoints/redesign/v16-paywall{,-320,-dark}.png`. Selection/press/stagger + RevenueCat
     purchase `[~]`.
-- [ ] **V17 — Fortune** (`features/fortune/FortuneHome.tsx` + `FortuneCard.tsx` + `fortune.ts`) —
+- [x] **V17 — Fortune** (`features/fortune/FortuneHome.tsx` + `FortuneCard.tsx` + `fortune.ts`) —
   recolor to vermilion + **resolve the two-reds** (move `DoDont` "Avoid" off `heritage` → `danger`/
   `textSecondary`; keep the red-thread as the only heritage; fix `PREVIEW_FORTUNE.lucky_color:
   'Indigo'`); **elevate the card to a true hero** (`elevation="md"` + `surfaceRaised`, editorial
@@ -418,7 +418,19 @@ schema/migration/secret changes — none of this touches the DB.
   (designed direction glyph, 320-wide wrap guard on the lucky row, shared `SectionLabel`, `DoDont`
   markers + stable keys, surface the day-pillar whisper `almanacDate().pillar`). Verify: screenshots
   `/(home)/fortune` + `/dev/fortune-free` + `/dev/fortune-empty` at 390×844 + 320, light+dark; grep
-  only the red-thread keeps `heritageAccent`, no raw hex; motion `[~]`.
+  only the red-thread keeps `heritageAccent`, no raw hex; motion `[~]`. (2026-07-15)
+  - DONE: **two-reds resolved** — `DoDont` "Avoid" now `danger` (crimson, with a ✕ marker vs "Do"'s
+    green ✓), so `heritageAccent` in `src/features/fortune` is now the **red-thread row ONLY** (grep-
+    confirmed); `PREVIEW_FORTUNE.lucky_color` `Indigo` → **`Jade green`**. **FortuneCard** is a hero
+    (`elevation="md"`, accent-chip sparkle header, the free `overall` promoted to a primary `bodyLarge`
+    anchor); premium sections **unfold** staggered (`FadeInDown`); shared `SectionLabel`; `DoDont`
+    stable keys + markers. **StreakStrip** rebuilt into a branded surfaceSunken pill — the flame is now
+    **accent** (streak=accent, §3.2) and **breathes** (`withRepeat`), with a spoken `accessibilityLabel`.
+    **First-run** previews the traced-**PalmDiagram** hero (not a stock empty card). Day-pillar surfaced
+    as an English **whisper** ("Metal Tiger day" via new `dayPillarEn`/`pillarEn`, no CJK). Lucky row
+    wraps at 320. tsc + lint(0) + jest **39/39**; grep no indigo/raw hex. Screens
+    `docs/checkpoints/redesign/v17-fortune{,-320,-dark}.png` + `-free` + `-empty{,-dark}`. Unfold/flame/
+    press `[~]`.
 - [ ] **V18 — Chat** (`features/chat/ChatThread.tsx` + `chat.ts`) — grounded identity: a small
   **Logomark avatar** on assistant bubbles + a **red-thread/palm citation** replacing the green
   `shield`/`success` "verified" line (keep `citationLabel()` copy); differentiate the empty-state
@@ -506,3 +518,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V14 — Share: palms draw on, solo/compat crossfade in a top-anchored slot, spring toggle thumb + segment press-scale (tablist), real tappable channels, compat card (heart-line accent + claret thread + labeled ScoreRing + chips), editorial 24px headline + filled claret seal — tsc + lint(0) + jest 39/39; `v14-share-{solo,compat}{,-dark}.png` + compat-320 — 2026-07-15
 - V15 — Pair-reveal: palms slide in (SlideInLeft/Right) + draw on w/ distinct a11y labels, RedThread draws, ScoreRing counts up 0→N (new `animate` + `useCountUp`) as the headline + spoken summary, sub-scores fan in with dimension icons (new `elements` glyph); claim verified (V10 met spec) — tsc + lint(0) + jest 39/39; `v15-{pair,pair-320,claim}{,-dark}.png` — 2026-07-15
 - V16 — Paywall: personalized palm hero (their fate line lit + line names), claret brand seal, feature-matched staggered inclusions, spring plan cards, `flex:1` dead space removed (ScrollView), stable price hierarchy (per-month lead, no colour flip), Restore hitSlop + separated footer — tsc + lint(0) + jest 39/39; `v16-paywall{,-320,-dark}.png` — 2026-07-15
+- V17 — Fortune: Avoid→danger (two-reds resolved, only red-thread keeps heritage), lucky_color Indigo→Jade green, hero FortuneCard (accent chip + promoted essence + staggered unfold), branded animated a11y StreakStrip (accent flame), first-run PalmDiagram hero, English day-pillar whisper (`dayPillarEn`) — tsc + lint(0) + jest 39/39; `v17-fortune{,-320,-dark,-free,-empty}.png` — 2026-07-15
