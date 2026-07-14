@@ -1,12 +1,13 @@
-import { PlaceholderScreen } from '@/components/PlaceholderScreen';
+import { AnalyzingView } from '@/features/reading/AnalyzingView';
+import { SOCIAL_PROOF } from '@/features/reading/analyzing';
+import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 
+/**
+ * Analyzing loader (UIUX §2.4, P6.T1). Renders {@link AnalyzingView}. Seeded with a mid-pipeline
+ * preview state so the screen is buildable + device-free-verifiable (web screenshot); the real
+ * route drives `status` from `useScanStatus(scanId)` and `elapsedMs` from a mount timer, and
+ * navigates to the reveal on `complete`.
+ */
 export default function Analyzing() {
-  return (
-    <PlaceholderScreen
-      group="(reading)"
-      title="Reading your palm…"
-      note="D · staged analyzing loader tracking real pipeline status (UIUX §2.4, P6.T1)"
-      links={[{ href: '/reveal', label: 'Reading ready → reveal' }]}
-    />
-  );
+  return <AnalyzingView geometry={PREVIEW_GEOMETRY} status="extracting" elapsedMs={7200} socialProof={SOCIAL_PROOF[0]} />;
 }
