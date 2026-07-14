@@ -16,16 +16,16 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V17 `[x]` (V0 + Launcher…Paywall + Fortune). Screen phase continues at
-  V18 (Chat). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
+- **Status:** IN PROGRESS — V1–V18 `[x]` (V0 + Launcher…Fortune + Chat). Screen phase continues at
+  V19 (History). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
 - **Dark screenshots (V9+):** build a dark bundle with `EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export`
   then run `shoot.mjs` (RNW can't switch scheme client-side in a static web export). Light = normal
   export. `/dev/theme` still renders both via `forceScheme`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V17** — Fortune (two-reds resolved, hero card, branded streak, palm first-run, day-pillar whisper) (2026-07-15).
-- **Next task:** **V18 — Chat** (`features/chat/ChatThread.tsx` + `chat.ts`).
+- **Last completed:** **V18** — Chat (Logomark avatars, palm citation, differentiated empty state, tails, chip fade, micro-interactions) (2026-07-15).
+- **Next task:** **V19 — History** (`features/reading/HistoryShelf.tsx`).
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -431,7 +431,7 @@ schema/migration/secret changes — none of this touches the DB.
     wraps at 320. tsc + lint(0) + jest **39/39**; grep no indigo/raw hex. Screens
     `docs/checkpoints/redesign/v17-fortune{,-320,-dark}.png` + `-free` + `-empty{,-dark}`. Unfold/flame/
     press `[~]`.
-- [ ] **V18 — Chat** (`features/chat/ChatThread.tsx` + `chat.ts`) — grounded identity: a small
+- [x] **V18 — Chat** (`features/chat/ChatThread.tsx` + `chat.ts`) — grounded identity: a small
   **Logomark avatar** on assistant bubbles + a **red-thread/palm citation** replacing the green
   `shield`/`success` "verified" line (keep `citationLabel()` copy); differentiate the empty-state
   tile from the paywall gate; **staggered bubble entrance** + typing→answer crossfade; chip
@@ -440,7 +440,20 @@ schema/migration/secret changes — none of this touches the DB.
   right-edge **fade/peek** to the chip scroller (last chip currently hard-clips) + `accessibilityLabel`
   on chips. Verify: screenshots `/dev/chat-typing` + `/dev/chat-empty` at 390×844 (+320) — avatar,
   red citation, tailed bubbles, chip fade; grep no `name="shield"`/`tone="success"` on the citation,
-  no raw pixel literals; bubble/typing motion `[~]`.
+  no raw pixel literals; bubble/typing motion `[~]`. (2026-07-15)
+  - DONE: assistant bubbles + the typing bubble now carry a small **Logomark avatar** (accent mark in
+    an accentMuted circle); the citation is a **palm** icon + accent text ("Cites your heart line",
+    `citationLabel()` unchanged) — the green `shield`/`tone="success"` is gone (grep-clean). **Empty
+    state** rebuilt around the **Logomark** (bordered surface circle) so it reads distinct from the
+    non-premium chat-icon gate. Bubbles **stagger in** (`FadeInDown`) and the typing bubble
+    **crossfades** (`FadeOut`/`FadeIn`) to the answer. **Speaker tails** via asymmetric bottom corners
+    (user→bottom-right squared, assistant→bottom-left). `Chip` gets a press-spring + entrance +
+    `accessibilityLabel`; the send button press-springs; the input border transitions to accent on
+    focus. Right-edge **fade/peek** (an SVG transparent→bg gradient) so the last chip no longer
+    hard-clips. Wrapped in `KeyboardAvoidingView`; `AppHeader showDivider`. Magic pixels tokenized
+    (input `typography.body.fontSize`, send `controlHeight.md`). tsc + lint(0) + jest **39/39**; grep
+    no shield/success citation, no raw hex. Screens
+    `docs/checkpoints/redesign/v18-chat-{typing,empty}{,-dark}.png`. Stagger/crossfade/press `[~]`.
 - [ ] **V19 — History** (`features/reading/HistoryShelf.tsx`) — row **entrance stagger** +
   **press-spring** (+ `accentMuted` pressed tint); make the 64px thumbnail **legible** (`silhouette=
   false`, palm vs face distinct) with the line in `accent` (vermilion); wrap the palm/face icon in a
@@ -519,3 +532,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V15 — Pair-reveal: palms slide in (SlideInLeft/Right) + draw on w/ distinct a11y labels, RedThread draws, ScoreRing counts up 0→N (new `animate` + `useCountUp`) as the headline + spoken summary, sub-scores fan in with dimension icons (new `elements` glyph); claim verified (V10 met spec) — tsc + lint(0) + jest 39/39; `v15-{pair,pair-320,claim}{,-dark}.png` — 2026-07-15
 - V16 — Paywall: personalized palm hero (their fate line lit + line names), claret brand seal, feature-matched staggered inclusions, spring plan cards, `flex:1` dead space removed (ScrollView), stable price hierarchy (per-month lead, no colour flip), Restore hitSlop + separated footer — tsc + lint(0) + jest 39/39; `v16-paywall{,-320,-dark}.png` — 2026-07-15
 - V17 — Fortune: Avoid→danger (two-reds resolved, only red-thread keeps heritage), lucky_color Indigo→Jade green, hero FortuneCard (accent chip + promoted essence + staggered unfold), branded animated a11y StreakStrip (accent flame), first-run PalmDiagram hero, English day-pillar whisper (`dayPillarEn`) — tsc + lint(0) + jest 39/39; `v17-fortune{,-320,-dark,-free,-empty}.png` — 2026-07-15
+- V18 — Chat: Logomark avatar on assistant/typing bubbles, palm citation in accent (replaces green shield/success), Logomark empty state (distinct from gate), staggered bubbles + typing crossfade, speaker tails, chip press-spring+entrance+fade, send press-spring, input focus, KeyboardAvoidingView, showDivider — tsc + lint(0) + jest 39/39; `v18-chat-{typing,empty}{,-dark}.png` — 2026-07-15
