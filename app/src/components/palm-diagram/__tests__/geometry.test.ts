@@ -65,4 +65,29 @@ describe('palm diagram geometry (P6.T2)', () => {
   it('attaches CJK labels to the major lines', () => {
     expect(buildDiagram(geo).find((s) => s.line === 'heart_line')?.label?.text).toBe('心');
   });
+
+  it('anchors labels to edge margins (heart/head → right/end, life → left/start)', () => {
+    const d = buildDiagram(geo, { size: 1000 });
+    const heart = d.find((s) => s.line === 'heart_line')?.label;
+    const head = d.find((s) => s.line === 'head_line')?.label;
+    const life = d.find((s) => s.line === 'life_line')?.label;
+    expect(heart?.anchor).toBe('end');
+    expect(head?.anchor).toBe('end');
+    expect(life?.anchor).toBe('start');
+    // heart + head share the right margin but are nudged apart vertically (no overlap).
+    expect(heart?.x).toBe(head?.x);
+    expect(Math.abs((heart?.y ?? 0) - (head?.y ?? 0))).toBeGreaterThan(20);
+  });
+
+  it('keeps every label anchor inside the screen-edge gutter (no clipping)', () => {
+    const size = 300;
+    const gutter = (56 / 1000) * size;
+    for (const s of buildDiagram(geo, { size })) {
+      if (!s.label) continue;
+      expect(s.label.x).toBeGreaterThanOrEqual(0);
+      expect(s.label.x).toBeLessThanOrEqual(size);
+      expect(s.label.y).toBeGreaterThanOrEqual(gutter - 0.1);
+      expect(s.label.y).toBeLessThanOrEqual(size - gutter + 0.1);
+    }
+  });
 });

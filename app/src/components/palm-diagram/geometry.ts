@@ -46,14 +46,32 @@ export function smoothPath(pts: Point[]): string {
   return d;
 }
 
+export type LabelAnchor = 'start' | 'middle' | 'end';
+
 export interface DiagramStroke {
   line: string;
   d: string; // SVG path `d` in the target `size` frame
   highlighted: boolean; // drawn in the accent
   /** Approx polyline length in the `size` frame — seeds the draw-on `strokeDasharray`. */
   length: number;
-  label?: { text: string; x: number; y: number };
+  /** Label pinned to a screen-edge margin with a per-line `anchor` so text never clips or
+   *  overlaps a line; `y` tracks the line, nudged so neighbours (heart/head) don't collide. */
+  label?: { text: string; x: number; y: number; anchor: LabelAnchor };
 }
+
+/**
+ * Per-line label placement (redesign v2 V6 — fixes the Fate/Heart overlap + edge clipping). Each
+ * label is pinned to an outer margin and grown *inward* via its `anchor`, so a right-ending line's
+ * label sits in the right gutter (anchor `end`, never clipping), a left/bottom line in its gutter,
+ * and heart vs head are pushed apart vertically. `edge` picks the margin; `ny` is the vertical
+ * nudge (in the 1000-frame) applied to the line's own endpoint y.
+ */
+const LABEL_LAYOUT: Record<string, { edge: 'left' | 'right' | 'center'; ny: number }> = {
+  heart_line: { edge: 'right', ny: -30 },
+  head_line: { edge: 'right', ny: 30 },
+  life_line: { edge: 'left', ny: 20 },
+  fate_line: { edge: 'center', ny: 0 },
+};
 
 export interface DiagramOptions {
   size?: number; // output viewport (square), default 1000
@@ -74,6 +92,10 @@ export function buildDiagram(geometry: LineGeometry, opts: DiagramOptions = {}):
   const names = Object.keys(geometry);
   const ordered = [...names.filter(isMajor).sort((a, b) => MAJOR_LINES.indexOf(a as never) - MAJOR_LINES.indexOf(b as never)), ...names.filter((l) => !isMajor(l))];
 
+  // Screen-edge gutter so a label's anchor never sits on the frame edge.
+  const gutter = (56 / 1000) * size;
+  const clampY = (y: number) => Math.min(Math.max(y, gutter), size - gutter);
+
   const out: DiagramStroke[] = [];
   for (const line of ordered) {
     const pts = geometry[line];
@@ -86,13 +108,15 @@ export function buildDiagram(geometry: LineGeometry, opts: DiagramOptions = {}):
     for (let i = 1; i < mapped.length; i++) {
       length += Math.hypot(mapped[i][0] - mapped[i - 1][0], mapped[i][1] - mapped[i - 1][1]);
     }
-    out.push({
-      line,
-      d: smoothPath(mapped),
-      highlighted,
-      length: r1(length),
-      label: label ? { text: label, x: r1(end[0] + (18 / 1000) * size), y: r1(end[1] + (8 / 1000) * size) } : undefined,
-    });
+    let labelObj: DiagramStroke['label'];
+    if (label) {
+      const lay = LABEL_LAYOUT[line] ?? { edge: 'right' as const, ny: 0 };
+      const x = lay.edge === 'left' ? gutter : lay.edge === 'center' ? size / 2 : size - gutter;
+      const anchor: LabelAnchor = lay.edge === 'left' ? 'start' : lay.edge === 'center' ? 'middle' : 'end';
+      const y = clampY(end[1] + (lay.ny / 1000) * size);
+      labelObj = { text: label, x: r1(x), y: r1(y), anchor };
+    }
+    out.push({ line, d: smoothPath(mapped), highlighted, length: r1(length), label: labelObj });
   }
   return out;
 }

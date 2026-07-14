@@ -5,8 +5,8 @@ import Animated, {
   Easing,
   useAnimatedProps,
   useSharedValue,
+  withDelay,
   withTiming,
-  type SharedValue,
 } from 'react-native-reanimated';
 
 import { useTheme, useReducedMotion } from '@/theme';
@@ -32,10 +32,12 @@ export interface PalmDiagramProps {
   showLabels?: boolean;
   /** Use the traditional CJK labels (心·智·命·运) instead of English. Only with `showLabels`. */
   traditional?: boolean;
-  /** Draw the faint hand silhouette behind the lines. Default true. */
+  /** Draw the faint hand silhouette behind the lines. Default true; auto-off on ≤64px thumbnails. */
   silhouette?: boolean;
-  /** Play the ~1.2s draw-on (native only; respects reduce-motion). Default true. */
+  /** Play the staggered draw-on (native only; respects reduce-motion). Default true. */
   animate?: boolean;
+  /** Color for the highlighted / signature line(s). Default `accent` (three-reds §3.2). */
+  highlightColor?: string;
   /** Accessibility label for the diagram (a meaningful image). Pass `""` to mark decorative. */
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
@@ -57,27 +59,39 @@ export function PalmDiagram({
   traditional = false,
   silhouette = true,
   animate = true,
+  highlightColor,
   accessibilityLabel = 'Your palm line diagram',
   style,
 }: PalmDiagramProps) {
-  const { colors, fonts } = useTheme();
+  const { colors, fonts, motion } = useTheme();
   const strokes = buildDiagram(geometry, { size, highlightedLine, signatureLines });
   const u = (n: number) => (n * size) / 1000;
 
   const reduceMotion = useReducedMotion();
-
-  // Fail-safe: progress starts fully drawn (1) so the diagram is never blank if the worklet
-  // doesn't run (web / reanimated absent). The draw-on re-triggers it on native.
-  const progress = useSharedValue(1);
   const shouldAnimate = animate && !reduceMotion && Platform.OS !== 'web';
+  const stagger = motion.stagger.reveal;
+  const drawDur = motion.duration.draw;
+
+  // The single accent for the highlighted / signature line(s) — the brand vermilion by default.
+  const hl = highlightColor ?? colors.accent;
+  const hlStop2 = highlightColor && highlightColor !== colors.accent ? hl : colors.accentPressed;
+  // Auto-drop the silhouette on thumbnails (≤64px) — it only muddies the small frame.
+  const showSilhouette = silhouette && size > 64;
+
+  // Bloom: the highlighted line's glow eases in as its stroke lands (after its staggered delay),
+  // then settles at rest. Fail-safe / web / reduce-motion → the settled end-state (full glow).
+  const hiIndex = strokes.findIndex((s) => s.highlighted);
+  const bloom = useSharedValue(1);
   useEffect(() => {
     if (!shouldAnimate) {
-      progress.value = 1;
+      bloom.value = 1;
       return;
     }
-    progress.value = 0;
-    progress.value = withTiming(1, { duration: 1200, easing: Easing.out(Easing.cubic) });
-  }, [shouldAnimate, progress]);
+    bloom.value = 0;
+    const delay = (hiIndex >= 0 ? hiIndex * stagger : 0) + drawDur * 0.55;
+    bloom.value = withDelay(delay, withTiming(1, { duration: 360, easing: Easing.out(Easing.cubic) }));
+  }, [shouldAnimate, bloom, hiIndex, stagger, drawDur]);
+  const glowProps = useAnimatedProps(() => ({ strokeOpacity: 0.06 + 0.12 * bloom.value }));
 
   return (
     <Svg
@@ -91,13 +105,13 @@ export function PalmDiagram({
     >
       <Defs>
         <LinearGradient id="palmAccent" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor={colors.accent} />
-          <Stop offset="1" stopColor={colors.accentPressed} />
+          <Stop offset="0" stopColor={hl} />
+          <Stop offset="1" stopColor={hlStop2} />
         </LinearGradient>
       </Defs>
 
-      {/* Faint hand silhouette — negative space so the lines read as a palm. */}
-      {silhouette ? (
+      {/* Faint hand silhouette — negative space so the lines read as a palm (off on thumbnails). */}
+      {showSilhouette ? (
         <Path
           d={HAND_SILHOUETTE}
           transform={`scale(${size / 1000})`}
@@ -110,26 +124,42 @@ export function PalmDiagram({
         />
       ) : null}
 
-      {/* Soft wide underlay → an engraved/embossed feel; accent glow under highlighted lines. */}
-      {strokes.map((s) => (
-        <Path
-          key={`u-${s.line}`}
-          d={s.d}
-          fill="none"
-          stroke={s.highlighted ? colors.accent : colors.textPrimary}
-          strokeOpacity={s.highlighted ? 0.18 : 0.08}
-          strokeWidth={u(s.highlighted ? 20 : 14)}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ))}
+      {/* Soft wide underlay → an engraved/embossed feel; the highlighted glow blooms in. */}
+      {strokes.map((s) =>
+        s.highlighted ? (
+          <AnimatedPath
+            key={`u-${s.line}`}
+            d={s.d}
+            fill="none"
+            stroke={hl}
+            strokeWidth={u(20)}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            animatedProps={glowProps}
+          />
+        ) : (
+          <Path
+            key={`u-${s.line}`}
+            d={s.d}
+            fill="none"
+            stroke={colors.textPrimary}
+            strokeOpacity={0.08}
+            strokeWidth={u(14)}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ),
+      )}
 
-      {/* Main weighted ink, drawn on. */}
-      {strokes.map((s) => (
+      {/* Main weighted ink — each line draws on in classical order (staggered). */}
+      {strokes.map((s, i) => (
         <DrawStroke
           key={`m-${s.line}`}
           stroke={s}
-          progress={progress}
+          index={i}
+          stagger={stagger}
+          drawDur={drawDur}
+          shouldAnimate={shouldAnimate}
           color={s.highlighted ? 'url(#palmAccent)' : colors.textPrimary}
           width={u(s.highlighted ? 7 : 4.5)}
         />
@@ -142,6 +172,7 @@ export function PalmDiagram({
                 key={`l-${s.line}`}
                 x={s.label.x}
                 y={s.label.y}
+                textAnchor={s.label.anchor}
                 fontSize={u(traditional ? 34 : 30)}
                 fill={colors.textSecondary}
                 fontFamily={traditional ? fonts.cjk : fonts.bodyMedium}
@@ -155,18 +186,35 @@ export function PalmDiagram({
   );
 }
 
+/** One palm line, revealed by animating its dash offset full → 0 after a per-index stagger delay. */
 function DrawStroke({
   stroke,
-  progress,
+  index,
+  stagger,
+  drawDur,
+  shouldAnimate,
   color,
   width,
 }: {
   stroke: DiagramStroke;
-  progress: SharedValue<number>;
+  index: number;
+  stagger: number;
+  drawDur: number;
+  shouldAnimate: boolean;
   color: string;
   width: number;
 }) {
-  // Reveal the path by animating the dash offset from its full length down to 0.
+  // Fail-safe: progress starts fully drawn (1) so the diagram is never blank if the worklet
+  // doesn't run (web / reanimated absent). The draw-on re-triggers it, staggered, on native.
+  const progress = useSharedValue(1);
+  useEffect(() => {
+    if (!shouldAnimate) {
+      progress.value = 1;
+      return;
+    }
+    progress.value = 0;
+    progress.value = withDelay(index * stagger, withTiming(1, { duration: drawDur, easing: Easing.out(Easing.cubic) }));
+  }, [shouldAnimate, index, stagger, drawDur, progress]);
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: stroke.length * (1 - progress.value),
   }));

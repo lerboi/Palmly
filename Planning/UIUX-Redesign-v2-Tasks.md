@@ -16,13 +16,13 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V5 `[x]`. V0 foundation continues (V6–V8) before screens (V9+). Prior
+- **Status:** IN PROGRESS — V1–V6 `[x]`. V0 foundation continues (V7–V8) before screens (V9+). Prior
   round R1–R24 ("Quiet Cosmos") is complete + archived in `UIUX-Redesign-Tasks.md`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V5** — Logomark weighted-ink accent-safe rebuild + opt-in draw-on (2026-07-15).
-- **Next task:** **V6 — PalmDiagram: per-line stagger + bloom, label-collision fix, `highlightColor`, silhouette**.
+- **Last completed:** **V6** — PalmDiagram stagger/bloom + label-collision fix + `highlightColor` (2026-07-15).
+- **Next task:** **V7 — AppHeader: press feedback + optional scroll divider**.
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -172,7 +172,7 @@ schema/migration/secret changes — none of this touches the DB.
     `docs/checkpoints/redesign/v5-launcher.png` (88px mark) + `v5-logomark.png` (matrix, light+dark).
     Live draw-on `[~]`. NB brand-asset generator (`scripts/gen-brand-assets.mjs`) still holds the old
     paths/indigo — regenerated in V9.
-- [ ] **V6 — PalmDiagram: per-line stagger + bloom, label-collision fix, `highlightColor`, silhouette**
+- [x] **V6 — PalmDiagram: per-line stagger + bloom, label-collision fix, `highlightColor`, silhouette** (2026-07-15)
   - Build: `PalmDiagram.tsx` — per-stroke start delay in classical order (heart→head→life→fate) so
     lines reveal in sequence; bloom the highlighted line's accent glow on completion; add a
     `highlightColor` prop (default `accent`); make the silhouette read as a hand (or derive from
@@ -182,6 +182,18 @@ schema/migration/secret changes — none of this touches the DB.
   - Verify: `geometry.test.ts` updated + green (pure module); `expo export` + screenshots of
     `/welcome` (labels) and a highlighted hero at 390×844 + 320 show no label overlapping a line and
     no clipping; grep for per-stroke `withDelay`; native draw-on `[~]`.
+  - DONE: `geometry.ts` (pure) — labels now pinned to edge margins with a per-line `anchor` grown
+    inward (heart/head→right/`end`, life→left/`start`, fate→center/`middle`), a 56u screen-edge
+    gutter (clamped y), and a heart(−30)/head(+30) vertical nudge so the old Fate/Heart collision is
+    gone; `LabelAnchor` type exposed → `PalmDiagram` sets `textAnchor`. `PalmDiagram` — each stroke
+    draws on with a per-index `withDelay(i·stagger.reveal)` (classical order); highlighted glow
+    **blooms** in (own `bloom` value, fail-safe/web → full glow); new `highlightColor` prop (default
+    `accent` — the three-reds palm highlight; drives the gradient stops + glow); silhouette
+    auto-drops on ≤64px thumbnails. `geometry.test.ts` +2 (anchor/gutter) → **9** green. tsc + lint(0)
+    + jest **38/38**. Screens: `docs/checkpoints/redesign/v6-welcome{,-320}.png` (labels: no clip, no
+    line-overlap, heart/head split) + `v6-history.png` (64px thumbs now silhouette-free, cleaner);
+    palm highlight renders vermilion. Live stagger/bloom/draw-on `[~]`. (Silhouette shape kept as-is
+    for large sizes — the concrete win is the thumbnail drop; a bespoke hand path is a later nicety.)
 - [ ] **V7 — AppHeader: press feedback + optional scroll divider**
   - Build: `AppHeader.tsx` — the back `Pressable` gets the shared reduce-motion-aware press
     affordance; add an optional `showDivider` bottom hairline (`border`) for scrolled content; keep
@@ -361,3 +373,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V3 — Button: press-spring (0.97, reduce-motion/web gated), `danger`+`premium` variants, 3-dot brand loader (width-reserved, replaces ActivityIndicator), tokenized heights (`controlHeight`)/gap; added `dangerPressed` to all skins; migrated PrivacyCenter delete to `variant="danger"` — tsc + lint(0) + jest 36/36; `docs/checkpoints/redesign/v3-buttons.png` light+dark full matrix, resting scale=1; haptics deferred ([~], dep not installed) — 2026-07-15
 - V4 — Card: `onPress` press-spring (0.985) + `pressedTint` (sunken/accentMuted), `entranceIndex` FadeInDown stagger (reduce-motion/web → static); migrated history ReadingRow + fortune RedThreadRow/RowLink off `<Pressable><Card>` (index-staggered) — tsc + lint(0) + jest 36/36; `v4-{fortune,history,theme-cards}.png` light+dark; PaywallView/RevealView Card-rows deferred to V16/V13 — 2026-07-15
 - V5 — Logomark: heart heaviest + two-tone paired against ink (accent-safe), heritage/onAccent mono (onAccent contrast fix), opt-in `animate` draw-on (web/reduce-motion static); `/dev/theme` matrix extended — tsc + lint(0) + jest 36/36; `v5-{launcher,logomark}.png` light+dark; no raw hex in Logomark — 2026-07-15
+- V6 — PalmDiagram: per-stroke `withDelay` stagger (classical order) + highlighted-glow bloom + `highlightColor` prop (default accent) + silhouette auto-drop ≤64px; geometry.ts label placement fixed (edge-margin anchor + gutter + heart/head nudge, `LabelAnchor` exposed → `textAnchor`) — tsc + lint(0) + jest 38/38 (geometry 9); `v6-welcome{,-320}.png` no clip/overlap, `v6-history.png` clean thumbs — 2026-07-15
