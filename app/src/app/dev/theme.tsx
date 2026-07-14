@@ -1,5 +1,5 @@
 import { View, ScrollView, StyleSheet } from 'react-native';
-import { Button, Card, Icon, SealBadge, Text } from '@/components/ui';
+import { Button, Card, Icon, Logomark, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import {
   ThemeProvider,
@@ -98,7 +98,7 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
     >
       {/* Header */}
       <View style={styles.headerRow}>
-        <SealBadge glyph="掌" size={44} />
+        <Logomark size={44} tone="accent" />
         <View style={{ flex: 1 }}>
           <Text variant="title">{activeSkin.name}</Text>
           <Text variant="caption" tone="secondary">
@@ -245,17 +245,48 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
 
       <Divider />
 
-      {/* Card + seals */}
-      <Text variant="heading">Card &amp; seal</Text>
+      {/* Brand mark */}
+      <Text variant="heading">Logomark</Text>
+      <View style={styles.brandRow}>
+        <View style={styles.brandItem}>
+          <Logomark size={56} tone="ink" />
+          <Text variant="caption" tone="secondary">
+            mark
+          </Text>
+        </View>
+        <View style={styles.brandItem}>
+          <Logomark size={56} tone="accent" />
+          <Text variant="caption" tone="secondary">
+            accent
+          </Text>
+        </View>
+        <View style={styles.brandItem}>
+          <Logomark size={40} variant="stamp" tone="heritage" />
+          <Text variant="caption" tone="secondary">
+            stamp
+          </Text>
+        </View>
+        <View style={styles.brandItem}>
+          <Logomark size={40} variant="stamp" filled />
+          <Text variant="caption" tone="secondary">
+            stamp filled
+          </Text>
+        </View>
+      </View>
+
+      <Divider />
+
+      {/* Card + seal (share-card corner stamp) */}
+      <Text variant="heading">Card &amp; stamp</Text>
       <Card elevation="md">
         <Text variant="body">
           Your photo is analyzed, then deleted. What stays is your reading.
         </Text>
         <View style={styles.sealRow}>
-          <SealBadge glyph="掌" size={36} />
-          <SealBadge glyph="印" size={36} variant="outline" />
+          <Logomark size={36} variant="stamp" tone="heritage" />
+          <Icon name="check" size={18} color={theme.colors.success} />
           <Text variant="caption" tone="success">
-            ✓ verified
+            verified
           </Text>
         </View>
       </Card>
@@ -289,4 +320,6 @@ const styles = StyleSheet.create({
   iconSheet: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   iconItem: { width: 56, alignItems: 'center', gap: 4 },
   iconRowAccent: { flexDirection: 'row', gap: 16, marginTop: 12 },
+  brandRow: { flexDirection: 'row', gap: 20, alignItems: 'center' },
+  brandItem: { alignItems: 'center', gap: 6 },
 });

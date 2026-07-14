@@ -1,57 +1,30 @@
-import { View, Text as RNText, StyleSheet, type ViewStyle } from 'react-native';
-import { useTheme, fonts } from '@/theme';
+import type { ViewStyle } from 'react-native';
+import { Logomark } from './Logomark';
 
 export interface SealBadgeProps {
-  /** Glyph carved into the chop. Default 掌 ("palm"). */
+  /** @deprecated The CJK glyph is gone — the mark is now the traced-palm Logomark. Ignored. */
   glyph?: string;
   /** Square edge length in px. Default 40. */
   size?: number;
-  /** `filled` = cinnabar stamp with paper glyph (default). `outline` = cinnabar border only. */
+  /** `filled` = inked stamp tile; `outline` = tile outline only. */
   variant?: 'filled' | 'outline';
   style?: ViewStyle;
 }
 
 /**
- * The cinnabar seal (印章) — Palmly's brand chop. A square cinnabar stamp with a carved CJK
- * glyph, corner-placed on share cards "like an artist's chop" (UIUX §1.2). The full stylized
- * palm-with-three-lines mark is rendered in Skia later (P6); this primitive is the glyph chop.
+ * @deprecated Back-compat shim. The cinnabar chop + Noto Serif TC glyph is retired (redesign
+ * §2); this now renders the CJK-free {@link Logomark} `stamp`. Call sites migrate to `Logomark`
+ * (brand mark) or `Icon` (functional glyphs) in the screen tasks (R11/R15/R19); this keeps them
+ * compiling and CJK-free in the meantime.
  */
-export function SealBadge({ glyph = '掌', size = 40, variant = 'filled', style }: SealBadgeProps) {
-  const theme = useTheme();
-  const filled = variant === 'filled';
-
+export function SealBadge({ size = 40, variant = 'filled', style }: SealBadgeProps) {
   return (
-    <View
-      accessibilityRole="image"
-      accessibilityLabel="Palmly seal"
-      style={[
-        styles.seal,
-        {
-          width: size,
-          height: size,
-          borderRadius: theme.radii.seal,
-          backgroundColor: filled ? theme.colors.seal : 'transparent',
-          borderWidth: theme.strokes.bold,
-          borderColor: theme.colors.seal,
-        },
-        style,
-      ]}
-    >
-      <RNText
-        allowFontScaling={false}
-        style={{
-          fontFamily: fonts.cjk,
-          fontSize: size * 0.56,
-          lineHeight: size * 0.72,
-          color: filled ? theme.colors.onAccent : theme.colors.seal,
-        }}
-      >
-        {glyph}
-      </RNText>
-    </View>
+    <Logomark
+      size={size}
+      variant="stamp"
+      tone="heritage"
+      filled={variant === 'filled'}
+      style={style}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  seal: { alignItems: 'center', justifyContent: 'center' },
-});
