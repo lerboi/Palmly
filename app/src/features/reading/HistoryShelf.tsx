@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
@@ -31,36 +31,41 @@ export function HistoryShelf({ readings, showUnchanged = false, now }: HistorySh
       {readings.length === 0 ? (
         <EmptyState />
       ) : (
-        readings.map((r) => <ReadingRow key={r.id} reading={r} now={nowTs} />)
+        readings.map((r, i) => <ReadingRow key={r.id} reading={r} now={nowTs} index={i} />)
       )}
     </Screen>
   );
 }
 
-function ReadingRow({ reading, now }: { reading: ReadingSummary; now: number }) {
+function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: number; index: number }) {
   const theme = useTheme();
   const router = useRouter();
   const isPalm = reading.kind === 'palm';
   return (
-    <Pressable onPress={() => router.push('/reveal')} accessibilityRole="button" accessibilityLabel={`Open reading: ${reading.headline}`}>
-      <Card elevation="sm" style={{ marginBottom: theme.spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-          <PalmDiagram geometry={reading.geometry} size={64} animate={false} signatureLines={['heart_line', 'fate_line']} />
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
-              <Icon name={isPalm ? 'palm' : 'face'} size={16} color={theme.colors.accent} decorative />
-              <Text variant="caption" tone="tertiary" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
-                {isPalm ? 'Palm' : 'Face'} · {relativeDate(reading.createdAt, now)}
-              </Text>
-            </View>
-            <Text variant="bodyMedium" numberOfLines={2} style={{ marginTop: 2 }}>
-              {reading.headline}
+    <Card
+      elevation="sm"
+      onPress={() => router.push('/reveal')}
+      accessibilityLabel={`Open reading: ${reading.headline}`}
+      pressedTint="accent"
+      entranceIndex={index}
+      style={{ marginBottom: theme.spacing.md }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+        <PalmDiagram geometry={reading.geometry} size={64} animate={false} signatureLines={['heart_line', 'fate_line']} />
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
+            <Icon name={isPalm ? 'palm' : 'face'} size={16} color={theme.colors.accent} decorative />
+            <Text variant="caption" tone="tertiary" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
+              {isPalm ? 'Palm' : 'Face'} · {relativeDate(reading.createdAt, now)}
             </Text>
           </View>
-          <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
+          <Text variant="bodyMedium" numberOfLines={2} style={{ marginTop: 2 }}>
+            {reading.headline}
+          </Text>
         </View>
-      </Card>
-    </Pressable>
+        <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
+      </View>
+    </Card>
   );
 }
 

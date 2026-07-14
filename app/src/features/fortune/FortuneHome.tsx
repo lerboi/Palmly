@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { Button, Card, Icon, Screen, Text } from '@/components/ui';
@@ -46,9 +46,9 @@ export function FortuneHome({ fortune, premium, streak, partnerName, firstRun, n
         <>
           <StreakStrip streak={streak} />
           <FortuneCard fortune={fortune} premium={premium} onUnlock={() => router.push('/paywall')} />
-          {partnerName ? <RedThreadRow name={partnerName} onPress={() => router.push('/share')} /> : null}
-          <RowLink icon="history" label="Your readings" onPress={() => router.push('/history')} />
-          <RowLink icon="chat" label="Ask about your reading" premiumLocked={!premium} onPress={() => router.push('/chat')} />
+          {partnerName ? <RedThreadRow name={partnerName} onPress={() => router.push('/share')} index={0} /> : null}
+          <RowLink icon="history" label="Your readings" onPress={() => router.push('/history')} index={1} />
+          <RowLink icon="chat" label="Ask about your reading" premiumLocked={!premium} onPress={() => router.push('/chat')} index={2} />
         </>
       )}
     </Screen>
@@ -108,21 +108,26 @@ function StreakStrip({ streak }: { streak: number }) {
   );
 }
 
-function RedThreadRow({ name, onPress }: { name: string; onPress: () => void }) {
+function RedThreadRow({ name, onPress, index }: { name: string; onPress: () => void; index?: number }) {
   const theme = useTheme();
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Nudge ${name} to compare palms`}>
-      <Card elevation="sm" style={{ marginBottom: theme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-        <Icon name="thread" size={24} color={theme.colors.heritageAccent} decorative />
-        <View style={{ flex: 1 }}>
-          <Text variant="bodyMedium">Waiting for {name}</Text>
-          <Text variant="caption" tone="secondary">
-            Your thread is tied — nudge them to compare palms.
-          </Text>
-        </View>
-        <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
-      </Card>
-    </Pressable>
+    <Card
+      elevation="sm"
+      onPress={onPress}
+      accessibilityLabel={`Nudge ${name} to compare palms`}
+      pressedTint="accent"
+      entranceIndex={index}
+      style={{ marginBottom: theme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}
+    >
+      <Icon name="thread" size={24} color={theme.colors.heritageAccent} decorative />
+      <View style={{ flex: 1 }}>
+        <Text variant="bodyMedium">Waiting for {name}</Text>
+        <Text variant="caption" tone="secondary">
+          Your thread is tied — nudge them to compare palms.
+        </Text>
+      </View>
+      <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
+    </Card>
   );
 }
 
@@ -131,28 +136,35 @@ function RowLink({
   label,
   onPress,
   premiumLocked = false,
+  index,
 }: {
   icon: IconName;
   label: string;
   onPress: () => void;
   premiumLocked?: boolean;
+  index?: number;
 }) {
   const theme = useTheme();
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
-      <Card elevation="sm" style={{ marginBottom: theme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-        <Icon name={icon} size={22} color={theme.colors.accent} decorative />
-        <Text variant="bodyMedium" style={{ flex: 1 }}>
-          {label}
+    <Card
+      elevation="sm"
+      onPress={onPress}
+      accessibilityLabel={label}
+      pressedTint="accent"
+      entranceIndex={index}
+      style={{ marginBottom: theme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}
+    >
+      <Icon name={icon} size={22} color={theme.colors.accent} decorative />
+      <Text variant="bodyMedium" style={{ flex: 1 }}>
+        {label}
+      </Text>
+      {premiumLocked ? (
+        <Text variant="caption" tone="premium">
+          Premium
         </Text>
-        {premiumLocked ? (
-          <Text variant="caption" tone="premium">
-            Premium
-          </Text>
-        ) : (
-          <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
-        )}
-      </Card>
-    </Pressable>
+      ) : (
+        <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
+      )}
+    </Card>
   );
 }

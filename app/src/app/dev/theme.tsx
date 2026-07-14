@@ -261,6 +261,33 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
 
       <Divider />
 
+      {/* Pressable card + staggered entrance (V4) */}
+      <Text variant="heading">Pressable &amp; entrance</Text>
+      <View style={{ gap: theme.spacing.md }}>
+        <Card
+          elevation="sm"
+          onPress={() => {}}
+          accessibilityLabel="Open reading"
+          pressedTint="accent"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}
+        >
+          <Icon name="history" size={22} color={theme.colors.accent} decorative />
+          <Text variant="bodyMedium" style={{ flex: 1 }}>
+            Pressable card (spring + accent tint)
+          </Text>
+          <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
+        </Card>
+        {[0, 1, 2].map((i) => (
+          <Card key={i} elevation="sm" entranceIndex={i}>
+            <Text variant="caption" tone="secondary">
+              staggered entrance · index {i}
+            </Text>
+          </Card>
+        ))}
+      </View>
+
+      <Divider />
+
       {/* Brand mark */}
       <Text variant="heading">Logomark</Text>
       <View style={styles.brandRow}>

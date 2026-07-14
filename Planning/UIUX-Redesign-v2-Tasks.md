@@ -16,13 +16,13 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V3 `[x]`. V0 foundation continues (V4–V8) before screens (V9+). Prior
+- **Status:** IN PROGRESS — V1–V4 `[x]`. V0 foundation continues (V5–V8) before screens (V9+). Prior
   round R1–R24 ("Quiet Cosmos") is complete + archived in `UIUX-Redesign-Tasks.md`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V3** — Button press-spring + danger/premium variants + brand loader (2026-07-15).
-- **Next task:** **V4 — Card: unified pressable affordance + entrance/stagger primitive**.
+- **Last completed:** **V4** — Card pressable affordance + entrance/stagger primitive (2026-07-15).
+- **Next task:** **V5 — Logomark: weighted-ink, accent-safe rebuild + opt-in draw-on**.
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -131,7 +131,7 @@ schema/migration/secret changes — none of this touches the DB.
     tsc + lint(0) + jest **36/36**; `docs/checkpoints/redesign/v3-buttons.png` (light+dark) shows the
     full matrix at resting scale=1, brand loader replacing ActivityIndicator. Grep: `withSpring` +
     `useReducedMotion` present, no raw hex in Button. Live spring/haptics `[~]`.
-- [ ] **V4 — Card: unified pressable affordance + entrance/stagger primitive**
+- [x] **V4 — Card: unified pressable affordance + entrance/stagger primitive** (2026-07-15)
   - Build: `Card.tsx` — optional `onPress`/`accessibilityLabel`; when pressable, one shared spring
     press-scale + `surfaceSunken`/`accentMuted` pressed tint (reduce-motion → tint only). Add an
     `entering`/index-delay entrance (or a small `AnimatedCard`) built on `FadeInDown` +
@@ -141,6 +141,18 @@ schema/migration/secret changes — none of this touches the DB.
   - Verify: add a pressable-card + entrance example to `/dev/theme`; screenshot resting state
     light+dark unchanged; `tsc`+`jest`+`lint` green; grep shows list consumers pass an index delay and
     bare `<Pressable><Card>` trends to zero.
+  - DONE: `Card` extended — `onPress`/`accessibilityLabel` → a Pressable surface inside an
+    `Animated.View`; shared press-spring (scale 0.985 via `motion.spring.press`, held-state effect,
+    reduce-motion/web → 1) + `pressedTint` (`sunken` default / `accent`=accentMuted, always applies);
+    `entranceIndex` → `FadeInDown.delay(i·stagger.list)` (native only; web/reduce-motion static).
+    Migrated the 3 named reference consumers → `<Card onPress pressedTint="accent" entranceIndex>`:
+    history `ReadingRow` (+ list `index`), fortune `RedThreadRow` + `RowLink` (indices 0/1/2). Bare
+    `<Pressable><Card>` removed from those files; the 2 remaining (`PaywallView` radio, `RevealView`
+    locked-section) are explicitly owned by V16/V13. `SettingRow` press-spring deferred to V20 (its
+    "highest-leverage" home; it's a row-in-group, not a `<Pressable><Card>`). `/dev/theme` gains a
+    pressable card + 3 staggered-entrance cards. tsc + lint(0) + jest **36/36**; resting-state
+    screenshots `docs/checkpoints/redesign/v4-{fortune,history,theme-cards}.png` (light+dark) show the
+    migrated rows + dev examples. Live spring/entrance `[~]`.
 - [ ] **V5 — Logomark: weighted-ink, accent-safe rebuild + opt-in draw-on**
   - Build: `Logomark.tsx` — differentiated stroke weights (heart line heaviest) + a subtle unifying
     palm gesture so the mark is ownable; make the two-tone survive the red accent (don't collapse
@@ -336,3 +348,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V1 — Added `vermilionSkin` (skin #3) + `activeSkin`; retired indigo (kept #1/#2 + all aliases); re-pinned `tokens.test.ts` to the Vermilion contract — tsc + lint(0) + jest 31/31; `docs/checkpoints/redesign/v1-theme{,-full,-palm}.png` light+dark show vermilion swatches/buttons/markers/palm, no indigo — 2026-07-15
 - V2 — Added `motion` tokens (duration/easing-tuples/spring/stagger) surfaced on `Theme` + shared `useReducedMotion()` hook; refactored PalmDiagram + ChatThread onto it — tsc + lint(0) + jest 36/36 (motion.test.ts); grep confirms hook is sole `isReduceMotionEnabled` caller; palm/chat static end-states unchanged (`v2-*.png`) — 2026-07-15
 - V3 — Button: press-spring (0.97, reduce-motion/web gated), `danger`+`premium` variants, 3-dot brand loader (width-reserved, replaces ActivityIndicator), tokenized heights (`controlHeight`)/gap; added `dangerPressed` to all skins; migrated PrivacyCenter delete to `variant="danger"` — tsc + lint(0) + jest 36/36; `docs/checkpoints/redesign/v3-buttons.png` light+dark full matrix, resting scale=1; haptics deferred ([~], dep not installed) — 2026-07-15
+- V4 — Card: `onPress` press-spring (0.985) + `pressedTint` (sunken/accentMuted), `entranceIndex` FadeInDown stagger (reduce-motion/web → static); migrated history ReadingRow + fortune RedThreadRow/RowLink off `<Pressable><Card>` (index-staggered) — tsc + lint(0) + jest 36/36; `v4-{fortune,history,theme-cards}.png` light+dark; PaywallView/RevealView Card-rows deferred to V16/V13 — 2026-07-15
