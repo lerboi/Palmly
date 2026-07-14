@@ -12,6 +12,7 @@ import { KB_VERSION, type GeminiCall, type GeminiResponse } from '../_shared/nar
 import { writeTelemetry } from '../_shared/telemetry.ts';
 import { decideFailure, exhausted } from '../_shared/retry.ts';
 import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
+import { createContext, requireMode } from '../_shared/context.ts';
 
 const COMPAT_PREFIX = await Deno.readTextFile(new URL('../../../prompts/compat/v1/system_instruction.md', import.meta.url)).catch(
   () => 'Explain the given compatibility score warmly in JSON (headline + strengths/frictions/advice). Scores are ground truth. No health/medical/lifespan claims.',
@@ -120,7 +121,8 @@ async function processMessage(db: SupabaseClient, msg: CompatMessage, geminiCall
 }
 
 Deno.serve(
-  withErrorEnvelope(async () => {
+  withErrorEnvelope(async (req) => {
+    requireMode(createContext(req), 'secret'); // internal only — cron/pipeline invokes with the service key
     const db = admin();
     const geminiCall = realGeminiCall();
     const { data: msgs } = await db.rpc('queue_read', { p_queue: 'compat_jobs', p_vt: 60, p_qty: 1 });

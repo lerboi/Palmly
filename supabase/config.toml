@@ -412,3 +412,78 @@ enabled = true
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# --- Edge Functions (Backend §4) -------------------------------------------------------------------
+# `verify_jwt` is the platform's pre-function JWT gate. USER-facing fns MUST be `true`: auth-resolve
+# decodes the JWT `sub` WITHOUT verifying the signature (it trusts the platform to verify upstream),
+# so `false` would accept a forged `sub`. Workers + public/HMAC fns are `false` and authenticate
+# in-function via the unforgeable service key (`requireMode 'secret'`) or their own signature check.
+# All share the `functions/` Deno import map (resolves the `@supabase/supabase-js` bare specifier).
+
+[functions.hello]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.worker-scan]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.worker-narrative]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.worker-compat]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.push-dispatch]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.card-render]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.cleanup]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.ops-alerts]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.fortune-generate]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.revenuecat-webhook]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.invite-page]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+[functions.account-merge]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
+[functions.account-delete]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
+[functions.compat-request]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
+[functions.chat-send]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
+[functions.invite-claim]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
+[functions.invite-create]
+verify_jwt = true
+import_map = "./functions/deno.json"

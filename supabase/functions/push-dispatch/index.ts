@@ -7,6 +7,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { buildExpoMessage, sendExpoPush, shouldSend, tokensToPrune, type DeviceRow, type PushJob } from '../_shared/push.ts';
 import { writeTelemetry } from '../_shared/telemetry.ts';
 import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
+import { createContext, requireMode } from '../_shared/context.ts';
 
 const admin = (): SupabaseClient =>
   createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false, autoRefreshToken: false } });
@@ -26,7 +27,8 @@ interface PushMessage {
 }
 
 Deno.serve(
-  withErrorEnvelope(async () => {
+  withErrorEnvelope(async (req) => {
+    requireMode(createContext(req), 'secret'); // internal only — cron invokes with the service key
     const db = admin();
     const { data: msgs } = await db.rpc('queue_read', { p_queue: 'push_jobs', p_vt: 60, p_qty: 100 }); // ≤500/s ceiling; a 100-chunk drain
     const list = (msgs ?? []) as PushMessage[];

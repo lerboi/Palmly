@@ -10,6 +10,7 @@ import { fieldMajority, matchSubject, sameFeatures, type SubjectCandidate } from
 import { writeTelemetry } from '../_shared/telemetry.ts';
 import { decideFailure, exhausted } from '../_shared/retry.ts';
 import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
+import { createContext, requireMode } from '../_shared/context.ts';
 
 type Candidate = SubjectCandidate & { scanCount: number };
 
@@ -178,7 +179,8 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
 }
 
 Deno.serve(
-  withErrorEnvelope(async () => {
+  withErrorEnvelope(async (req) => {
+    requireMode(createContext(req), 'secret'); // internal only — cron/pipeline invokes with the service key
     const db = admin();
     const geminiCall = realGeminiCall();
     const { data: msgs } = await db.rpc('queue_read', { p_queue: 'scan_jobs', p_vt: 60, p_qty: 1 });

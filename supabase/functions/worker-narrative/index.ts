@@ -19,6 +19,7 @@ import {
 import { writeTelemetry } from '../_shared/telemetry.ts';
 import { decideFailure, exhausted } from '../_shared/retry.ts';
 import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
+import { createContext, requireMode } from '../_shared/context.ts';
 
 const NARRATIVE_PREFIX = await Deno.readTextFile(
   new URL('../../../prompts/narrative/v1/system_instruction.md', import.meta.url),
@@ -161,7 +162,8 @@ async function processMessage(db: SupabaseClient, msg: NarrativeMessage, geminiC
 }
 
 Deno.serve(
-  withErrorEnvelope(async () => {
+  withErrorEnvelope(async (req) => {
+    requireMode(createContext(req), 'secret'); // internal only — cron/pipeline invokes with the service key
     const db = admin();
     const geminiCall = realGeminiCall();
     const { data: msgs } = await db.rpc('queue_read', { p_queue: 'narrative_jobs', p_vt: 60, p_qty: 1 });
