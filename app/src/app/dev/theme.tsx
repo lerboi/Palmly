@@ -294,13 +294,19 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
         <View style={styles.brandItem}>
           <Logomark size={56} tone="ink" />
           <Text variant="caption" tone="secondary">
-            mark
+            ink
           </Text>
         </View>
         <View style={styles.brandItem}>
           <Logomark size={56} tone="accent" />
           <Text variant="caption" tone="secondary">
             accent
+          </Text>
+        </View>
+        <View style={[styles.brandItem, styles.onAccentTile, { backgroundColor: theme.colors.accent }]}>
+          <Logomark size={56} tone="onAccent" />
+          <Text variant="caption" color={theme.colors.onAccent}>
+            onAccent
           </Text>
         </View>
         <View style={styles.brandItem}>
@@ -313,6 +319,12 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
           <Logomark size={40} variant="stamp" filled />
           <Text variant="caption" tone="secondary">
             stamp filled
+          </Text>
+        </View>
+        <View style={styles.brandItem}>
+          <Logomark size={56} tone="ink" animate />
+          <Text variant="caption" tone="secondary">
+            draw-on
           </Text>
         </View>
       </View>
@@ -372,6 +384,7 @@ const styles = StyleSheet.create({
   iconSheet: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   iconItem: { width: 56, alignItems: 'center', gap: 4 },
   iconRowAccent: { flexDirection: 'row', gap: 16, marginTop: 12 },
-  brandRow: { flexDirection: 'row', gap: 20, alignItems: 'center' },
+  brandRow: { flexDirection: 'row', gap: 20, alignItems: 'center', flexWrap: 'wrap' },
   brandItem: { alignItems: 'center', gap: 6 },
+  onAccentTile: { padding: 8, borderRadius: 12 },
 });

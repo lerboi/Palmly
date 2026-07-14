@@ -16,13 +16,13 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V4 `[x]`. V0 foundation continues (V5–V8) before screens (V9+). Prior
+- **Status:** IN PROGRESS — V1–V5 `[x]`. V0 foundation continues (V6–V8) before screens (V9+). Prior
   round R1–R24 ("Quiet Cosmos") is complete + archived in `UIUX-Redesign-Tasks.md`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V4** — Card pressable affordance + entrance/stagger primitive (2026-07-15).
-- **Next task:** **V5 — Logomark: weighted-ink, accent-safe rebuild + opt-in draw-on**.
+- **Last completed:** **V5** — Logomark weighted-ink accent-safe rebuild + opt-in draw-on (2026-07-15).
+- **Next task:** **V6 — PalmDiagram: per-line stagger + bloom, label-collision fix, `highlightColor`, silhouette**.
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -153,7 +153,7 @@ schema/migration/secret changes — none of this touches the DB.
     pressable card + 3 staggered-entrance cards. tsc + lint(0) + jest **36/36**; resting-state
     screenshots `docs/checkpoints/redesign/v4-{fortune,history,theme-cards}.png` (light+dark) show the
     migrated rows + dev examples. Live spring/entrance `[~]`.
-- [ ] **V5 — Logomark: weighted-ink, accent-safe rebuild + opt-in draw-on**
+- [x] **V5 — Logomark: weighted-ink, accent-safe rebuild + opt-in draw-on** (2026-07-15)
   - Build: `Logomark.tsx` — differentiated stroke weights (heart line heaviest) + a subtle unifying
     palm gesture so the mark is ownable; make the two-tone survive the red accent (don't collapse
     heart=`heritageAccent` + head/life=`accent` to one red — pair heart against ink or a tint); fix
@@ -161,6 +161,17 @@ schema/migration/secret changes — none of this touches the DB.
     `useReducedMotion`).
   - Verify: extend the `/dev/theme` logomark matrix (tone × variant × filled); screenshot light+dark;
     grep Logomark for raw hex (none); `tsc`+`jest` green.
+  - DONE: Logomark rebuilt — heart line heaviest (1.2×), head/life lighter (0.8×) so they read as two
+    lines; **two-tone pairs against ink** (`ink`→ink lines + vermilion heart whisper; `accent`→vermilion
+    lines + ink heart) so it never collapses to one red; `heritage`/`onAccent` are mono (seal / on-fill
+    contrast fix — heart no longer claret-on-accent). Renamed the heart override to `heartColor` (no
+    external callers). Opt-in `animate` draw-on (dash-offset, head/life reveal then heart bloom; shared
+    `useReducedMotion`; web/reduce-motion → static fully-drawn). Dropped an early base-cup experiment
+    (read as a smudge). `/dev/theme` logomark matrix extended (ink/accent/onAccent-on-tile/stamp/stamp-
+    filled/draw-on). tsc + lint(0) + jest **36/36**; grep no raw hex in Logomark; screenshots
+    `docs/checkpoints/redesign/v5-launcher.png` (88px mark) + `v5-logomark.png` (matrix, light+dark).
+    Live draw-on `[~]`. NB brand-asset generator (`scripts/gen-brand-assets.mjs`) still holds the old
+    paths/indigo — regenerated in V9.
 - [ ] **V6 — PalmDiagram: per-line stagger + bloom, label-collision fix, `highlightColor`, silhouette**
   - Build: `PalmDiagram.tsx` — per-stroke start delay in classical order (heart→head→life→fate) so
     lines reveal in sequence; bloom the highlighted line's accent glow on completion; add a
@@ -349,3 +360,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V2 — Added `motion` tokens (duration/easing-tuples/spring/stagger) surfaced on `Theme` + shared `useReducedMotion()` hook; refactored PalmDiagram + ChatThread onto it — tsc + lint(0) + jest 36/36 (motion.test.ts); grep confirms hook is sole `isReduceMotionEnabled` caller; palm/chat static end-states unchanged (`v2-*.png`) — 2026-07-15
 - V3 — Button: press-spring (0.97, reduce-motion/web gated), `danger`+`premium` variants, 3-dot brand loader (width-reserved, replaces ActivityIndicator), tokenized heights (`controlHeight`)/gap; added `dangerPressed` to all skins; migrated PrivacyCenter delete to `variant="danger"` — tsc + lint(0) + jest 36/36; `docs/checkpoints/redesign/v3-buttons.png` light+dark full matrix, resting scale=1; haptics deferred ([~], dep not installed) — 2026-07-15
 - V4 — Card: `onPress` press-spring (0.985) + `pressedTint` (sunken/accentMuted), `entranceIndex` FadeInDown stagger (reduce-motion/web → static); migrated history ReadingRow + fortune RedThreadRow/RowLink off `<Pressable><Card>` (index-staggered) — tsc + lint(0) + jest 36/36; `v4-{fortune,history,theme-cards}.png` light+dark; PaywallView/RevealView Card-rows deferred to V16/V13 — 2026-07-15
+- V5 — Logomark: heart heaviest + two-tone paired against ink (accent-safe), heritage/onAccent mono (onAccent contrast fix), opt-in `animate` draw-on (web/reduce-motion static); `/dev/theme` matrix extended — tsc + lint(0) + jest 36/36; `v5-{launcher,logomark}.png` light+dark; no raw hex in Logomark — 2026-07-15
