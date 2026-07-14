@@ -11,28 +11,31 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R16d (claim landing + compatibility pair-reveal recipient routes) — full red-thread loop done
-- **Next task:** R17 (Paywall modal — RevenueCat-native leg [~])
+- **Last completed:** R17 (Paywall modal — value stack, elevated plan cards, gold SAVE seal, accent CTA)
+- **Next task:** R18 (de-almanac the Fortune home + card; empty/first-run state)
 - **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin + render/grep-verify.)
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
   `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
   `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
   in app surfaces — the camera-overlay `OVERLAY` palette in `CaptureView` is a justified
   theme-independent exception), realistic English (no lorem, trim CJK/almanac).
-  **R17 = build the Paywall modal** — `(modals)/paywall.tsx` is a `PlaceholderScreen` → a clean
-  modern paywall (read UIUX-specs §2.8 first). Structure: a value stack (personal — "Your palm
-  has more to say", peek of the user's locked sections), plan cards with elevation + rounded-rect
-  (annual pre-selected w/ per-month framing + a "SAVE 40%" **premium/gold** seal — gold is the
-  single premium marker; monthly beside it), a plain inclusion list (daily almanac · unlimited
-  compatibility · deep-dive lines · chat), one confident primary CTA in the **accent** (NO
-  cinnabar fill), restore-purchases + legal links, and a close "✕" (Icon `close`) top-left.
-  Launch config = **no trial, direct purchase** (U3). Provide plan-card FIXTURES (names/prices —
-  use realistic SEA-ish pricing, no-trial copy). The RevenueCat Paywalls-v2 native render is
-  device-only → build the in-app layout with fixtures and mark the RevenueCat leg `[~]`.
-  Verify: phone-size screenshot; no cinnabar fill; gold used only as the premium marker.
+  **R18 = de-almanac the Fortune home + card.** Files: `src/features/fortune/FortuneHome.tsx`
+  (StreakStrip still uses 🔥 + `RowLink` uses CJK 掌/问 glyphs — replace with `Icon`
+  streak/history/chat; `RedThreadRow` already fixed in R16), `src/features/fortune/FortuneCard.tsx`
+  (READ IT — holds the almanac Do/Avoid + aspects + lucky stats; has the crammed `gap:1`, 宜/忌,
+  事业/感情/财运 CJK tags, "Cinnabar red" lucky colour), `src/features/fortune/fortune.ts`
+  (`almanacDate` → weekday/gregorian/pillar 己丑日; lead with weekday + date, DEMOTE the 干支
+  pillar to a small optional detail). Do: split Do/Avoid, aspects, lucky stats into distinct
+  grouped sections with real spacing (fix `gap:1`); 宜/忌 → Do/Avoid; drop 事业/感情/财运 CJK tags
+  (→ English Career/Love/Wealth or icons); rename/drop the "Cinnabar red" lucky colour; a designed
+  streak component with the `Icon name="streak"` (drop 🔥). **Add the empty/first-run state** (no
+  reading yet → a calm "scan to begin" card). Read UIUX-specs §2.11 first. Verify: premium + free
+  screenshots — calm hierarchy, no CJK, no edge-clipped streak; a `/dev/fortune-empty` preview for
+  the empty state. The fortune route is `(home)/fortune`.
   **SCREENSHOTS:** `npx expo export --platform web` then
-  `node scripts/shoot.mjs ../docs/checkpoints/redesign "paywall:390x900=r17-paywall"`.
-  Then R18 (fortune de-almanac), R19 (chat), R20 (history), R21 (settings), R22–R24 (finalize).
+  `node scripts/shoot.mjs ../docs/checkpoints/redesign "fortune:390x900=r18-fortune"`. (Free vs
+  premium: the `(home)/fortune.tsx` route seeds `premium`; may need a `/dev/fortune-free` preview.)
+  Then R19 (chat), R20 (history), R21 (settings), R22–R24 (finalize).
   **Finalize-pass cleanups (R22/R24):** `fonts.cjk`/NotoSerifTC has ZERO default consumers →
   zh-only load; /dev/theme "Section markers" CJK demo + the chat `SealBadge` call (R19) to migrate.
 
@@ -176,7 +179,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   end of the red-thread loop (currently no route exists though `scheme:"palmly"` is declared).
   A claim/landing screen + the compatibility pair-reveal screen (score ring + both-sides
   narrative), seeded with a fixture. Verify: dev route-map reaches it; screenshots.
-- [ ] **R17 — Build the Paywall modal** — `(modals)/paywall` → clean modern paywall: value
+- [x] **R17 — Build the Paywall modal** _(2026-07-14)_ _(RevenueCat-native purchase leg [~])_ — `(modals)/paywall` → clean modern paywall: value
   stack, plan cards with elevation + rounded-rect, gold reserved as the single premium marker,
   one confident primary CTA in the new accent. Provide plan-card fixtures (names/prices/no-trial
   copy). Mark the RevenueCat-native leg `[~]`. Verify: phone-size screenshot; no cinnabar fill.
@@ -403,3 +406,13 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   `/dev` route map. Native deep-link resolution (`scheme:"palmly"`→claim) + the thread-draw/
   score count-up are `[~]` (static end-state verified). Evidence: `tsc` clean, `jest` 31/31,
   `expo lint` clean, no CJK; screenshots `r16d-claim.png` + `r16d-pair.png`. — 2026-07-14
+- R17 — Paywall built (`(modals)/paywall` PlaceholderScreen → `features/paywall/PaywallView`): a
+  clean single-sheet value stack — close ✕ (Icon), a gold "PALMLY PREMIUM" marker (sparkle), the
+  "Your palm has more to say" headline + value line, a 4-item green-check inclusion list (daily
+  almanac / unlimited compatibility / deep-dive lines / chat), two elevated selectable plan cards
+  (Annual pre-selected — accent border/tint + filled radio + a **gold "SAVE 40%" seal** + per-mo
+  framing; Monthly beside it), a single **indigo** "Unlock Palmly Premium" CTA, and Restore +
+  "No trial · cancel anytime". No-trial launch config; plan fixtures ($2.99/mo annual, $4.99/mo).
+  Gold used ONLY as the premium marker; no cinnabar fill. RevenueCat Paywalls-v2 purchase flow is
+  `[~]`. Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, grep shows no cinnabar/CJK,
+  screenshot `docs/checkpoints/redesign/r17-paywall.png`. — 2026-07-14
