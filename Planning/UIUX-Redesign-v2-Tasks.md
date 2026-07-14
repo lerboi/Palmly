@@ -16,16 +16,16 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V11 `[x]` (V0 foundation + Launcher + Onboarding + Capture). Screen
-  phase continues at V12 (Analyzing). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
+- **Status:** IN PROGRESS — V1–V12 `[x]` (V0 foundation + Launcher/Onboarding/Capture/Analyzing).
+  Screen phase continues at V13 (Reveal). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
 - **Dark screenshots (V9+):** build a dark bundle with `EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export`
   then run `shoot.mjs` (RNW can't switch scheme client-side in a static web export). Light = normal
   export. `/dev/theme` still renders both via `forceScheme`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V11** — Capture (accent guide/ring, animated ring, uniform guide, help icon, a11y announce, branded primer) (2026-07-15).
-- **Next task:** **V12 — Analyzing** (`features/reading/AnalyzingView.tsx` + `analyzing.ts`).
+- **Last completed:** **V12** — Analyzing (self-drawing palm, live gradient ring + breath, animated dots, rotating chip, warm failed state) (2026-07-15).
+- **Next task:** **V13 — Reveal** (`features/reading/RevealView.tsx` + `reveal.ts` + `dev/reveal-pending.tsx`).
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -292,7 +292,7 @@ schema/migration/secret changes — none of this touches the DB.
     token remains) and no raw `?` glyph. Screens `docs/checkpoints/redesign/v11-{primer,palm,face}.png`
     + `-dark` + `primer-320` — vermilion/coral ready guide + ring, undistorted guides, branded primer.
     Live ring-fill / press-spring / haptics / camera-feed / landmark `[~]`.
-- [ ] **V12 — Analyzing** (`features/reading/AnalyzingView.tsx` + `analyzing.ts`) — remove
+- [x] **V12 — Analyzing** (`features/reading/AnalyzingView.tsx` + `analyzing.ts`) — remove
   `animate={false}` + `key={stage}` so the palm **self-draws per revealed line**; make the ring
   **live** (animated sweep via `withTiming` + a LinearGradient accent→accentPressed + an ambient
   breath so it never reads hung); animate StepDots + crossfade the stage message; **rotate + elevate**
@@ -301,7 +301,20 @@ schema/migration/secret changes — none of this touches the DB.
   `AppHeader onBack` to the loading branch (dead prop today) + tokenize magic numbers.
   Verify: grep no `animate={false}`; screenshots of `/(reading)/analyzing` + `/dev/analyzing-failed`
   at 390×844 show traced lines + gradient ring + warm failed state; `jest` (rotation index test)
-  green; live sweep/draw `[~]`.
+  green; live sweep/draw `[~]`. (2026-07-15)
+  - DONE: main palm now `animate` (each revealed line self-draws via V6 per-stroke stagger; the
+    reconciler keeps drawn lines and draws only the newly-revealed one — no `key={stage}`). **Live
+    ring** — `ProgressRing` sweeps its dashoffset with `withTiming`, strokes an accent→accentPressed
+    `LinearGradient`, and a faint accent glow ring **breathes** (`withRepeat`) so it never reads hung
+    (web/reduce-motion → settled static). **StepDots** active dot animates its width; **stage message**
+    crossfades (`FadeIn`/`FadeOut` keyed); **social proof** now rotates (`socialProofAt(elapsedMs)`)
+    and is **elevated** into a surfaceSunken chip with a sparkle. **Failed** state stays Palmly — a
+    faint palm ghost behind, the icon on a neutral tile in a warm `danger` tone (off the CTA accent),
+    `FadeIn` entrance. `AppHeader onBack` wired on the loading branch. `analyzing.ts` gains
+    `socialProofAt` + `SOCIAL_PROOF_MS`; test +1 (rotation/wrap) → **39**. tsc + lint(0) + jest 39/39;
+    grep: no `animate={false}` in AnalyzingView. Screens
+    `docs/checkpoints/redesign/v12-{analyzing,failed}{,-dark}.png` — gradient ring + breath, traced
+    lines, animated dots, rotating chip, warm failed state. Live sweep/draw/breath/crossfade `[~]`.
 - [ ] **V13 — Reveal** (`features/reading/RevealView.tsx` + `reveal.ts` + `dev/reveal-pending.tsx`) —
   hero headline → **`variant="editorialHeadline"`** (the one sanctioned serif, this screen only);
   choreograph entrance (draw → headline rise → **90ms** section stagger); rebuild **pending** into a
@@ -437,3 +450,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V9 — Launcher: ghost-hand brand bg, `Logomark tone="ink" animate` draw-on (ink + vermilion heart whisper), staggered wordmark/tagline/CTA, legal under CTA, `__DEV__`-gated dev button, dropped maxWidth literal; added build-time `EXPO_PUBLIC_FORCE_SCHEME` dark-shot tooling — tsc + lint(0) + jest 38/38; `v9-launcher-{light,320,dark}.png`, no dev button in prod export, no CJK/hex — 2026-07-15
 - V10 — Onboarding: welcome label-free hero + Logomark + stagger; how-it-works staggered step cards + icon pop; hand-select press-spring + animated selection + radiogroup; claim drawn red thread + symmetric accent avatars (brand mark for "you") + privacy line; onboarding slide transition; opt-in `RedThread animate` — tsc + lint(0) + jest 38/38; `v10-*{,-dark,-320}.png` (4 routes, light+dark) — 2026-07-15
 - V11 — Capture: ready guide + shutter ring from `theme.colors.accent` (gold killed), ~800ms ring fill, press-spring on controls, uniform 320×320 guide, a11y live-region + announce, new `help` icon (no raw `?`), branded staggered primer (consent verbatim) — tsc + lint(0) + jest 38/38; `v11-{primer,palm,face}{,-dark}.png` + primer-320, vermilion/coral guide, undistorted — 2026-07-15
+- V12 — Analyzing: palm self-draws per revealed line, live gradient ring (sweep + accent→accentPressed + breathing glow), animated step dots, crossfading message, rotating+elevated social-proof chip (`socialProofAt`), still-Palmly failed state (faint palm + danger tone + entrance), header wired — tsc + lint(0) + jest 39/39 (rotation test); `v12-{analyzing,failed}{,-dark}.png` — 2026-07-15

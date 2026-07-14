@@ -12,7 +12,6 @@ export default function AnalyzingFailedPreview() {
       geometry={PREVIEW_GEOMETRY}
       status="failed"
       elapsedMs={0}
-      socialProof=""
       failureReason="not_a_hand"
     />
   );

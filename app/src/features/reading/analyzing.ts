@@ -53,6 +53,13 @@ export const SOCIAL_PROOF = [
   'Your photo is deleted after your reading',
 ];
 
+/** Rotate the social-proof line over time (redesign v2 V12 — the array now actually cycles). */
+export const SOCIAL_PROOF_MS = 4000;
+export function socialProofAt(elapsedMs: number): string {
+  const i = Math.floor(Math.max(0, elapsedMs) / SOCIAL_PROOF_MS) % SOCIAL_PROOF.length;
+  return SOCIAL_PROOF[i];
+}
+
 /** The lines drawn so far — up to and including the current stage's line (progressive tracing). */
 export function visibleGeometry(geometry: LineGeometry, stage: number): LineGeometry {
   const drawn = STAGES.slice(0, stage + 1)

@@ -1,5 +1,4 @@
 import { AnalyzingView } from '@/features/reading/AnalyzingView';
-import { SOCIAL_PROOF } from '@/features/reading/analyzing';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 
 /**
@@ -9,5 +8,5 @@ import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
  * navigates to the reveal on `complete`.
  */
 export default function Analyzing() {
-  return <AnalyzingView geometry={PREVIEW_GEOMETRY} status="extracting" elapsedMs={7200} socialProof={SOCIAL_PROOF[0]} />;
+  return <AnalyzingView geometry={PREVIEW_GEOMETRY} status="extracting" elapsedMs={7200} />;
 }

@@ -1,4 +1,12 @@
-import { STAGES, failureHint, overrunLevel, stageFor, visibleGeometry } from '../analyzing';
+import {
+  SOCIAL_PROOF,
+  STAGES,
+  failureHint,
+  overrunLevel,
+  socialProofAt,
+  stageFor,
+  visibleGeometry,
+} from '../analyzing';
 import { PREVIEW_GEOMETRY } from '../reveal';
 
 describe('analyzing loader logic (P6.T1)', () => {
@@ -30,5 +38,12 @@ describe('analyzing loader logic (P6.T1)', () => {
   it('gives a specific hint for a non-hand failure', () => {
     expect(failureHint('not_a_hand')).toContain('palm');
     expect(failureHint('timeout')).not.toContain('palm');
+  });
+
+  it('rotates the social-proof line over time and wraps', () => {
+    expect(socialProofAt(0)).toBe(SOCIAL_PROOF[0]);
+    expect(socialProofAt(4000)).toBe(SOCIAL_PROOF[1]);
+    expect(socialProofAt(8000)).toBe(SOCIAL_PROOF[2]);
+    expect(socialProofAt(12_000)).toBe(SOCIAL_PROOF[0]); // wraps after the last item
   });
 });
