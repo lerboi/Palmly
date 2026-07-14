@@ -211,34 +211,52 @@ export const strokes = {
 } as const;
 
 // ── Font families (registered names = @expo-google-fonts export keys) ─
+// Sans-first (redesign §4): the whole default scale is Noto Sans (weights 100–900 ship, so the
+// full ramp needs no new dep). Noto Serif Display is kept ONLY as the optional editorial hero.
+// Noto Serif TC (cjk) is retained for the optional zh "traditional view" + the not-yet-de-CJK'd
+// PalmDiagram labels (R10) / SealBadge glyph (R7); it is no longer in the default type scale.
 export const fonts = {
-  displayRegular: 'NotoSerifDisplay_400Regular',
-  display: 'NotoSerifDisplay_600SemiBold',
-  displayBold: 'NotoSerifDisplay_700Bold',
   body: 'NotoSans_400Regular',
   bodyMedium: 'NotoSans_500Medium',
   bodySemiBold: 'NotoSans_600SemiBold',
-  cjk: 'NotoSerifTC_600SemiBold', // decorative section markers 心·智·命·运
+  bodyBold: 'NotoSans_700Bold',
+  bodyExtraBold: 'NotoSans_800ExtraBold',
+  // Optional editorial serif — reveal hero only (§4).
+  editorial: 'NotoSerifDisplay_600SemiBold',
+  editorialRegular: 'NotoSerifDisplay_400Regular',
+  editorialBold: 'NotoSerifDisplay_700Bold',
+  // Deprecated serif aliases (kept so existing consumers compile; migrate off these).
+  /** @deprecated use `editorial` */
+  display: 'NotoSerifDisplay_600SemiBold',
+  /** @deprecated use `editorialBold` */
+  displayBold: 'NotoSerifDisplay_700Bold',
+  /** @deprecated use `editorialRegular` */
+  displayRegular: 'NotoSerifDisplay_400Regular',
+  // zh "traditional view" / legacy CJK glyphs only (not the default scale).
+  cjk: 'NotoSerifTC_600SemiBold',
   cjkRegular: 'NotoSerifTC_400Regular',
 } as const;
 
 /**
- * Type scale. Display/title/numerals use the high-contrast serif (Noto Serif Display);
- * body/labels use Noto Sans; `accent` uses Noto Serif TC for CJK markers.
- * Sizes are spec-silent — chosen as a modest scale (Decision Log 2026-07-11).
- * a11y rule (UIUX §1.2): cinnabar is never used for text under 18pt — enforced in Text.tsx.
+ * Type scale — sans-first (redesign §4). Everything is Noto Sans; the display/title carry
+ * negative tracking for a premium, quiet feel. `editorialHeadline` is the ONE optional serif
+ * variant (reveal hero). `numeral` moved off the serif to Noto Sans 700.
+ * a11y: the new indigo accent passes AA at all sizes on both bg/surface, so the old
+ * "accent ≥18pt only" rule is retired (see Text.tsx).
  */
 export const typography = {
-  display: { fontFamily: fonts.display, fontSize: 34, lineHeight: 42 },
-  title: { fontFamily: fonts.display, fontSize: 24, lineHeight: 32 },
-  heading: { fontFamily: fonts.bodySemiBold, fontSize: 18, lineHeight: 24 },
+  display: { fontFamily: fonts.bodyExtraBold, fontSize: 34, lineHeight: 40, letterSpacing: -0.5 },
+  title: { fontFamily: fonts.bodyBold, fontSize: 26, lineHeight: 32, letterSpacing: -0.3 },
+  heading: { fontFamily: fonts.bodyBold, fontSize: 18, lineHeight: 24 },
+  bodyLarge: { fontFamily: fonts.body, fontSize: 17, lineHeight: 26 },
   body: { fontFamily: fonts.body, fontSize: 16, lineHeight: 24 },
   bodyMedium: { fontFamily: fonts.bodyMedium, fontSize: 16, lineHeight: 24 },
   small: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
-  caption: { fontFamily: fonts.body, fontSize: 12, lineHeight: 16 },
+  caption: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 18 },
   button: { fontFamily: fonts.bodySemiBold, fontSize: 16, lineHeight: 20 },
-  accent: { fontFamily: fonts.cjk, fontSize: 22, lineHeight: 30 }, // ≥18pt, ok for cinnabar
-  numeral: { fontFamily: fonts.display, fontSize: 30, lineHeight: 34 },
+  accent: { fontFamily: fonts.bodyBold, fontSize: 22, lineHeight: 30 },
+  numeral: { fontFamily: fonts.bodyBold, fontSize: 30, lineHeight: 34 },
+  editorialHeadline: { fontFamily: fonts.editorial, fontSize: 34, lineHeight: 42, letterSpacing: -0.5 },
 } as const;
 
 export type SpacingKey = keyof typeof spacing;
@@ -253,6 +271,8 @@ export const fontModules = {
   NotoSans_400Regular: require('@expo-google-fonts/noto-sans/400Regular/NotoSans_400Regular.ttf'),
   NotoSans_500Medium: require('@expo-google-fonts/noto-sans/500Medium/NotoSans_500Medium.ttf'),
   NotoSans_600SemiBold: require('@expo-google-fonts/noto-sans/600SemiBold/NotoSans_600SemiBold.ttf'),
+  NotoSans_700Bold: require('@expo-google-fonts/noto-sans/700Bold/NotoSans_700Bold.ttf'),
+  NotoSans_800ExtraBold: require('@expo-google-fonts/noto-sans/800ExtraBold/NotoSans_800ExtraBold.ttf'),
   NotoSerifTC_400Regular: require('@expo-google-fonts/noto-serif-tc/400Regular/NotoSerifTC_400Regular.ttf'),
   NotoSerifTC_600SemiBold: require('@expo-google-fonts/noto-serif-tc/600SemiBold/NotoSerifTC_600SemiBold.ttf'),
 } as const;

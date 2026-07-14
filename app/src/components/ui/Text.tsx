@@ -2,7 +2,21 @@ import { Text as RNText, type TextProps as RNTextProps } from 'react-native';
 import { useTheme } from '@/theme';
 import type { TypographyVariant } from '@/theme';
 
-type Tone = 'primary' | 'secondary' | 'accent' | 'gold' | 'jade' | 'onAccent' | 'onGold';
+type Tone =
+  | 'primary'
+  | 'secondary'
+  | 'tertiary'
+  | 'accent'
+  | 'heritage'
+  | 'success'
+  | 'premium'
+  | 'danger'
+  | 'onAccent'
+  | 'onPremium'
+  // deprecated aliases — kept so existing consumers compile (migrate to the roles above)
+  | 'gold'
+  | 'jade'
+  | 'onGold';
 
 export interface TextProps extends RNTextProps {
   variant?: TypographyVariant;
@@ -13,8 +27,8 @@ export interface TextProps extends RNTextProps {
 
 /**
  * Themed text primitive. `variant` selects a type-scale entry (font + size + line height);
- * `tone` selects a semantic color role. Enforces the UIUX §1.2 a11y rule that cinnabar
- * (accent) is never used for text under 18pt.
+ * `tone` selects a semantic color role (redesign §3/§4). The old "accent never under 18pt"
+ * rule is retired: the twilight-indigo accent passes AA at all sizes on both bg and surface.
  */
 export function Text({
   variant = 'body',
@@ -27,21 +41,20 @@ export function Text({
   const typeStyle = theme.typography[variant];
 
   const toneColor: Record<Tone, string> = {
-    primary: theme.colors.text,
+    primary: theme.colors.textPrimary,
     secondary: theme.colors.textSecondary,
+    tertiary: theme.colors.textTertiary,
     accent: theme.colors.accent,
-    gold: theme.colors.gold,
-    jade: theme.colors.jade,
+    heritage: theme.colors.heritageAccent,
+    success: theme.colors.success,
+    premium: theme.colors.premium,
+    danger: theme.colors.danger,
     onAccent: theme.colors.onAccent,
-    onGold: theme.colors.onGold,
+    onPremium: theme.colors.onPremium,
+    gold: theme.colors.premium,
+    jade: theme.colors.success,
+    onGold: theme.colors.onPremium,
   };
-
-  if (__DEV__ && tone === 'accent' && typeStyle.fontSize < 18) {
-    console.warn(
-      `[Palmly/Text] cinnabar (tone="accent") on ${typeStyle.fontSize}pt text violates the ` +
-        `UIUX §1.2 contrast rule (never under 18pt). Use variant="accent"/"title"/"display".`,
-    );
-  }
 
   return (
     <RNText

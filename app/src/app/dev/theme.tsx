@@ -52,8 +52,9 @@ const TYPE_SAMPLES: { variant: TypographyVariant; label: string }[] = [
   { variant: 'display', label: 'Your palm remembers' },
   { variant: 'title', label: 'The heart line' },
   { variant: 'heading', label: 'What we found' },
+  { variant: 'bodyLarge', label: 'A steady, unhurried heart line.' },
   { variant: 'body', label: 'A deep, long heart line suggests warmth held steadily over time.' },
-  { variant: 'small', label: 'Traditional readers weigh both hands.' },
+  { variant: 'small', label: 'Readers weigh both hands.' },
   { variant: 'caption', label: 'For reflection & entertainment' },
 ];
 
@@ -117,8 +118,14 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
             {t.label}
           </Text>
         ))}
-        <Text variant="title" tone="accent">
-          Cinnabar display (≥18pt only)
+        <Text variant="numeral" tone="accent">
+          88
+        </Text>
+        <Text variant="editorialHeadline" tone="primary">
+          Your palm remembers
+        </Text>
+        <Text variant="caption" tone="secondary">
+          ↑ optional editorial serif (reveal hero only)
         </Text>
       </View>
 

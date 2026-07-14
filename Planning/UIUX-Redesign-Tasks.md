@@ -11,17 +11,17 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R2 (Quiet Cosmos palette live; twilight-indigo accent; app.json off cinnabar)
-- **Next task:** R3
+- **Last completed:** R3 (sans-first type scale; Noto Sans 700/800 added; editorial serif optional)
+- **Next task:** R4
 - **Blocked on:** —
-- **Notes for next run:** Palette is done. R3 = sans-first typography: repoint
-  display/title/heading/numeral off Noto Serif Display → Noto Sans weight ramp; drop Noto
-  Serif TC from the default scale; revisit the `Text.tsx` <18pt accent guard (indigo passes
-  AA at more sizes than cinnabar). `Text` `variant="accent"` still uses `fonts.cjk` — repoint
-  it. Reusable screenshot tool now exists: `app/scripts/shoot.mjs` (serves `dist/`, drives
-  headless Chrome). Workflow: `npx expo export --platform web` then
-  `node scripts/shoot.mjs ../docs/checkpoints/redesign <route:WxH>`. The /dev/theme harness is
-  captured at 820-wide (two 390 panels). Foundation R1–R10 before screen tasks.
+- **Notes for next run:** R4 = elevation. Add `shadow.sm/md/lg` (iOS `shadow*` + Android
+  `elevation`) to tokens, wire an `elevation` prop on `Card.tsx` (keep a flat option), and make
+  `radii.md` = 12 the default corner (currently `radii.md` is 8 / `radii.lg` is 12 — bump md→12,
+  add a distinct value; check every `radii.md`/`radii.lg` consumer so nothing shifts unexpectedly).
+  Note: `surfaceRaised` role already exists (R1). Screenshot tool: `app/scripts/shoot.mjs`;
+  workflow `npx expo export --platform web` then `node scripts/shoot.mjs ../docs/checkpoints/redesign <route:WxH>`.
+  Font modules still load NotoSerifTC (PalmDiagram R10 + SealBadge R7 still use `fonts.cjk`);
+  move it to zh-only load once those last two consumers are de-CJK'd. Foundation R1–R10 first.
 
 ---
 
@@ -72,7 +72,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
     the `expo-splash-screen` colors off cinnabar/rice-paper.
   - Verify: extend `/dev/theme`, headless-screenshot light+dark; no raw cinnabar CTA remains;
     dark mode no longer reads festive.
-- [ ] **R3 — Sans-first typography; optional editorial serif; drop TC from default**
+- [x] **R3 — Sans-first typography; optional editorial serif; drop TC from default** _(2026-07-14)_
   - Build: repoint `display/title/heading/numeral` to the Noto Sans weight ramp (add weights
     to `fontModules` — no new dep). Keep Noto Serif Display as optional `editorialHeadline`;
     remove Noto Serif TC from the default scale (load only under zh). Revisit the `Text.tsx`
@@ -229,3 +229,12 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   `/dev/theme` swatch strip now renders the 13 role tokens from the live theme. Evidence: `tsc`
   clean, `jest` 31/31, `expo lint` clean, screenshot `docs/checkpoints/redesign/dev-theme.png`
   (light+dark) — indigo primary CTA, no cinnabar fill, calm dark bg. — 2026-07-14
+- R3 — Sans-first type scale: repointed display(800)/title(700)/heading(700)/numeral(700) to
+  the Noto Sans weight ramp (added `NotoSans_700Bold` + `800ExtraBold` modules, no new dep);
+  added `bodyLarge` (17/26) + optional `editorialHeadline` (Noto Serif Display 600, reveal hero
+  only); negative tracking on display/title; retired `fonts.cjk` from the default scale (only
+  PalmDiagram/SealBadge still use it, R10/R7). Retired the Text.tsx "accent <18pt" guard (indigo
+  is AA at all sizes) and added `success`/`premium`/`danger`/`tertiary`/`heritage`/`onPremium`
+  tones (kept gold/jade/onGold aliases). Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean,
+  screenshot `docs/checkpoints/redesign/dev-theme.png` — sans headlines, sans numeral, one
+  optional serif hero. — 2026-07-14
