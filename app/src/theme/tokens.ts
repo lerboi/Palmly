@@ -174,10 +174,70 @@ export const quietCosmosSkin: Skin = {
 };
 
 /**
- * The active skin — **Quiet Cosmos** (redesign default, R2). Swap this one line back to
- * `inkCinnabarSkin` for the optional zh "traditional view" / a future re-skin.
+ * Skin #3 — "Vermilion" (redesign v2 north star §3, "Vermilion & Motion"). Keeps the Quiet
+ * Cosmos calm base (warm-white paper, soft neutrals, champagne premium, jade success) but
+ * swaps the accent from twilight indigo to a **modern vermilion red** — the single confident
+ * brand accent that runs through every button, active/selected state, link, and the highlighted
+ * palm line. Indigo is fully retired. Heritage red is deepened to a **claret** reserved for the
+ * red-thread motif + corner seal ONLY (§3.2 three-reds discipline); danger is a cooler crimson
+ * kept distinct so destructive confirms never read as the warm accent.
+ *
+ * ★ The single most defining tunable is `accent` (light `#D8402C` / dark `#FF7C63`) — change
+ * those two hexes and re-run the harness screenshot to re-feel the whole app (§3). The light
+ * accent is tuned so white-on-accent meets WCAG AA (≈4.5:1) for button labels; the dark accent
+ * is a lighter vermilion-coral with a **dark** `onAccent` (dark-on-coral) so labels stay legible.
  */
-export const activeSkin: Skin = quietCosmosSkin;
+export const vermilionSkin: Skin = {
+  name: 'Vermilion',
+  light: {
+    bg: '#FAF9F7',
+    surface: '#FFFFFF',
+    surfaceRaised: '#FFFFFF',
+    surfaceSunken: '#F2F0EC',
+    border: '#E7E3DC',
+    textPrimary: '#1A1A1F',
+    textSecondary: '#6B6B72',
+    textTertiary: '#9A9AA0',
+    accent: '#D8402C', // ★ modern vermilion — white-on ≈4.5:1 AA
+    accentPressed: '#B9331F',
+    accentMuted: '#FBE7E2',
+    onAccent: '#FFFFFF',
+    heritageAccent: '#9E3B2E', // deep claret — red-thread motif + corner seal ONLY (§3.2)
+    premium: '#C79A3C',
+    premiumPressed: '#AE842F',
+    onPremium: '#1A1A1F',
+    success: '#3F7A5E',
+    danger: '#C0392B', // destructive confirm ONLY — deeper/cooler crimson (§3.2)
+    scrim: 'rgba(20,21,26,0.4)',
+  },
+  dark: {
+    bg: '#14151A',
+    surface: '#1E2027',
+    surfaceRaised: '#24262F',
+    surfaceSunken: '#191B21',
+    border: '#2E313B',
+    textPrimary: '#F4F4F6',
+    textSecondary: '#A9A9B2',
+    textTertiary: '#6E6E77',
+    accent: '#FF7C63', // ★ light vermilion-coral so text on it stays legible
+    accentPressed: '#FF9482',
+    accentMuted: '#37201A',
+    onAccent: '#2A0E07', // dark text on the light coral accent (AA)
+    heritageAccent: '#E0806F', // light claret for thread/seal on dark
+    premium: '#D9B25A',
+    premiumPressed: '#E4C06E',
+    onPremium: '#14151A',
+    success: '#5AA981',
+    danger: '#E9584E', // nudged cooler/crimson so it reads distinct from the warm accent on dark
+    scrim: 'rgba(0,0,0,0.55)',
+  },
+};
+
+/**
+ * The active skin — **Vermilion** (redesign v2 default). Ink & Cinnabar (#1) and Quiet Cosmos
+ * (#2) stay above for parity / one-line rollback. Swap this line to re-skin the whole app.
+ */
+export const activeSkin: Skin = vermilionSkin;
 
 // ── Spacing — 4px base scale (spec-silent; Decision Log 2026-07-11) ───
 export const spacing = {

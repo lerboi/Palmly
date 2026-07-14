@@ -5,6 +5,7 @@ import {
   typography,
   inkCinnabarSkin,
   quietCosmosSkin,
+  vermilionSkin,
   activeSkin,
   type SkinColors,
 } from '../tokens';
@@ -43,8 +44,8 @@ const ROLE_KEYS: (keyof SkinColors)[] = [
 const isColor = (v: string) => /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$|^rgba?\(/.test(v);
 
 describe('design tokens — role-based skin contract (redesign §3)', () => {
-  it('defines every semantic role for light + dark in both skins', () => {
-    for (const skin of [inkCinnabarSkin, quietCosmosSkin]) {
+  it('defines every semantic role for light + dark in all three skins', () => {
+    for (const skin of [inkCinnabarSkin, quietCosmosSkin, vermilionSkin]) {
       for (const scheme of ['light', 'dark'] as const) {
         for (const role of ROLE_KEYS) {
           const value = skin[scheme][role];
@@ -55,19 +56,28 @@ describe('design tokens — role-based skin contract (redesign §3)', () => {
     }
   });
 
-  it('makes Quiet Cosmos the active skin (redesign default, R2)', () => {
-    expect(activeSkin).toBe(quietCosmosSkin);
-    expect(activeSkin.name).toBe('Quiet Cosmos');
-    // ★ the one tunable that sets the whole feel — twilight indigo, not cinnabar.
-    expect(activeSkin.light.accent).toBe('#4B57C4');
-    expect(activeSkin.dark.accent).toBe('#8B95F0');
-    // Heritage cinnabar survives only as a softened whisper.
-    expect(activeSkin.light.heritageAccent).toBe('#C2554A');
+  it('makes Vermilion the active skin (redesign v2 default)', () => {
+    expect(activeSkin).toBe(vermilionSkin);
+    expect(activeSkin.name).toBe('Vermilion');
+    // ★ the one tunable that sets the whole feel — modern vermilion, not indigo.
+    expect(activeSkin.light.accent).toBe('#D8402C');
+    expect(activeSkin.dark.accent).toBe('#FF7C63');
+    // Heritage red is deepened to a claret, reserved for the red-thread + seal only (§3.2).
+    expect(activeSkin.light.heritageAccent).toBe('#9E3B2E');
+    expect(activeSkin.dark.heritageAccent).toBe('#E0806F');
+    // White-on-accent for button labels (light); dark accent carries a dark on-color (AA).
+    expect(activeSkin.light.onAccent).toBe('#FFFFFF');
+    expect(activeSkin.dark.onAccent).toBe('#2A0E07');
+    // Indigo is fully retired — the old accent hex is gone from the active skin.
+    expect(activeSkin.light.accent).not.toBe('#4B57C4');
+    expect(activeSkin.dark.accent).not.toBe('#8B95F0');
   });
 
-  it('keeps Ink & Cinnabar available as skin #1 for the traditional view', () => {
+  it('keeps Ink & Cinnabar + Quiet Cosmos available as skins #1/#2 for parity / rollback', () => {
     expect(inkCinnabarSkin.name).toBe('Ink & Cinnabar');
     expect(inkCinnabarSkin.light.accent).toBe('#C3272B');
+    expect(quietCosmosSkin.name).toBe('Quiet Cosmos');
+    expect(quietCosmosSkin.light.accent).toBe('#4B57C4');
   });
 
   it('exposes back-compat aliases mapped onto the new roles', () => {
