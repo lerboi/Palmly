@@ -13,7 +13,9 @@ export interface Fortune {
   lucky_hours: string;
 }
 
-// ── Almanac date header: Gregorian + the sexagenary DAY PILLAR (干支日) for that date. ──
+// ── Almanac date header: Gregorian + the sexagenary "ganzhi" day pillar for that date. The CJK
+//    stem/branch data below is retained only for the optional zh "traditional view" (not rendered
+//    in the English-first default UI, per redesign §2). ──
 const STEM_CN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
 const BRANCH_CN = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
 
@@ -24,7 +26,7 @@ function gregorianToJDN(y: number, m: number, d: number): number {
   return d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
 }
 
-/** The 干支 day pillar (e.g. "甲子") for a calendar date — same anchor as the backend `dayPillar`. */
+/** The ganzhi day pillar (stem+branch) for a calendar date — same anchor as the backend `dayPillar`. */
 export function dayPillarCn(date: Date): string {
   const jdn = gregorianToJDN(date.getFullYear(), date.getMonth() + 1, date.getDate());
   const index = (((jdn + 49) % 60) + 60) % 60;
@@ -34,7 +36,7 @@ export function dayPillarCn(date: Date): string {
 export interface AlmanacDate {
   weekday: string; // "Monday"
   gregorian: string; // "July 14"
-  pillar: string; // "甲子日"
+  pillar: string; // ganzhi day pillar, e.g. "jia-zi" (zh traditional view only; not rendered)
 }
 export function almanacDate(date: Date): AlmanacDate {
   return {
@@ -44,7 +46,7 @@ export function almanacDate(date: Date): AlmanacDate {
   };
 }
 
-/** Compass glyph for a lucky direction (八方). */
+/** Compass glyph for a lucky direction (the eight compass points). */
 export const DIRECTION_ARROW: Record<string, string> = {
   North: '↑',
   Northeast: '↗',

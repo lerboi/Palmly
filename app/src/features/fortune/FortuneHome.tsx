@@ -20,7 +20,7 @@ export interface FortuneHomeProps {
 }
 
 /**
- * Returning-user home (UIUX §2.11, redesign R18) — weekday + date header (the 干支 day-pillar is
+ * Returning-user home (UIUX §2.11, redesign R18) — weekday + date header (the ganzhi day-pillar is
  * demoted to the optional zh view, not shown here), a subtle streak strip, today's fortune card
  * (free/premium), a pending-compatibility red-thread row, and entries to the readings shelf and
  * chat. English-first, no CJK. A first-run user sees a calm "start your first reading" state.

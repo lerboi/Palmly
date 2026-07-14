@@ -27,7 +27,11 @@ export const SECTION_LINE: Record<string, string | undefined> = {
   markings: undefined,
 };
 
-/** The CJK marker carved beside each section (UIUX §2.5 — 心·智·命·运 …). */
+/**
+ * The CJK marker for each section (heart/head/life/fate …). Redesign §2: **NOT rendered in the
+ * default UI** — RevealView uses the English feature line-icons (`SECTION_ICON`). Retained as data
+ * for the optional zh "traditional view" only.
+ */
 export const SECTION_GLYPH: Record<string, string> = {
   hand_shape: '掌',
   heart: '心',

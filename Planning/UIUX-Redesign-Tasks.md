@@ -11,8 +11,8 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R21 (Settings suite — all 5 screens AppHeader + de-CJK Methodology + danger/success tokens)
-- **Next task:** R22 (re-author fixtures to universal English)
+- **Last completed:** R22 (fixture English sweep — verified; comment CJK romanized; only zh-DATA remains)
+- **Next task:** R23 (accessibility pass)
 - **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin + render/grep-verify.
   Web-export ScrollView top-aligns short content — scroll screens need a taller capture; correct on device.)
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
@@ -20,7 +20,23 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
   `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
   in app surfaces — the camera-overlay `OVERLAY` palette in `CaptureView` is a justified
   theme-independent exception), realistic English (no lorem, trim CJK/almanac).
-  **R22 = re-author fixtures to universal English.** Sweep `PREVIEW_*` (+ related copy) in
+  **R23 = accessibility pass.** Mostly VERIFY (much was built in incrementally). Do:
+  (1) grep every svg component for `accessibilityLabel`/`decorative`: `Icon` (has default labels +
+  `decorative` opt-out ✓), `Logomark` (has `accessibilityLabel="Palmly"` ✓), `PalmDiagram` (Svg —
+  CHECK: may need an `accessibilityLabel`/role since it's a meaningful image; add one), the capture
+  guide SVGs, ProgressRing/ScoreRing/RedThread (decorative — ensure not announced or labelled).
+  Confirm interactive Pressables have `accessibilityRole`+`accessibilityLabel` (most do). (2)
+  reduce-motion fallbacks: PalmDiagram draw-on (✓ AccessibilityInfo + Platform), chat typing dots
+  (✓), analyzing ring is static (no motion). Confirm each. (3) AA contrast + dynamic-type: record a
+  manual check — accent `#4B57C4` on `#FFFFFF` ≈ 6.5:1 (AA ✓), on `#FAF9F7` similar; success/danger/
+  heritage on surface; text tokens. Note the numbers in the ledger. Verify: grep shows labels
+  present (was zero pre-redesign); contrast check recorded; `tsc`/`jest`/`lint` green.
+  **After R23:** R24 (finalize `/dev/theme`: render the full new system — tokens, elevation, button
+  matrix, icon sheet incl. palm/face/history, logomark, PalmDiagram — light+dark; REPLACE the
+  "Section markers" CJK demo with the feature icons; add first-run/empty/failed dev-preview links;
+  optionally delete the now-unused `SealBadge` + move `fonts.cjk`/NotoSerifTC to zh-only load; run
+  the WHOLE device-free suite — tsc+lint+jest + web export + screenshots of every route + the two
+  Deno-surface renders — and mark the redesign DONE in STATE, then STOP the loop).
   `src/features/reading/reveal.ts`, `fortune.ts`, `src/features/chat/chat.ts`,
   `src/features/reading/history.ts`, `src/features/reading/analyzing.ts` to universally-legible
   English — trim any remaining xuanxue/almanac phrasing + classical CJK citations, while KEEPING
@@ -213,7 +229,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
 
 ## PHASE R2 — Content, accessibility, finalize
 
-- [ ] **R22 — Re-author fixtures to universal English** — sweep `PREVIEW_*` in `reveal.ts,
+- [x] **R22 — Re-author fixtures to universal English** _(2026-07-14)_ — sweep `PREVIEW_*` in `reveal.ts,
   fortune.ts, chat.ts, history.ts, analyzing.ts` to universally-legible English (trim
   xuanxue/almanac phrasing + classical CJK citations) while keeping the warm, specific, human
   quality. Optionally add zh-locale strings for the "traditional view". Verify: every built
@@ -461,3 +477,12 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   `tsc` clean, `jest` 31/31, `expo lint` clean, grep shows **no CJK anywhere in settings**;
   screenshots `r21-settings.png` / `r21-methodology.png` / `r21-notif.png` + `r21-notif-320.png`
   (no clipping at 320 or 390) / `r21-privacy.png` / `r21-legal.png`. — 2026-07-14
+- R22 — Fixture English sweep: verified every rendered `PREVIEW_*` (reveal/fortune/chat/history/
+  analyzing) is already warm, specific English (anglicized incrementally through R11–R21; markings
+  三才纹→English R15, lucky "Cinnabar red"→"Indigo" R18, SOCIAL_PROOF de-ethnicity'd R14). Romanized
+  the remaining CJK **comments** (ganzhi day-pillar, section markers, eight compass points) so the
+  grep-invariant is clean; the only CJK left in feature code is intentional zh-view **data** — the
+  `dayPillarCn` STEM/BRANCH arrays (test-pinned) + `SECTION_GLYPH` values (documented NOT-rendered,
+  zh-traditional-view only). Evidence: `tsc` clean, `jest` 31/31, `grep` over `src/features` shows
+  CJK only in `fortune.ts`/`fortune.test.ts`/`reveal.ts` (all intentional zh data). No rendered
+  string changed → prior screenshots stand as the "realistic English content" evidence. — 2026-07-14
