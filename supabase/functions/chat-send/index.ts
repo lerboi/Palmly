@@ -12,9 +12,7 @@ import { CHAT_MODEL, CHAT_PROMPT_VERSION, generateChatReply, keyedGrounding, mer
 import { embedText, toVectorLiteral } from '../_shared/embeddings.ts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-const SYSTEM_INSTRUCTION = await Deno.readTextFile(new URL('../../../prompts/chat/v1/system_instruction.md', import.meta.url)).catch(
-  () => 'You are a warm palmistry/physiognomy reading companion. Stay grounded in the provided observations, cite the user\'s lines, and never give medical/legal/financial advice.',
-);
+import { SYSTEM_INSTRUCTION } from '../../../prompts/chat/v1/system_instruction.generated.ts';
 
 function realGeminiCall(): GeminiCall {
   const key = Deno.env.get('GEMINI_API_KEY') ?? '';

@@ -14,9 +14,7 @@ import { decideFailure, exhausted } from '../_shared/retry.ts';
 import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 import { createContext, requireMode } from '../_shared/context.ts';
 
-const COMPAT_PREFIX = await Deno.readTextFile(new URL('../../../prompts/compat/v1/system_instruction.md', import.meta.url)).catch(
-  () => 'Explain the given compatibility score warmly in JSON (headline + strengths/frictions/advice). Scores are ground truth. No health/medical/lifespan claims.',
-);
+import { SYSTEM_INSTRUCTION as COMPAT_PREFIX } from '../../../prompts/compat/v1/system_instruction.generated.ts';
 
 const admin = (): SupabaseClient =>
   createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', { auth: { persistSession: false, autoRefreshToken: false } });

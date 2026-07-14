@@ -29,11 +29,9 @@ async function loadSubjectCandidates(db: SupabaseClient, userId: string, subject
 const SCHEMA_VERSION = 1;
 const EXTRACTOR_VERSION = 'cv1+gemini-3.5-flash+extract.v1';
 
-// Frozen extraction prefix. TODO(deploy): ensure this file bundles with the function (or generate a
-// prefix.ts module) — Deno.readTextFile of a path outside the function dir may not deploy-bundle.
-const EXTRACTION_PREFIX = await Deno.readTextFile(
-  new URL('../../../prompts/extraction/v1/system_instruction.md', import.meta.url),
-).catch(() => 'Extract palm/face features as strict enum-bucketed JSON per the schema.');
+// Frozen extraction prefix — the versioned prompt, bundled via a generated static import so it
+// deploys (a Deno.readTextFile of a path outside the function dir does NOT bundle; Decision Log 2026-07-14).
+import { SYSTEM_INSTRUCTION as EXTRACTION_PREFIX } from '../../../prompts/extraction/v1/system_instruction.generated.ts';
 
 const admin = (): SupabaseClient =>
   createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', {

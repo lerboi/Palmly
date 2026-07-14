@@ -21,9 +21,7 @@ import { decideFailure, exhausted } from '../_shared/retry.ts';
 import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 import { createContext, requireMode } from '../_shared/context.ts';
 
-const NARRATIVE_PREFIX = await Deno.readTextFile(
-  new URL('../../../prompts/narrative/v1/system_instruction.md', import.meta.url),
-).catch(() => 'Write a warm, reflective palm/face reading that expresses ONLY the given grounded claims. Output JSON per the schema. No health, medical, or lifespan claims.');
+import { SYSTEM_INSTRUCTION as NARRATIVE_PREFIX } from '../../../prompts/narrative/v1/system_instruction.generated.ts';
 
 const admin = (): SupabaseClient =>
   createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', {

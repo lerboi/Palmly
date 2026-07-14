@@ -13,9 +13,7 @@ import type { GeminiCall, GeminiResponse } from '../_shared/narrative.ts';
 import { createContext, requireMode } from '../_shared/context.ts';
 import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 
-const FORTUNE_PREFIX = await Deno.readTextFile(new URL('../../../prompts/fortune/v1/system_instruction.md', import.meta.url)).catch(
-  () => 'Write one day\'s almanac fortune as JSON per the schema for the given day-master element. Warm, reflective, no health/medical/lifespan/financial-advice claims.',
-);
+import { SYSTEM_INSTRUCTION as FORTUNE_PREFIX } from '../../../prompts/fortune/v1/system_instruction.generated.ts';
 
 function realGeminiCall(): GeminiCall {
   const key = Deno.env.get('GEMINI_API_KEY') ?? '';
