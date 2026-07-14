@@ -63,6 +63,12 @@ jobs:
       - name: Deno tests
         run: deno test --no-check
         working-directory: supabase/functions
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prompt bundles up-to-date (generated .ts == .md)
+        run: node prompts/build-prompts.mjs --check
+        working-directory: ${{ github.workspace }}
 
   eas-preview:
     name: EAS preview build (manual approval)
