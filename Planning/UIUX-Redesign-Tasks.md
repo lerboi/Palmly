@@ -11,34 +11,34 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R15 (Reveal screen — icon-led de-CJK cards, thread/lock/share icons, pending/error)
-- **Next task:** R16 (Share modal + modernize compat/red-thread)
+- **Last completed:** R16 (Share sheet — solo + compat variants, red-thread svg, gold score ring)
+- **Next task:** R16b (reskin the SERVER share card `card-svg.ts` — Deno test)
 - **Blocked on:** —
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
   `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
   `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
   in app surfaces — the camera-overlay `OVERLAY` palette in `CaptureView` is a justified
   theme-independent exception), realistic English (no lorem, trim CJK/almanac).
-  **R16 = build the Share modal + modernize compat/red-thread.** `(modals)/share` is currently a
-  `PlaceholderScreen` → build a real share sheet: preview card(s) with the traced PalmDiagram as
-  ~60% hero + a small `Logomark variant="stamp"` corner seal (the ONE place the stamp belongs),
-  a modern channel row (Icon-based: message/copy-link/more — use `Icon` names, e.g. `share`,
-  `chat`, `check`), and a **compatibility variant** with a lightened red-thread drawn in SVG
-  (heritageAccent, NOT 🔴) + a score ring (reuse the ProgressRing idea from `AnalyzingView`, or a
-  small circular score). Provide a share-preview FIXTURE. Also modernize `FortuneHome`
-  RedThreadRow (grep `RedThread`/🔴 in `src/features/fortune/FortuneHome.tsx`) — RevealView
-  CompareCard already done in R15 (uses `Icon name="thread"`). Read `(modals)/share.tsx`,
-  `(modals)/_layout.tsx`, and UIUX-specs §2.6/§2.7 (share/compat) first. Verify: screenshots of
-  the share sheet + compat variant; grep shows no 🔴 anywhere in `src`. Native share-sheet APIs
-  are device-only → build the in-app preview + a fixture, mark any native `Share.share()` leg `[~]`.
-  **NOTE:** R16b/R16c/R16d follow (server card-svg reskin, invite-page reskin, in-app invite-claim
-  route) — R16b/c edit `supabase/functions/_shared/*` + re-pin Deno tests (run Deno tests too).
-  **SCREENSHOTS:** `npx expo export --platform web` then
-  `node scripts/shoot.mjs ../docs/checkpoints/redesign "share:390x844=r16-share"`. Only
-  `dev/theme` renders desktop; other `dev/*` previews render mobile. ROOT launcher = EMPTY route.
+  **R16b = reskin the SERVER share card** — `supabase/functions/_shared/card-svg.ts` (a
+  server-rendered SVG, the image users actually post). Per north star §7: palette lines ~10–17
+  (cinnabar/gold/paper → Quiet Cosmos hexes), CJK `LINE_LABEL` ~31–37 (心… → English
+  Heart/Head/Life/Fate), a 相 seal chop ~144–146 (→ CJK-free mark, e.g. the palm-lines logomark
+  path), serif headline ~164 (→ sans). **Ideally factor to ONE shared palette source** so the
+  in-app share preview (`ShareView`) and the posted image can't drift — but the app is RN/TS and
+  the function is Deno; a shared literal palette object (duplicated hexes with a comment, or a
+  shared `.ts` both can import) is acceptable — keep it simple, note the choice. **Re-pin
+  `supabase/functions/_shared/card-svg.test.ts`** to the new output. This is a Deno task:
+  **run the Deno tests** (`cd supabase && deno test` or per repo convention — check
+  `docs/SETUP.md` / existing test invocation; if `deno` isn't installed, mark the Deno-test leg
+  `[~]` and verify by rendering the SVG string → PNG via the shoot HTML trick or by eyeballing
+  the generated SVG). Verify: rendered card matches the app's `r16-share.png` palette/labels;
+  Deno test green. Do NOT change the function's LOGIC/signature — only the SVG skin.
+  Then R16c (invite-page.ts reskin, Deno) + R16d (in-app invite-claim/pair-reveal route).
+  **APP SCREENSHOTS (for R16d etc.):** `npx expo export --platform web` then
+  `node scripts/shoot.mjs ../docs/checkpoints/redesign "<route:WxH=name>"`. ROOT launcher =
+  EMPTY route; only `dev/theme` renders desktop.
   **Finalize-pass cleanups (R22/R24):** `fonts.cjk`/NotoSerifTC has ZERO default consumers →
-  module can go zh-only load; /dev/theme "Section markers" CJK demo + remaining `SealBadge` call
-  site (chat R19) still to migrate.
+  zh-only load; /dev/theme "Section markers" CJK demo + the chat `SealBadge` call (R19) to migrate.
 
 ---
 
@@ -164,7 +164,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   thumbnails; standard lock icon (drop 锁); share icon (keep the seal special, one mark);
   English-lead 面相/三才纹 titles; recolor the highlighted line; **add a pending/error state.**
   Verify: screenshot — no decorative CJK, headline fits, one privacy line.
-- [ ] **R16 — Build the Share modal + modernize compat/red-thread** — `(modals)/share` → real
+- [x] **R16 — Build the Share modal + modernize compat/red-thread** _(2026-07-14)_ _(native OS share sheet [~])_ — `(modals)/share` → real
   share sheet: preview cards with the traced diagram as ~60% hero + a small corner seal, a
   modern channel row, a compatibility variant with a lightened red-thread (svg, not 🔴) +
   score ring. Update `RevealView` CompareCard + `FortuneHome` RedThreadRow. Provide a
@@ -363,3 +363,13 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   preview. Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, grep shows no CJK/🔴/锁 in
   RevealView; screenshots `r15-reveal.png` (full — hero, icon cards, thread CompareCard, lock
   Go-deeper, one privacy line) + `r15-pending.png`. — 2026-07-14
+- R16 — Share sheet built (`(modals)/share` PlaceholderScreen → `ShareView`): a segmented
+  solo/compatibility preview. Solo = an elevated share CARD with the traced PalmDiagram hero
+  (~60%) + headline + a single `Logomark variant="stamp"` corner seal + palmly.app footer.
+  Compat = two palms with a lightened **red-thread drawn in SVG** (heritageAccent, not 🔴) + a
+  **gold score ring** (premium, "82") + "You & Mei". Plus an "Invite them to compare palms"
+  toggle (thread icon) and a modern icon channel row (Message/Copy link/More) + a Share CTA.
+  Updated `FortuneHome` RedThreadRow (🔴 → `Icon name="thread"` heritage). Fixtures via
+  `PREVIEW_*`; `/dev/share-compat` previews the compat variant. Native OS share sheet + brand
+  channels are `[~]`. Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, grep shows **no 🔴
+  anywhere in src**; screenshots `r16-share.png` (solo) + `r16-compat.png` (compat). — 2026-07-14

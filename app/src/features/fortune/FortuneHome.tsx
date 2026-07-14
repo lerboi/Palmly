@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { Card, Screen, Text } from '@/components/ui';
+import { Card, Icon, Screen, Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 import { FortuneCard } from './FortuneCard';
 import { type Fortune, almanacDate } from './fortune';
@@ -65,9 +65,7 @@ function RedThreadRow({ name, onPress }: { name: string; onPress: () => void }) 
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Nudge ${name} to compare palms`}>
       <Card style={{ marginBottom: theme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-        <Text variant="accent" tone="accent">
-          🔴
-        </Text>
+        <Icon name="thread" size={24} color={theme.colors.heritageAccent} decorative />
         <View style={{ flex: 1 }}>
           <Text variant="bodyMedium">Waiting for {name}</Text>
           <Text variant="caption" tone="secondary">
