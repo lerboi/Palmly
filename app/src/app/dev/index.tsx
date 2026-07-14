@@ -57,8 +57,21 @@ const GROUPS: { title: string; routes: { href: string; label: string }[] }[] = [
     ],
   },
   {
-    title: 'dev',
-    routes: [{ href: '/dev/theme', label: 'theme showcase' }],
+    title: 'dev — design system',
+    routes: [{ href: '/dev/theme', label: 'theme showcase (light + dark)' }],
+  },
+  {
+    title: 'dev — state previews',
+    routes: [
+      { href: '/dev/analyzing-failed', label: 'analyzing · failed' },
+      { href: '/dev/reveal-pending', label: 'reveal · pending' },
+      { href: '/dev/share-compat', label: 'share · compatibility' },
+      { href: '/dev/chat-typing', label: 'chat · typing' },
+      { href: '/dev/chat-empty', label: 'chat · first-run' },
+      { href: '/dev/fortune-free', label: 'fortune · free' },
+      { href: '/dev/fortune-empty', label: 'fortune · first-run' },
+      { href: '/dev/history-empty', label: 'history · empty' },
+    ],
   },
 ];
 

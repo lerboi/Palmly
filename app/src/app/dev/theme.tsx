@@ -1,6 +1,8 @@
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { AppHeader, Button, Card, Icon, Logomark, PrivacyBadge, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
+import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
+import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import {
   ThemeProvider,
   useTheme,
@@ -59,11 +61,12 @@ const TYPE_SAMPLES: { variant: TypographyVariant; label: string }[] = [
   { variant: 'caption', label: 'For reflection & entertainment' },
 ];
 
-const MARKERS = [
-  { cjk: '心', en: 'Heart' },
-  { cjk: '智', en: 'Head' },
-  { cjk: '命', en: 'Life' },
-  { cjk: '运', en: 'Fate' },
+/** The four palm lines as feature line-icons (redesign §2 — replaces the old CJK section markers). */
+const FEATURE_MARKERS: { icon: IconName; label: string }[] = [
+  { icon: 'heart', label: 'Heart' },
+  { icon: 'mind', label: 'Head' },
+  { icon: 'life', label: 'Life' },
+  { icon: 'path', label: 'Fate' },
 ];
 
 const ICON_NAMES: IconName[] = [
@@ -71,6 +74,8 @@ const ICON_NAMES: IconName[] = [
   'mind',
   'life',
   'path',
+  'palm',
+  'face',
   'lock',
   'share',
   'send',
@@ -86,6 +91,7 @@ const ICON_NAMES: IconName[] = [
   'bell',
   'shield',
   'sparkle',
+  'history',
 ];
 
 function PanelBody({ scheme }: { scheme: ColorScheme }) {
@@ -154,16 +160,14 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
 
       <Divider />
 
-      {/* CJK accent markers */}
-      <Text variant="heading">Section markers</Text>
+      {/* Feature markers (line-icons, no CJK) */}
+      <Text variant="heading">Feature markers</Text>
       <View style={styles.markerRow}>
-        {MARKERS.map((m) => (
-          <View key={m.cjk} style={styles.marker}>
-            <Text variant="accent" tone="accent">
-              {m.cjk}
-            </Text>
+        {FEATURE_MARKERS.map((m) => (
+          <View key={m.label} style={styles.marker}>
+            <Icon name={m.icon} size={26} color={theme.colors.accent} />
             <Text variant="caption" tone="secondary">
-              {m.en}
+              {m.label}
             </Text>
           </View>
         ))}
@@ -280,6 +284,15 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
             stamp filled
           </Text>
         </View>
+      </View>
+
+      <Divider />
+
+      {/* PalmDiagram — the traced-palm hero (labels off / on) */}
+      <Text variant="heading">Palm diagram</Text>
+      <View style={styles.brandRow}>
+        <PalmDiagram geometry={PREVIEW_GEOMETRY} size={120} animate={false} signatureLines={['heart_line', 'fate_line']} />
+        <PalmDiagram geometry={PREVIEW_GEOMETRY} size={120} animate={false} showLabels highlightedLine="heart_line" />
       </View>
 
       <Divider />

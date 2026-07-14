@@ -292,7 +292,12 @@ export type SpacingKey = keyof typeof spacing;
 export type RadiusKey = keyof typeof radii;
 export type TypographyVariant = keyof typeof typography;
 
-/** The set of font modules to pass to expo-font's useFonts(). */
+/**
+ * The set of font modules to pass to expo-font's useFonts() by DEFAULT — sans-first (redesign §4).
+ * Noto Serif TC (`fonts.cjk`) is NOT bundled here: the redesigned UI is English-first and never
+ * renders CJK by default; the only consumer is `PalmDiagram` under its opt-in `traditional` prop.
+ * Load {@link zhFontModules} on demand when the optional zh "traditional view" is enabled.
+ */
 export const fontModules = {
   NotoSerifDisplay_400Regular: require('@expo-google-fonts/noto-serif-display/400Regular/NotoSerifDisplay_400Regular.ttf'),
   NotoSerifDisplay_600SemiBold: require('@expo-google-fonts/noto-serif-display/600SemiBold/NotoSerifDisplay_600SemiBold.ttf'),
@@ -302,6 +307,10 @@ export const fontModules = {
   NotoSans_600SemiBold: require('@expo-google-fonts/noto-sans/600SemiBold/NotoSans_600SemiBold.ttf'),
   NotoSans_700Bold: require('@expo-google-fonts/noto-sans/700Bold/NotoSans_700Bold.ttf'),
   NotoSans_800ExtraBold: require('@expo-google-fonts/noto-sans/800ExtraBold/NotoSans_800ExtraBold.ttf'),
+} as const;
+
+/** CJK fonts for the optional zh "traditional view" — load on demand, not in the default bundle. */
+export const zhFontModules = {
   NotoSerifTC_400Regular: require('@expo-google-fonts/noto-serif-tc/400Regular/NotoSerifTC_400Regular.ttf'),
   NotoSerifTC_600SemiBold: require('@expo-google-fonts/noto-serif-tc/600SemiBold/NotoSerifTC_600SemiBold.ttf'),
 } as const;

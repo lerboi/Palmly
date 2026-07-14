@@ -11,10 +11,20 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R23 (a11y — PalmDiagram label added; all svg labelled; reduce-motion + AA verified)
-- **Next task:** R24 (FINALIZE — /dev/theme full system + full device-free suite + mark DONE + STOP loop)
-- **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin + render/grep-verify.
-  Web-export ScrollView top-aligns short content — scroll screens need a taller capture; correct on device.)
+- **✅ REDESIGN COMPLETE (2026-07-14).** All R1–R24 are `[x]`. The "Quiet Cosmos" overhaul shipped:
+  role-based tokens, sans-first type, elevation, the in-house icon set + Logomark, the upgraded
+  PalmDiagram hero, the full journey (launcher → onboarding → capture → analyzing → reveal → share
+  → compat/invite → paywall) + the returning-user home (fortune/chat/history) + settings, both
+  server-rendered surfaces (card-svg + invite-page), a content English sweep + an a11y pass, and a
+  finalized /dev/theme regression surface. English-first, no decorative CJK, no cinnabar CTAs.
+- **Last completed:** R24 (finalize — /dev/theme full system; SealBadge deleted; CJK font zh-only; suite green)
+- **Next task:** — (none; loop stopped)
+- **Blocked on:** —
+- **Device-pending `[~]` legs (layout verified via fixtures; on-device follow-ups):** R7 launcher/
+  splash icon render · R10 PalmDiagram draw-on · R13 live camera feed + landmark state machine ·
+  R14 analyzing ring/self-draw motion · R16 native OS share sheet · R16b/R16c/R24 Deno-test RUNS
+  (deno not installed — tests re-pinned + render/grep-verified) · R16d deep-link + thread/count-up
+  motion · R17 RevenueCat purchase · R19 chat typing-dot pulse.
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
   `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
   `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
@@ -238,7 +248,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   icons; `AccessibilityInfo.isReduceMotionEnabled` fallbacks on the PalmDiagram draw-on,
   analyzing ring, chat typing; validate AA contrast + dynamic-type for the new accent. Verify:
   grep shows labels present (today there are zero); manual contrast check recorded.
-- [ ] **R24 — Update the /dev harness + final verification pass** — extend `/dev/theme` to
+- [x] **R24 — Update the /dev harness + final verification pass** _(2026-07-14)_ _(Deno test RUN [~])_ — extend `/dev/theme` to
   render the full new system (tokens, elevation, button matrix, icon sheet, logomark,
   PalmDiagram) light+dark, and add first-run/empty/failed variants for analyzing(failed),
   Fortune(no reading), History(empty), Chat(first-run). Finalize `tokens.test.ts` +
@@ -498,3 +508,20 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   ~4.4:1 used only for icons/graphical accents (>=3:1). Dynamic type: all copy uses the scalable
   `Text` variant scale. Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean; a11y-label grep
   non-zero across all svg components (was zero pre-redesign). — 2026-07-14
+- R24 — **FINALIZE.** Extended `/dev/theme` to the full new system (13 role swatches, sans type
+  scale + editorial serif, the button matrix, the 23-icon sheet incl. the new palm/face/history
+  icons, header/privacy, elevation, Logomark forms, and a new **PalmDiagram showcase** — labels
+  off + on), and replaced the CJK "Section markers" demo with the **feature line-icons**
+  (heart/mind/life/path → Heart/Head/Life/Fate). Deleted the now-unused **`SealBadge`** (zero call
+  sites; removed from the barrel). Split `fontModules` → moved Noto Serif TC to a separate
+  `zhFontModules` loaded on demand for the traditional view (not in the default sans-first
+  bundle). Added a "dev — state previews" group to the `/dev` route map linking all eight
+  dev-preview states (analyzing-failed, reveal-pending, share-compat, chat-typing/empty,
+  fortune-free/empty, history-empty). Ran the WHOLE device-free suite: **`tsc` clean, `jest`
+  31/31 (7 suites), `expo lint` clean**, `expo export --platform web` succeeds; harness screenshot
+  `docs/checkpoints/redesign/r24-devtheme.png` (full system, light+dark, no CJK); representative
+  route sweep `r24-launcher.png`/`r24-reveal.png`/`r24-fortune.png`/`r24-settings.png` all render
+  correctly post-cleanup (fonts intact after the TC removal); the two Deno-surface renders
+  regenerate byte-identically (`r16b-card.png`/`r16c-invite.png`). Deno test RUN is `[~]` (deno
+  not installed; both edge tests re-pinned + render/grep-verified). **The redesign is complete —
+  every route renders a finished English-first Quiet Cosmos screen; no placeholder routes remain.** — 2026-07-14
