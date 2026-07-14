@@ -11,18 +11,16 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R4 (shadow scale + Card `elevation` prop + radii bump md=12/lg=16)
-- **Next task:** R5
+- **Last completed:** R5 (Button: tonal/loading/icon variants, rounded-rect default + pill, token disabled/pressed)
+- **Next task:** R6
 - **Blocked on:** —
-- **Notes for next run:** R5 = broaden the `Button` primitive. Read `app/src/components/ui/Button.tsx`
-  first. Add: rounded-rect radius as the new default (`radii.md`) + a `pill` option; `tonal`,
-  `loading`, `icon` variants; explicit disabled/pressed tokens (not opacity-only —
-  `accentMuted`/`accentPressed`/`surfaceSunken` exist now). Map intents to the new accent
-  (already indigo via tokens). The dev/theme Buttons section already renders primary/secondary/
-  ghost/disabled — extend it to the full matrix for the R5 screenshot. Icons: R5 may want the
-  `icon` variant slot but the real Icon set arrives in R6 — a placeholder/optional `icon` node
-  prop is fine now. Screenshot tool: `app/scripts/shoot.mjs` — `route:WxH=outname` supported.
-  Foundation R1–R10 before screen tasks.
+- **Notes for next run:** R6 = in-house svg line-icon set in `react-native-svg` (already a dep,
+  15.15.4). Build an `Icon` component + set: heart, mind, life, path, lock, share, send, streak,
+  thread, chevron, back (+ any others screens need). EACH needs an `accessibilityLabel`. No new
+  library. Put it under `app/src/components/ui/` (barrel is `components/ui/index.ts`). Then wire
+  the dev/theme Buttons `icon` slot + a new "Icons" sheet section to use the real Icon (replaces
+  the placeholder dot). PalmDiagram already uses react-native-svg — mirror its import style.
+  Screenshot tool: `app/scripts/shoot.mjs` (`route:WxH=outname`). Foundation R1–R10 first.
 
 ---
 
@@ -84,7 +82,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   - Build: add `shadow.sm/md/lg` (iOS + Android `elevation`) + `surfaceRaised`; add an
     `elevation` prop to `Card.tsx` (keep flat option); make `radii.md 12` the default corner.
   - Verify: harness renders a lifted card next to a flat card, light+dark.
-- [ ] **R5 — Broaden the Button primitive**
+- [x] **R5 — Broaden the Button primitive** _(2026-07-14)_
   - Build: `Button.tsx` — add rounded-rect radius (new default) + `pill` option; add `tonal`,
     `loading`, `icon` variants; explicit disabled/pressed tokens (not opacity-only); map
     intents to the new accent.
@@ -246,3 +244,10 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   `lg`). Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, screenshot
   `docs/checkpoints/redesign/r4-elevation.png` — flat vs sm/md/lg cards lift correctly in
   light (soft shadow) + dark (lighter raised fill). — 2026-07-14
+- R5 — Button broadened: added `tonal` variant, `loading` (ActivityIndicator), `icon` (leading
+  node), and `shape` (`rounded`=radii.md default / `pill`); disabled + pressed now use explicit
+  tokens (surfaceSunken/textTertiary/accentPressed/accentMuted) instead of opacity; secondary
+  border + text moved to the indigo accent; used the Pressable children-function so a pressed
+  tonal fill flips its label to onAccent. Extended /dev/theme to the full matrix. Evidence:
+  `tsc` clean, `jest` 31/31, `expo lint` clean, screenshot
+  `docs/checkpoints/redesign/r5-buttons.png` (light+dark) — all variants + states render. — 2026-07-14

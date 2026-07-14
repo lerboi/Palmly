@@ -152,9 +152,28 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
       <Text variant="heading">Buttons</Text>
       <View style={{ gap: theme.spacing.sm }}>
         <Button label="Read my palm" variant="primary" fullWidth />
+        <Button label="Save to my readings" variant="tonal" fullWidth />
         <Button label="Upload a photo instead" variant="secondary" fullWidth />
         <Button label="Not now" variant="ghost" />
-        <Button label="Disabled" variant="primary" disabled fullWidth />
+        <Button
+          label="With icon"
+          variant="primary"
+          fullWidth
+          icon={
+            <View
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 7,
+                backgroundColor: theme.colors.onAccent,
+              }}
+            />
+          }
+        />
+        <Button label="Analyzing…" variant="primary" loading fullWidth />
+        <Button label="Pill shape" variant="primary" shape="pill" fullWidth />
+        <Button label="Disabled primary" variant="primary" disabled fullWidth />
+        <Button label="Disabled secondary" variant="secondary" disabled fullWidth />
       </View>
 
       <Divider />
