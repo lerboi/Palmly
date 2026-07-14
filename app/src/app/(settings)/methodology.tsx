@@ -1,11 +1,5 @@
-import { PlaceholderScreen } from '@/components/PlaceholderScreen';
+import { MethodologyScreen } from '@/features/settings/MethodologyScreen';
 
 export default function Methodology() {
-  return (
-    <PlaceholderScreen
-      group="(settings)"
-      title="Our methodology"
-      note="How readings work + 'for reflection & entertainment' trust page (UIUX §2.5, Backend §13)"
-    />
-  );
+  return <MethodologyScreen />;
 }
