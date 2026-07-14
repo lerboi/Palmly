@@ -69,7 +69,7 @@ export function PrivacyCenter() {
             Your readings, diagrams, subscription record, and account are permanently deleted. This can’t be undone.
           </Text>
           <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-            <Button label="Delete everything" style={{ backgroundColor: theme.colors.danger }} onPress={deleteAccount} />
+            <Button label="Delete everything" variant="danger" onPress={deleteAccount} />
             <Button label="Cancel" variant="ghost" onPress={() => setConfirmDelete(false)} />
           </View>
         </Card>

@@ -55,6 +55,7 @@ export interface SkinColors {
   onPremium: string; // text on premium
   success: string; // verified / "unchanged" consistency brag
   danger: string; // destructive confirm
+  dangerPressed: string; // pressed destructive button (darker light / lighter dark, like accent)
   scrim: string; // modal / backdrop overlay
 }
 
@@ -92,6 +93,7 @@ export const inkCinnabarSkin: Skin = {
     onPremium: palette.ink,
     success: palette.jade,
     danger: palette.cinnabar,
+    dangerPressed: palette.cinnabarPressed,
     scrim: palette.overlayScrim,
   },
   dark: {
@@ -113,6 +115,7 @@ export const inkCinnabarSkin: Skin = {
     onPremium: palette.ink,
     success: palette.jade,
     danger: palette.cinnabar,
+    dangerPressed: '#D14A4D', // lighter cinnabar for pressed on dark
     scrim: palette.overlayScrim,
   },
 };
@@ -148,6 +151,7 @@ export const quietCosmosSkin: Skin = {
     onPremium: '#1A1A1F',
     success: '#3F7A5E',
     danger: '#C0392B',
+    dangerPressed: '#A32E20',
     scrim: 'rgba(20,21,26,0.4)',
   },
   dark: {
@@ -169,6 +173,7 @@ export const quietCosmosSkin: Skin = {
     onPremium: '#14151A',
     success: '#5AA981',
     danger: '#E06B5E',
+    dangerPressed: '#E88579',
     scrim: 'rgba(0,0,0,0.55)',
   },
 };
@@ -208,6 +213,7 @@ export const vermilionSkin: Skin = {
     onPremium: '#1A1A1F',
     success: '#3F7A5E',
     danger: '#C0392B', // destructive confirm ONLY — deeper/cooler crimson (§3.2)
+    dangerPressed: '#A32E20', // darker crimson for pressed
     scrim: 'rgba(20,21,26,0.4)',
   },
   dark: {
@@ -229,6 +235,7 @@ export const vermilionSkin: Skin = {
     onPremium: '#14151A',
     success: '#5AA981',
     danger: '#E9584E', // nudged cooler/crimson so it reads distinct from the warm accent on dark
+    dangerPressed: '#F0776E', // lighter crimson for pressed on dark
     scrim: 'rgba(0,0,0,0.55)',
   },
 };
@@ -262,6 +269,11 @@ export const radii = {
   seal: 6, // the small heritage stamp (share-card corner only)
   pill: 999, // now optional, not forced on every button
 } as const;
+
+// ── Control heights — buttons / inputs / tap targets (≥44 a11y floor) ─
+// Tokenizes the button height magic numbers (was `44`/`52` inline). `lg` is the primary CTA
+// height; `md` the compact size. Both clear the 44px minimum touch target.
+export const controlHeight = { md: 44, lg: 52 } as const;
 
 // ── Elevation / shadow scale (redesign §5) ────────────────────────────
 // Subtle, premium lift. iOS reads the `shadow*` props; Android reads `elevation`. Pair a

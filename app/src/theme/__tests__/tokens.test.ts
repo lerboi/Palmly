@@ -18,7 +18,7 @@ import { lightTheme, darkTheme, type ThemeColors } from '../theme';
  * "Ink & Cinnabar palette hex" pins in R1: colors are now asserted by *role*, not material.
  */
 
-/** The 18 semantic roles every skin must define (redesign §3). */
+/** The semantic roles every skin must define (redesign §3; + `dangerPressed` from v2 V3). */
 const ROLE_KEYS: (keyof SkinColors)[] = [
   'bg',
   'surface',
@@ -38,6 +38,7 @@ const ROLE_KEYS: (keyof SkinColors)[] = [
   'onPremium',
   'success',
   'danger',
+  'dangerPressed',
   'scrim',
 ];
 

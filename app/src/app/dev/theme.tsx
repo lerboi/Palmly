@@ -182,6 +182,8 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
         <Button label="Save to my readings" variant="tonal" fullWidth />
         <Button label="Upload a photo instead" variant="secondary" fullWidth />
         <Button label="Not now" variant="ghost" />
+        <Button label="Go Premium" variant="premium" fullWidth />
+        <Button label="Delete everything" variant="danger" fullWidth />
         <Button
           label="With icon"
           variant="primary"
@@ -189,8 +191,10 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
           icon={<Icon name="sparkle" size={18} color={theme.colors.onAccent} decorative />}
         />
         <Button label="Analyzing…" variant="primary" loading fullWidth />
+        <Button label="Working…" variant="premium" loading fullWidth />
         <Button label="Pill shape" variant="primary" shape="pill" fullWidth />
         <Button label="Disabled primary" variant="primary" disabled fullWidth />
+        <Button label="Disabled danger" variant="danger" disabled fullWidth />
         <Button label="Disabled secondary" variant="secondary" disabled fullWidth />
       </View>
 

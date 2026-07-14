@@ -1,16 +1,26 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
-  ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   View,
+  type GestureResponderEvent,
   type PressableProps,
   type ViewStyle,
 } from 'react-native';
-import { useTheme } from '@/theme';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { controlHeight, useReducedMotion, useTheme } from '@/theme';
 import { Text } from './Text';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'tonal';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'tonal' | 'danger' | 'premium';
 type ButtonSize = 'md' | 'lg';
 type ButtonShape = 'rounded' | 'pill';
 
@@ -21,7 +31,7 @@ export interface ButtonProps extends Omit<PressableProps, 'style' | 'children'> 
   /** Corner style. `rounded` (radii.md, the new default) or `pill` (fully round). */
   shape?: ButtonShape;
   disabled?: boolean;
-  /** Show a spinner + block interaction. */
+  /** Show the brand loader + block interaction (width is reserved, so it never reflows). */
   loading?: boolean;
   fullWidth?: boolean;
   /** Optional leading element (e.g. an `<Icon/>`). Hidden while `loading`. */
@@ -30,9 +40,12 @@ export interface ButtonProps extends Omit<PressableProps, 'style' | 'children'> 
 }
 
 /**
- * Themed button (redesign §5). `primary` is the solid indigo CTA; `tonal` is a soft
- * accent-tinted fill; `secondary` is outlined; `ghost` is text-only. Disabled + pressed use
- * explicit tokens (not opacity), and the default corner is a rounded-rect (`pill` optional).
+ * Themed button (redesign §5, v2 V3). `primary` is the solid vermilion CTA; `tonal` a soft
+ * accent-tinted fill; `secondary` outlined; `ghost` text-only; `danger` the destructive-confirm
+ * crimson (three-reds §3.2); `premium` the champagne upsell. Disabled + pressed use explicit
+ * tokens (never opacity). A native press springs the whole control to ~0.97 and back
+ * (`motion.spring.press`), gated by reduce-motion + web → static. `loading` swaps the label for a
+ * small brand loader while keeping the label's width reserved.
  */
 export function Button({
   label,
@@ -44,108 +57,182 @@ export function Button({
   fullWidth = false,
   icon,
   style,
+  onPressIn,
+  onPressOut,
   ...rest
 }: ButtonProps) {
   const theme = useTheme();
   const { colors } = theme;
-  const height = size === 'lg' ? 52 : 44;
+  const height = size === 'lg' ? controlHeight.lg : controlHeight.md;
   const paddingHorizontal = size === 'lg' ? theme.spacing.xl : theme.spacing.lg;
   const isBlocked = disabled || loading;
+  const isSolid =
+    variant === 'primary' || variant === 'tonal' || variant === 'danger' || variant === 'premium';
 
-  // Label color, resolved per press state. A pressed `tonal` fill becomes the solid accent, so
-  // its label flips to `onAccent` for contrast; `primary` is always onAccent; the rest sit on a
-  // transparent/sunken fill and keep the accent color.
+  // ── Press-spring (native only; reduce-motion / web → resting scale 1) ──
+  // The press handlers only flip a state flag; the shared-value mutation lives in the effect
+  // (effect-scoped mutation is the codebase pattern the React-Compiler lint allows).
+  const reduceMotion = useReducedMotion();
+  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
+  const [held, setHeld] = useState(false);
+  const scale = useSharedValue(1);
+  const press = theme.motion.spring.press;
+  useEffect(() => {
+    if (!shouldAnimate) {
+      scale.value = 1;
+      return;
+    }
+    scale.value = withSpring(held ? 0.97 : 1, press);
+  }, [held, shouldAnimate, scale, press]);
+  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const pressIn = (e: GestureResponderEvent) => {
+    setHeld(true);
+    onPressIn?.(e);
+  };
+  const pressOut = (e: GestureResponderEvent) => {
+    setHeld(false);
+    onPressOut?.(e);
+  };
+
+  // Label color, resolved per press state. A pressed `tonal` fill becomes the solid accent, so its
+  // label flips to `onAccent`; the solid fills carry their on-color; outlined/ghost keep the accent.
   const labelColor = (pressed: boolean): string => {
     if (disabled) return colors.textTertiary;
-    if (variant === 'primary') return colors.onAccent;
+    if (variant === 'primary' || variant === 'danger') return colors.onAccent;
+    if (variant === 'premium') return colors.onPremium;
     if (variant === 'tonal') return pressed ? colors.onAccent : colors.accent;
     return colors.accent;
   };
 
-  const spinnerColor = variant === 'primary' ? colors.onAccent : colors.accent;
+  const loaderColor =
+    variant === 'primary' || variant === 'danger'
+      ? colors.onAccent
+      : variant === 'premium'
+        ? colors.onPremium
+        : colors.accent;
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled: isBlocked, busy: loading }}
-      disabled={isBlocked}
-      style={({ pressed }) => {
-        const base: ViewStyle = {
-          height,
-          paddingHorizontal,
-          borderRadius: shape === 'pill' ? theme.radii.pill : theme.radii.md,
-          alignItems: 'center',
-          justifyContent: 'center',
-          alignSelf: fullWidth ? 'stretch' : 'flex-start',
-        };
+    <Animated.View style={[{ alignSelf: fullWidth ? 'stretch' : 'flex-start' }, scaleStyle, style]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled: isBlocked, busy: loading }}
+        disabled={isBlocked}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        style={({ pressed }) => {
+          const base: ViewStyle = {
+            height,
+            paddingHorizontal,
+            borderRadius: shape === 'pill' ? theme.radii.pill : theme.radii.md,
+            alignSelf: 'stretch',
+            alignItems: 'center',
+            justifyContent: 'center',
+          };
 
-        // Disabled: explicit tokens, never opacity.
-        if (disabled) {
-          const disabledBg =
-            variant === 'primary' || variant === 'tonal' ? colors.surfaceSunken : 'transparent';
-          return [
-            base,
-            {
-              backgroundColor: disabledBg,
-              borderWidth: variant === 'secondary' ? theme.strokes.hairline : 0,
-              borderColor: colors.border,
-            },
-            style as ViewStyle,
-          ];
-        }
-
-        if (variant === 'primary') {
-          return [
-            base,
-            { backgroundColor: pressed ? colors.accentPressed : colors.accent },
-            style as ViewStyle,
-          ];
-        }
-        if (variant === 'tonal') {
-          return [
-            base,
-            { backgroundColor: pressed ? colors.accentPressed : colors.accentMuted },
-            style as ViewStyle,
-          ];
-        }
-        if (variant === 'secondary') {
-          return [
-            base,
-            {
-              backgroundColor: pressed ? colors.surfaceSunken : 'transparent',
-              borderWidth: theme.strokes.hairline,
-              borderColor: colors.accent,
-            },
-            style as ViewStyle,
-          ];
-        }
-        // ghost
-        return [
-          base,
-          { backgroundColor: pressed ? colors.surfaceSunken : 'transparent' },
-          style as ViewStyle,
-        ];
-      }}
-      {...rest}
-    >
-      {({ pressed }) => (
-        <View style={styles.row}>
-          {loading ? (
-            <ActivityIndicator size="small" color={spinnerColor} />
-          ) : (
-            <>
+          // Disabled: explicit tokens, never opacity.
+          if (disabled) {
+            return [
+              base,
+              {
+                backgroundColor: isSolid ? colors.surfaceSunken : 'transparent',
+                borderWidth: variant === 'secondary' ? theme.strokes.hairline : 0,
+                borderColor: colors.border,
+              },
+            ];
+          }
+          if (variant === 'primary') {
+            return [base, { backgroundColor: pressed ? colors.accentPressed : colors.accent }];
+          }
+          if (variant === 'tonal') {
+            return [base, { backgroundColor: pressed ? colors.accentPressed : colors.accentMuted }];
+          }
+          if (variant === 'danger') {
+            return [base, { backgroundColor: pressed ? colors.dangerPressed : colors.danger }];
+          }
+          if (variant === 'premium') {
+            return [base, { backgroundColor: pressed ? colors.premiumPressed : colors.premium }];
+          }
+          if (variant === 'secondary') {
+            return [
+              base,
+              {
+                backgroundColor: pressed ? colors.surfaceSunken : 'transparent',
+                borderWidth: theme.strokes.hairline,
+                borderColor: colors.accent,
+              },
+            ];
+          }
+          // ghost
+          return [base, { backgroundColor: pressed ? colors.surfaceSunken : 'transparent' }];
+        }}
+        {...rest}
+      >
+        {({ pressed }) => (
+          <>
+            {/* Label stays mounted (invisible while loading) so its width is reserved — the
+                loader overlays it and toggling `loading` never reflows the button. */}
+            <View style={[styles.row, { gap: theme.spacing.sm, opacity: loading ? 0 : 1 }]}>
               {icon}
               <Text variant="button" color={labelColor(pressed)}>
                 {label}
               </Text>
-            </>
-          )}
-        </View>
-      )}
-    </Pressable>
+            </View>
+            {loading ? (
+              <View style={styles.loaderOverlay} pointerEvents="none">
+                <BrandLoader color={loaderColor} />
+              </View>
+            ) : null}
+          </>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
+/**
+ * The brand loader — three palm-dots that breathe in sequence (native; reduce-motion / web →
+ * static). Replaces the stock `ActivityIndicator` so a working button still feels like Palmly.
+ */
+function BrandLoader({ color }: { color: string }) {
+  return (
+    <View style={styles.loaderRow} accessibilityLabel="Loading">
+      {[0, 1, 2].map((i) => (
+        <LoaderDot key={i} index={i} color={color} />
+      ))}
+    </View>
+  );
+}
+
+function LoaderDot({ index, color }: { index: number; color: string }) {
+  const reduceMotion = useReducedMotion();
+  const animate = !reduceMotion && Platform.OS !== 'web';
+  const opacity = useSharedValue(0.35);
+  useEffect(() => {
+    if (animate) {
+      opacity.value = withDelay(
+        index * 160,
+        withRepeat(withTiming(1, { duration: 420, easing: Easing.inOut(Easing.ease) }), -1, true),
+      );
+    } else {
+      // Static end-state (web / reduce-motion): a settled staggered fade.
+      opacity.value = [1, 0.7, 0.4][index] ?? 0.5;
+    }
+  }, [animate, index, opacity]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return <Animated.View style={[styles.loaderDot, { backgroundColor: color }, style]} />;
+}
+
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  loaderOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  loaderDot: { width: 7, height: 7, borderRadius: 3.5 },
 });
