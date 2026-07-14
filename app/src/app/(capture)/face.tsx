@@ -1,12 +1,18 @@
-import { PlaceholderScreen } from '@/components/PlaceholderScreen';
+import { router, type Href } from 'expo-router';
+import { CaptureView } from '@/features/capture/CaptureView';
 
+/**
+ * Capture C — face-reading variant (UIUX §2.3, redesign R13). Oval guide + alignment prompts.
+ * Shown in the "searching → line up" state. Live camera + Euler-angle prompts are device-only
+ * ([~]); the shutter advances to analyzing for the flow walk-through.
+ */
 export default function FaceCapture() {
   return (
-    <PlaceholderScreen
-      group="(capture)"
-      title="Face capture"
-      note="Face-reading variant · oval guide + Euler-angle prompts (UIUX §2.3, P4.T5)"
-      links={[{ href: '/analyzing', label: 'Captured → analyzing' }]}
+    <CaptureView
+      mode="face"
+      state="searching"
+      instruction="Center your face in the oval"
+      onShutter={() => router.push('/analyzing' as Href)}
     />
   );
 }

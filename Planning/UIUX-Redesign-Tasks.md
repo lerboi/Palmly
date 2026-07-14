@@ -11,33 +11,28 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R12 (onboarding welcome / how-it-works / hand-select — real screens)
-- **Next task:** R13 (capture primer / palm / face — native camera, use fixtures + mark [~])
+- **Last completed:** R13 (capture primer / palm / face — real UI, camera feed [~])
+- **Next task:** R14 (redesign the Analyzing loader + failed/retry state)
 - **Blocked on:** —
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
   `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
-  `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`. All via tokens (no raw hexes), realistic
-  English content (no lorem, trim CJK/almanac). R12 = build the 3 `(onboarding)` placeholders →
-  real screens: `welcome.tsx` (brand moment: Logomark reveal + value prop), `how-it-works.tsx`
-  (3-step explainer using line-icons + the upgraded PalmDiagram), `hand-select.tsx` (two-card
-  hand-select with elevation + selected state). They currently render `<PlaceholderScreen/>` —
-  read one to see its props, and read `Planning/UIUX-specs.md` for the onboarding flow/content.
-  Realistic English copy. Verify: dev route-map walks all three; no `PlaceholderScreen` in
-  `(onboarding)`; screenshots. **SCREENSHOTS: `npx expo export --platform web` then
-  `node scripts/shoot.mjs ../docs/checkpoints/redesign "welcome:390x844=r12-welcome"
-  "how-it-works:390x844=r12-how" "hand-select:390x844=r12-hand"`. For the ROOT launcher route use
-  an EMPTY route (`":390x844=name"`) — `/index` hits expo-router's not-found.** Migration
-  cleanups for the finalize pass (R22/R24): `fonts.cjk`/NotoSerifTC now has ZERO default consumers
-  → module can go zh-only load; the /dev/theme "Section markers" CJK demo + remaining `SealBadge`
-  call sites (chat/reveal) get migrated in their screen tasks (R15/R19).
-  --- R13 NEXT: build the 3 `(capture)` placeholders → real UI: `primer.tsx` (calm
-  permission/consent primer — photo-deleted reassurance + "Allow camera" / "Upload instead"),
-  `palm.tsx` + `face.tsx` (guided capture states: align / hold / captured with a modern framing
-  guide + new-accent active/locked). The live camera (`expo-camera`) does NOT render in web
-  export — build with FIXTURE stand-ins (a placeholder framing region, not a real feed) so the
-  LAYOUT is screenshot-able, and mark the live-camera leg `[~]`. Read the `(capture)` route files
-  + UIUX-specs §2.2 (capture) first. Verify: screenshots of each state; no `PlaceholderScreen` in
-  `(capture)`.
+  `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
+  in app surfaces — the camera-overlay `OVERLAY` palette in `CaptureView` is a justified
+  theme-independent exception), realistic English (no lorem, trim CJK/almanac).
+  **R14 = redesign the Analyzing loader + its failed/retry state.** Files:
+  `src/features/reading/AnalyzingView.tsx`, `analyzing.ts` (copy/messages),
+  `src/app/(reading)/analyzing.tsx`; `useScanStatus` models a `failed` state (find it —
+  `grep -rn useScanStatus src`). Center the upgraded PalmDiagram + tracing, add a progress ring /
+  step indicator, give the message vertical presence, reframe `analyzing.ts` copy off ethnicity.
+  Also build the `failed`/retry state (calm error + Retry / Upload-instead). Verify: happy +
+  failed screenshots; no empty/unfinished read; reanimated ring/trace motion → verify static
+  state, mark motion `[~]` if it won't capture headlessly.
+  **SCREENSHOTS:** `npx expo export --platform web` then
+  `node scripts/shoot.mjs ../docs/checkpoints/redesign "analyzing:390x844=r14-analyzing"`.
+  ROOT launcher route = EMPTY route (`":390x844=name"`) — `/index` hits expo-router's not-found.
+  **Finalize-pass cleanups (R22/R24):** `fonts.cjk`/NotoSerifTC has ZERO default consumers →
+  module can go zh-only load; /dev/theme "Section markers" CJK demo + remaining `SealBadge` call
+  sites (chat R19 / reveal R15) still to migrate.
 
 ---
 
@@ -148,12 +143,12 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   explainer using line-icons + the upgraded PalmDiagram, a two-card hand-select with elevation
   + selected state. Realistic English copy. Verify: dev route-map walks all three; no
   `PlaceholderScreen`. _(2026-07-14)_
-- [ ] **R13 — Build capture primer / palm / face** (3 `(capture)` placeholders → real UI):
+- [x] **R13 — Build capture primer / palm / face** (3 `(capture)` placeholders → real UI):
   calm permission/consent primer (photo-deleted reassurance + Allow / upload-instead), guided
   palm + face capture states (align/hold/captured) with a modern framing guide + new-accent
   active/locked. Use **fixture stand-ins** for the camera feed so layout is screenshot-able;
   mark the live-camera leg `[~]`. Verify: screenshots of each state; no `PlaceholderScreen` in
-  `(capture)`.
+  `(capture)`. _(2026-07-14)_ _(live-camera feed + landmark state machine [~])_
 - [ ] **R14 — Redesign the Analyzing loader** — center the upgraded PalmDiagram + real tracing
   animation; add a progress ring / step indicator; give the message vertical presence; reframe
   `analyzing.ts` copy off ethnicity. **Also design the `failed`/retry state** (`useScanStatus`
@@ -331,3 +326,13 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   my palm"). All tokens, realistic English, no CJK/PlaceholderScreen. Evidence: `tsc` clean,
   `jest` 31/31, `expo lint` clean, grep clean, screenshots `r12-welcome.png` / `r12-how.png` /
   `r12-hand.png`. — 2026-07-14
+- R13 — Capture built (3 `(capture)` placeholders → real UI): `primer.tsx` (B — camera hero +
+  "Palmly needs your camera" + three icon consent/reassurance rows in a sunken card + Allow /
+  Upload-instead; the rows are the versioned biometric-consent text), and a shared
+  `features/capture/CaptureView.tsx` fixture driving `palm.tsx` (C — gold hand-shaped framing
+  guide, "Hold still…" pill, shutter + auto-capture ring, Right/Left toggle — the ready state)
+  and `face.tsx` (oval guide, dashed searching state). Live `expo-camera` feed + landmark state
+  machine are device-only → a neutral feed STAND-IN with full overlay chrome; on-device leg
+  `[~]`. Camera-overlay colors are a small theme-independent `OVERLAY` palette (sits on a dark
+  feed, not an app surface). Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, grep clean
+  (no PlaceholderScreen/CJK), screenshots `r13-primer.png` / `r13-palm.png` / `r13-face.png`. — 2026-07-14
