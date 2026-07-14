@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { Card, Text } from '@/components/ui';
+import { Card, Icon, Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 
 /** A titled group of setting rows in a single card (iOS-style grouped list). */
@@ -41,7 +41,7 @@ export function SettingRow({ label, value, onPress, right, danger = false, first
         borderTopColor: theme.colors.border,
       }}
     >
-      <Text variant="body" style={{ flex: 1 }} color={danger ? theme.colors.accent : undefined}>
+      <Text variant="body" style={{ flex: 1 }} color={danger ? theme.colors.danger : undefined}>
         {label}
       </Text>
       {value ? (
@@ -49,12 +49,7 @@ export function SettingRow({ label, value, onPress, right, danger = false, first
           {value}
         </Text>
       ) : null}
-      {right ??
-        (onPress ? (
-          <Text variant="body" tone="secondary">
-            ›
-          </Text>
-        ) : null)}
+      {right ?? (onPress ? <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative /> : null)}
     </View>
   );
   return onPress ? (

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Switch, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
-import { Button, Card, Screen, Text } from '@/components/ui';
+import { AppHeader, Button, Card, Icon, Screen, Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 import { SettingGroup, SettingRow } from './settingsUi';
 
@@ -13,6 +14,7 @@ import { SettingGroup, SettingRow } from './settingsUi';
  */
 export function PrivacyCenter() {
   const theme = useTheme();
+  const router = useRouter();
   const [keepPhoto, setKeepPhoto] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -25,14 +27,15 @@ export function PrivacyCenter() {
 
   return (
     <Screen scroll>
-      <Text variant="display" style={{ marginBottom: theme.spacing.md }}>
-        Privacy & your data
-      </Text>
+      <AppHeader title="Privacy &amp; your data" onBack={() => router.back()} />
 
-      <Card style={{ marginBottom: theme.spacing.lg, gap: theme.spacing.sm }}>
-        <Text variant="bodyMedium" tone="jade">
-          ✓ Your photo is deleted within a day
-        </Text>
+      <Card elevation="sm" style={{ marginBottom: theme.spacing.lg, gap: theme.spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <Icon name="shield" size={18} color={theme.colors.success} decorative />
+          <Text variant="bodyMedium" tone="success">
+            Your photo is deleted within a day
+          </Text>
+        </View>
         <Text variant="body" tone="secondary">
           We keep only the engraved line diagram and your reading — never the photo itself, and never anything used to identify you.
         </Text>
@@ -58,15 +61,15 @@ export function PrivacyCenter() {
       </SettingGroup>
 
       {confirmDelete ? (
-        <Card style={{ borderColor: theme.colors.accent, gap: theme.spacing.md }}>
-          <Text variant="heading" tone="accent">
+        <Card elevation="md" style={{ borderColor: theme.colors.danger, borderWidth: theme.strokes.hairline, gap: theme.spacing.md }}>
+          <Text variant="heading" color={theme.colors.danger}>
             This erases everything
           </Text>
           <Text variant="body" tone="secondary">
             Your readings, diagrams, subscription record, and account are permanently deleted. This can’t be undone.
           </Text>
           <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-            <Button label="Delete everything" onPress={deleteAccount} />
+            <Button label="Delete everything" style={{ backgroundColor: theme.colors.danger }} onPress={deleteAccount} />
             <Button label="Cancel" variant="ghost" onPress={() => setConfirmDelete(false)} />
           </View>
         </Card>

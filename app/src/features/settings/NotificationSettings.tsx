@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Switch } from 'react-native';
+import { useRouter } from 'expo-router';
 
-import { Screen, Text } from '@/components/ui';
+import { AppHeader, Screen, Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 import { SettingGroup, SettingRow } from './settingsUi';
 
@@ -12,6 +13,7 @@ import { SettingGroup, SettingRow } from './settingsUi';
  */
 export function NotificationSettings() {
   const theme = useTheme();
+  const router = useRouter();
   const [fortune, setFortune] = useState(true);
   const [social, setSocial] = useState(true);
   const [offers, setOffers] = useState(false);
@@ -22,9 +24,7 @@ export function NotificationSettings() {
 
   return (
     <Screen scroll>
-      <Text variant="display" style={{ marginBottom: theme.spacing.lg }}>
-        Notifications
-      </Text>
+      <AppHeader title="Notifications" onBack={() => router.back()} />
 
       <SettingGroup title="What you’ll hear about">
         <SettingRow first label="Daily fortune" right={sw(fortune, setFortune)} />

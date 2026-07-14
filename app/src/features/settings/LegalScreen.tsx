@@ -1,4 +1,6 @@
-import { Card, Screen, Text } from '@/components/ui';
+import { useRouter } from 'expo-router';
+
+import { AppHeader, Card, Screen, Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 
 /**
@@ -8,11 +10,14 @@ import { useTheme } from '@/theme';
  */
 export function LegalScreen() {
   const theme = useTheme();
+  const router = useRouter();
   return (
     <Screen scroll>
-      <Card style={{ borderColor: theme.colors.gold, marginBottom: theme.spacing.lg }}>
-        <Text variant="caption" tone="gold">
-          ⚠️ Template — pending legal review before launch.
+      <AppHeader title="Legal" onBack={() => router.back()} />
+
+      <Card style={{ borderColor: theme.colors.premium, backgroundColor: theme.colors.surfaceSunken, marginBottom: theme.spacing.lg }}>
+        <Text variant="caption" tone="premium">
+          Template — pending legal review before launch.
         </Text>
       </Card>
 

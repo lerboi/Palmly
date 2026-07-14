@@ -1,8 +1,7 @@
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 
-import { Screen, Text } from '@/components/ui';
-import { useTheme } from '@/theme';
+import { AppHeader, Screen } from '@/components/ui';
 import { SettingGroup, SettingRow } from './settingsUi';
 
 /**
@@ -11,15 +10,12 @@ import { SettingGroup, SettingRow } from './settingsUi';
  * RevenueCat-backed on device (H8); the language row is a stub (English only for the MVP).
  */
 export function SettingsHub({ premium = false }: { premium?: boolean }) {
-  const theme = useTheme();
   const router = useRouter();
   const version = Constants.expoConfig?.version ?? '1.0.0';
 
   return (
     <Screen scroll>
-      <Text variant="display" style={{ marginBottom: theme.spacing.lg }}>
-        Settings
-      </Text>
+      <AppHeader title="Settings" onBack={() => router.back()} />
 
       <SettingGroup title="Subscription">
         <SettingRow first label="Plan" value={premium ? 'Palmly Premium' : 'Free'} onPress={() => router.push('/paywall')} />
@@ -28,7 +24,9 @@ export function SettingsHub({ premium = false }: { premium?: boolean }) {
 
       <SettingGroup title="Preferences">
         <SettingRow first label="Notifications" onPress={() => router.push('/notifications')} />
-        <SettingRow label="Language" value="English" />
+        {/* Language wires the optional zh "traditional view" (activeSkin → Ink & Cinnabar + CJK
+            labels/fonts). English-only for the MVP; the picker is a device follow-up. */}
+        <SettingRow label="Language" value="English" onPress={() => {}} />
       </SettingGroup>
 
       <SettingGroup title="About & legal">

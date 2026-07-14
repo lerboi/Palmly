@@ -11,8 +11,8 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R20 (History shelf — palm/face type-icons, success unchanged banner, empty state)
-- **Next task:** R21 (Settings suite — 5 screens; MethodologyScreen CJK strip)
+- **Last completed:** R21 (Settings suite — all 5 screens AppHeader + de-CJK Methodology + danger/success tokens)
+- **Next task:** R22 (re-author fixtures to universal English)
 - **Blocked on:** — (note: `deno` is NOT installed here — Deno test RUNS are `[~]`; re-pin + render/grep-verify.
   Web-export ScrollView top-aligns short content — scroll screens need a taller capture; correct on device.)
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
@@ -20,29 +20,26 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
   `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
   in app surfaces — the camera-overlay `OVERLAY` palette in `CaptureView` is a justified
   theme-independent exception), realistic English (no lorem, trim CJK/almanac).
-  **R21 = migrate the Settings suite (5 screens).** Files under `src/features/settings/`:
-  `SettingsHub.tsx`, `NotificationSettings.tsx`, `MethodologyScreen.tsx`, `PrivacyCenter.tsx`,
-  `LegalScreen.tsx` (+ `settingsUi.tsx` shared rows). READ each first. Do: token-migrate (any
-  `gold`→`premium`, `jade`→`success`, destructive→`danger`; `colors.text`→`textPrimary` etc. —
-  aliases still work but prefer roles); adopt `AppHeader` (back + title) on each (they're likely
-  `headerShown:false` + inline titles). In `MethodologyScreen.tsx`: replace 一/二/三 step numerals
-  with 1/2/3 (or step icons) and STRIP the inline CJK (心/智/命/运, 手相, 面相) — lead English
-  ("palmistry", "face reading", Heart/Head/Life/Fate). Wire the Language row (in SettingsHub or a
-  dedicated row) toward the optional zh "traditional view" (a simple toggle/row that would flip
-  `activeSkin`→`inkCinnabarSkin` + load `fonts.cjk`; a stub/no-op wired to a row is fine — note it).
-  Routes: `/settings /notifications /methodology /privacy /legal` (all under `(settings)`).
-  Verify: screenshots of all five; grep confirms NO CJK in `MethodologyScreen.tsx`; re-shoot
-  notifications at 320 AND 390 wide to confirm the old right-edge clipping was only a capture
-  artifact. **SCREENSHOTS:** `npx expo export --platform web` then
-  `node scripts/shoot.mjs ../docs/checkpoints/redesign "settings:390x900=r21-settings"
-  "methodology:390x1200=r21-methodology" "notifications:390x844=r21-notif" "notifications:320x844=r21-notif-320"
-  "privacy:390x900=r21-privacy" "legal:390x900=r21-legal"`.
-  **After R21:** R22 (fixture English sweep — `PREVIEW_*` in reveal/fortune/chat/history/analyzing),
-  R23 (a11y — accessibilityLabels on all svg icons + reduce-motion fallbacks + AA/dynamic-type),
-  R24 (finalize /dev/theme with the full new system + first-run/empty/failed variants + full
-  device-free suite). `SealBadge` now has ZERO app call sites — safe to delete in R24 (or keep the
-  deprecated shim). Also R22/R24: `fonts.cjk`/NotoSerifTC → zh-only load; /dev/theme "Section
-  markers" CJK demo → icons.
+  **R22 = re-author fixtures to universal English.** Sweep `PREVIEW_*` (+ related copy) in
+  `src/features/reading/reveal.ts`, `fortune.ts`, `src/features/chat/chat.ts`,
+  `src/features/reading/history.ts`, `src/features/reading/analyzing.ts` to universally-legible
+  English — trim any remaining xuanxue/almanac phrasing + classical CJK citations, while KEEPING
+  the warm, specific, human quality. Most were already anglicized through R11–R21, so this is
+  largely a VERIFY + trim pass: `grep -rnP "[\x{4e00}-\x{9fff}]" src/features` and confirm the only
+  CJK left is intentional zh-locale/domain DATA (fortune.ts `dayPillarCn` STEM/BRANCH arrays +
+  comments — kept for the traditional view; NOT rendered) — trim anything else. Optionally add a
+  small zh-locale strings map for the traditional view (nice-to-have, skippable). Do NOT break the
+  jest fixtures/tests (fortune pillar test pins 甲子; keep `dayPillarCn`). Verify: every built
+  screen still renders realistic (non-lorem) content (spot-check via existing screenshots — no
+  re-shoot needed unless copy changed a rendered string); grep shows no stray rendered CJK.
+  **After R22:** R23 (a11y — every svg `Icon`/`Logomark`/`PalmDiagram` has an
+  `accessibilityLabel` or `decorative`; reduce-motion fallbacks present on PalmDiagram draw-on +
+  analyzing ring + chat typing [all already gated]; AA contrast + dynamic-type spot check — record
+  it), R24 (finalize `/dev/theme` to render the FULL new system + add first-run/empty/failed
+  variants; run the whole device-free suite; note DONE). `SealBadge` now has ZERO app call sites
+  (only its file + barrel + maybe /dev/theme) — safe to delete in R24 or keep the deprecated shim.
+  `fonts.cjk`/NotoSerifTC has zero DEFAULT consumers (PalmDiagram uses it only under `traditional`)
+  → can move to zh-only load in R24; /dev/theme "Section markers" CJK demo → replace with icons in R24.
   **Finalize-pass cleanups (R22/R24):** `fonts.cjk`/NotoSerifTC has ZERO default consumers →
   zh-only load; /dev/theme "Section markers" CJK demo + the chat `SealBadge` call (R19) to migrate.
 
@@ -206,7 +203,7 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   line-icon; show the privacy line once (header badge) not per row; keep the "unchanged"
   consistency brag on the `success` token; vary thumbnails; **add the empty (zero-readings)
   state.** Verify: screenshot — no per-row CJK, one privacy signal.
-- [ ] **R21 — Migrate the Settings suite** — token-migrate SettingsHub/Notifications/
+- [x] **R21 — Migrate the Settings suite** _(2026-07-14)_ — token-migrate SettingsHub/Notifications/
   Methodology/Privacy/Legal; adopt `AppHeader`. In `MethodologyScreen.tsx` replace 一/二/三 with
   1/2/3 or step icons and strip inline CJK (心/智/命/运, 手相, 面相) leading English; map
   jade→success, gold→premium/notice, destructive-confirm→danger token; wire the Language row
@@ -453,3 +450,14 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   zero-readings `EmptyState` polished to premium (history-icon tile + copy + "Read my palm" CTA).
   Added `/dev/history-empty` preview. Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, no
   CJK in HistoryShelf; screenshots `r20-history.png` (banner + palm/face rows) + `r20-empty.png`. — 2026-07-14
+- R21 — Settings suite migrated (all 5 screens + `settingsUi.tsx`): each adopts `AppHeader`
+  (back + title); `settingsUi` `SettingRow` danger → the `danger` token, "›" → `Icon chevron`.
+  `MethodologyScreen.tsx` fully de-CJK'd — 一/二/三 → numbered 1/2/3 tiles (accentMuted), "heart
+  心/head 智/life 命/fate 运" → "heart, head, life and fate", "手相/面相" → "palmistry and
+  face-reading"; trust card → success shield. `PrivacyCenter` jade card → success shield, the
+  destructive account-delete row + confirm card → the `danger` token (red row + red "Delete
+  everything" button). `LegalScreen` gold notice card → premium tone on surfaceSunken (⚠️ emoji
+  dropped). `SettingsHub` Language row wired (stub) toward the zh traditional view. Evidence:
+  `tsc` clean, `jest` 31/31, `expo lint` clean, grep shows **no CJK anywhere in settings**;
+  screenshots `r21-settings.png` / `r21-methodology.png` / `r21-notif.png` + `r21-notif-320.png`
+  (no clipping at 320 or 390) / `r21-privacy.png` / `r21-legal.png`. — 2026-07-14
