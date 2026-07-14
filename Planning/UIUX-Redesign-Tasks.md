@@ -11,28 +11,35 @@ Checkbox: `[ ]` not started · `[~]` in progress/partial · `[x]` done+verified 
 ## STATE
 
 - **Active skin:** **Quiet Cosmos (skin #2)** — now the default; Ink & Cinnabar retained as skin #1 for the optional zh view.
-- **Last completed:** R13 (capture primer / palm / face — real UI, camera feed [~])
-- **Next task:** R14 (redesign the Analyzing loader + failed/retry state)
+- **Last completed:** R14 (Analyzing loader — progress ring + step dots + calm failed/retry state)
+- **Next task:** R15 (redesign the Reveal screen — de-CJK section cards, pending/error state)
 - **Blocked on:** —
 - **Notes for next run:** Screen tasks rebuild each surface with the primitives:
   `Button`/`Card`(+`elevation`)/`Text`(tones)/`Icon`(19 names in `IconName`)/`Logomark`/
   `AppHeader`+`PrivacyBadge`/upgraded `PalmDiagram`/`CaptureView`. All via tokens (no raw hexes
   in app surfaces — the camera-overlay `OVERLAY` palette in `CaptureView` is a justified
   theme-independent exception), realistic English (no lorem, trim CJK/almanac).
-  **R14 = redesign the Analyzing loader + its failed/retry state.** Files:
-  `src/features/reading/AnalyzingView.tsx`, `analyzing.ts` (copy/messages),
-  `src/app/(reading)/analyzing.tsx`; `useScanStatus` models a `failed` state (find it —
-  `grep -rn useScanStatus src`). Center the upgraded PalmDiagram + tracing, add a progress ring /
-  step indicator, give the message vertical presence, reframe `analyzing.ts` copy off ethnicity.
-  Also build the `failed`/retry state (calm error + Retry / Upload-instead). Verify: happy +
-  failed screenshots; no empty/unfinished read; reanimated ring/trace motion → verify static
-  state, mark motion `[~]` if it won't capture headlessly.
+  **R15 = redesign the Reveal screen** (`src/features/reading/RevealView.tsx` + `reveal.ts`).
+  Current CJK/heritage to fix: `SECTION_GLYPH` (掌/心… per section) → map each section to a
+  feature `Icon` (heart/mind/life/path — see `SECTION_LINE` for the line→section mapping);
+  `CompareCard` uses 🔴 + "Compare with a friend 🔴" → drop the emoji, use `Icon name="thread"`
+  in heritageAccent; `LockedCard` uses the 锁 glyph + gold box → use `Icon name="lock"` +
+  `premium` tone; the floating share `SealBadge glyph="分"` → `Icon name="share"` (keep a single
+  small `Logomark` stamp only on the share CARD, not here); `FaceOfferCard` "面相" title →
+  English-lead ("Your face tells the other half"); section `traditionFootnote` may carry CJK
+  (三才纹 etc.) — English-lead. Headline already sans (R3). Vary/reduce the repeated 92px
+  section thumbnails (maybe show the diagram only on 1–2 cards, or shrink). **Add a pending/error
+  state** (reveal invoked before data / load error — a calm placeholder). Keep ONE privacy line
+  (already `PrivacyBadge` in TrustFooter from R9). AppHeader back already added (R9). Read
+  `reveal.ts` for `SECTION_GLYPH`/`SECTION_LINE`/`traditionFootnote`/`PREVIEW_READING`.
+  Verify: screenshot (`reveal:390x900=r15-reveal`) — no decorative CJK, headline fits, one
+  privacy line; grep no 🔴/锁/CJK in RevealView.
   **SCREENSHOTS:** `npx expo export --platform web` then
-  `node scripts/shoot.mjs ../docs/checkpoints/redesign "analyzing:390x844=r14-analyzing"`.
-  ROOT launcher route = EMPTY route (`":390x844=name"`) — `/index` hits expo-router's not-found.
+  `node scripts/shoot.mjs ../docs/checkpoints/redesign "<route:WxH=name>"`. Only `dev/theme`
+  renders desktop; other `dev/*` previews render mobile now. ROOT launcher = EMPTY route.
   **Finalize-pass cleanups (R22/R24):** `fonts.cjk`/NotoSerifTC has ZERO default consumers →
   module can go zh-only load; /dev/theme "Section markers" CJK demo + remaining `SealBadge` call
-  sites (chat R19 / reveal R15) still to migrate.
+  sites (chat R19) still to migrate.
 
 ---
 
@@ -149,10 +156,10 @@ Every new icon gets an `accessibilityLabel`; every new animation gets a reduce-m
   active/locked. Use **fixture stand-ins** for the camera feed so layout is screenshot-able;
   mark the live-camera leg `[~]`. Verify: screenshots of each state; no `PlaceholderScreen` in
   `(capture)`. _(2026-07-14)_ _(live-camera feed + landmark state machine [~])_
-- [ ] **R14 — Redesign the Analyzing loader** — center the upgraded PalmDiagram + real tracing
+- [x] **R14 — Redesign the Analyzing loader** — center the upgraded PalmDiagram + real tracing
   animation; add a progress ring / step indicator; give the message vertical presence; reframe
   `analyzing.ts` copy off ethnicity. **Also design the `failed`/retry state** (`useScanStatus`
-  models it). Verify: happy + failed screenshots; no empty/unfinished read.
+  models it). Verify: happy + failed screenshots; no empty/unfinished read. _(2026-07-14)_ _(smooth ring/self-draw motion [~])_
 - [ ] **R15 — Redesign the Reveal screen** — remove cinnabar CJK section glyphs → feature
   line-icons; sans-first headline (fixes the 34px serif wrap); vary/drop the repeated 92px
   thumbnails; standard lock icon (drop 锁); share icon (keep the seal special, one mark);
@@ -336,3 +343,13 @@ _(append one line per completed task: `R#.T# — <what> — <evidence> — <date
   `[~]`. Camera-overlay colors are a small theme-independent `OVERLAY` palette (sits on a dark
   feed, not an app surface). Evidence: `tsc` clean, `jest` 31/31, `expo lint` clean, grep clean
   (no PlaceholderScreen/CJK), screenshots `r13-primer.png` / `r13-palm.png` / `r13-face.png`. — 2026-07-14
+- R14 — Analyzing loader redesigned (`AnalyzingView.tsx`): the progressively-traced PalmDiagram
+  now sits inside a static accent progress ring (fills by pipeline stage) with a step-dot
+  indicator; the message gained vertical presence (title + step dots + social proof). Reframed
+  `analyzing.ts` `SOCIAL_PROOF` off ethnicity ("Three thousand years of Chinese palmistry" →
+  "Rooted in centuries of palmistry"). Rebuilt the `failed`/retry state: camera icon + specific
+  hint + "Try again" (primary) / "Upload a photo instead" (secondary) via a `/dev/analyzing-failed`
+  preview. Also generalized `shoot.mjs` so only `dev/theme` renders desktop (other dev previews =
+  mobile). Evidence: `tsc` clean, `jest` 31/31 (analyzing logic contract intact), `expo lint`
+  clean, screenshots `r14-analyzing.png` (ring + step dots + traced palm) + `r14-failed.png`
+  (calm retry). Smooth ring/self-draw motion is `[~]` (static state verified). — 2026-07-14

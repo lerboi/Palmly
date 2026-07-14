@@ -145,7 +145,8 @@ async function main() {
     for (const { route, w, h, name } of specs) {
       const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
       const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
-      const mobile = !route.startsWith('dev/');
+      // Only the two-panel /dev/theme harness renders desktop-wide; other dev previews are phones.
+      const mobile = route !== 'dev/theme';
       await cdp.send('Page.enable', {}, sessionId);
       await cdp.send(
         'Emulation.setDeviceMetricsOverride',

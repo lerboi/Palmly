@@ -44,10 +44,12 @@ export function failureHint(reason: string | null | undefined): string {
   return FAILURE_DEFAULT;
 }
 
-/** One rotating social-proof line beneath the stage message. */
+/** One rotating social-proof line beneath the stage message. Authority framed without ethnicity
+ *  (redesign §2/§6): "rooted in centuries" / "cross-checking the classics", not "3000 years of
+ *  Chinese palmistry". */
 export const SOCIAL_PROOF = [
   '1.2M palms read',
-  'Three thousand years of Chinese palmistry',
+  'Rooted in centuries of palmistry',
   'Your photo is deleted after your reading',
 ];
 
