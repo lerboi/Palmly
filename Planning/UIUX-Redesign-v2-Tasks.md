@@ -16,16 +16,16 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V15 `[x]` (V0 + Launcher…Share + Pair/claim). Screen phase continues
-  at V16 (Paywall). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
+- **Status:** IN PROGRESS — V1–V16 `[x]` (V0 + Launcher…Pair + Paywall). Screen phase continues at
+  V17 (Fortune). Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
 - **Dark screenshots (V9+):** build a dark bundle with `EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export`
   then run `shoot.mjs` (RNW can't switch scheme client-side in a static web export). Light = normal
   export. `/dev/theme` still renders both via `forceScheme`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V15** — Pair-reveal (slide-in palms, drawing thread, counting score ring, fanning icon'd sub-scores) + claim verified (2026-07-15).
-- **Next task:** **V16 — Paywall** (`features/paywall/PaywallView.tsx` + `(modals)/paywall.tsx`).
+- **Last completed:** **V16** — Paywall (personalized palm hero + line names, feature icons, spring plans, stable price hierarchy, claret seal) (2026-07-15).
+- **Next task:** **V17 — Fortune** (`features/fortune/FortuneHome.tsx` + `FortuneCard.tsx` + `fortune.ts`).
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -385,7 +385,7 @@ schema/migration/secret changes — none of this touches the DB.
     change. tsc + lint(0) + jest **39/39**; grep: `useReducedMotion` gate + two distinct palm labels.
     Screens `docs/checkpoints/redesign/v15-{pair,pair-320,claim}{,-dark}.png`. Choreography/count-up/
     fan/haptic `[~]`.
-- [ ] **V16 — Paywall** (`features/paywall/PaywallView.tsx` + `(modals)/paywall.tsx`) — add a
+- [x] **V16 — Paywall** (`features/paywall/PaywallView.tsx` + `(modals)/paywall.tsx`) — add a
   **personalized traced-palm hero** (their locked lines highlighted; accept a geometry/lockedLines
   fixture — spec §2.8 "their diagram, their line names", not a generic feature list); vermilion CTA +
   a small heritage-seal identity touch; replace the four identical `check`s with **feature-matched
@@ -394,7 +394,19 @@ schema/migration/secret changes — none of this touches the DB.
   selection-based color flip); polish the premium seal alignment, `Restore` hitSlop, and the footer
   (separate the link from the legal line). Verify: screenshots paywall at 390×844 (+320) light+dark —
   palm hero above the fold, no dead gap, stable price hierarchy, feature icons; grep no raw hex,
-  reduce-motion gates; selection/press motion `[~]`.
+  reduce-motion gates; selection/press motion `[~]`. (2026-07-15)
+  - DONE: **personalized hero** — the user's own `PalmDiagram` (geometry prop) with the locked line
+    (`lockedLine`, default `fate_line`) lit in accent + their names ("Your fate line and rare markings
+    are still hidden…" via `lockedNames`), not a generic list. Small **claret brand seal** (Logomark
+    stamp) top-right; the CTA stays vermilion. Inclusions now carry **feature-matched icons** (streak/
+    thread/palm/chat in accentMuted tiles) and **stagger in** (`FadeInDown`). Plan cards **spring** on
+    press (held-state) — selection shows via border/bg/elevation. `flex:1` dead space gone — content
+    is a `ScrollView`, footer pinned. **Stable price hierarchy**: per-month is the lead `heading` and
+    **no longer flips colour** on selection; billed price sits under the name; gold SAVE seal aligned.
+    `Restore` gains `hitSlop={12}` and is an accent link **separated** above the legal line. tsc +
+    lint(0) + jest **39/39**; grep no raw hex, `useReducedMotion` gates present. Screens
+    `docs/checkpoints/redesign/v16-paywall{,-320,-dark}.png`. Selection/press/stagger + RevenueCat
+    purchase `[~]`.
 - [ ] **V17 — Fortune** (`features/fortune/FortuneHome.tsx` + `FortuneCard.tsx` + `fortune.ts`) —
   recolor to vermilion + **resolve the two-reds** (move `DoDont` "Avoid" off `heritage` → `danger`/
   `textSecondary`; keep the red-thread as the only heritage; fix `PREVIEW_FORTUNE.lucky_color:
@@ -493,3 +505,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V13 — Reveal: editorial serif hero, draw→headline→90ms card stagger, living "drawing" pending (self-draw + breath + rotating reassurance), distinct section icons (no triple sparkle), claret Logomark-stamp seal FAB, locked-card teasers (faded), honest error (faint palm, Try again/Go back, no sparkle) + `/dev/reveal-error` — tsc + lint(0) + jest 39/39; `v13-{reveal,reveal-full,reveal-320,pending,error}{,-dark}.png` — 2026-07-15
 - V14 — Share: palms draw on, solo/compat crossfade in a top-anchored slot, spring toggle thumb + segment press-scale (tablist), real tappable channels, compat card (heart-line accent + claret thread + labeled ScoreRing + chips), editorial 24px headline + filled claret seal — tsc + lint(0) + jest 39/39; `v14-share-{solo,compat}{,-dark}.png` + compat-320 — 2026-07-15
 - V15 — Pair-reveal: palms slide in (SlideInLeft/Right) + draw on w/ distinct a11y labels, RedThread draws, ScoreRing counts up 0→N (new `animate` + `useCountUp`) as the headline + spoken summary, sub-scores fan in with dimension icons (new `elements` glyph); claim verified (V10 met spec) — tsc + lint(0) + jest 39/39; `v15-{pair,pair-320,claim}{,-dark}.png` — 2026-07-15
+- V16 — Paywall: personalized palm hero (their fate line lit + line names), claret brand seal, feature-matched staggered inclusions, spring plan cards, `flex:1` dead space removed (ScrollView), stable price hierarchy (per-month lead, no colour flip), Restore hitSlop + separated footer — tsc + lint(0) + jest 39/39; `v16-paywall{,-320,-dark}.png` — 2026-07-15
