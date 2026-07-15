@@ -46,16 +46,41 @@ Deno.test('buildInvitePage: HTML is well under 50KB and escapes the inviter name
   assertStringIncludes(html, '&lt;script&gt;');
 });
 
-Deno.test('buildInvitePage: generic-kind invite uses a different headline', () => {
+Deno.test('buildInvitePage: generic-kind invite uses a different OG + on-page headline', () => {
   const html = buildInvitePage({ ...base, kind: 'generic', inviterName: 'Sam' });
-  assertStringIncludes(html, 'Sam shared a Palmly reading');
+  assertStringIncludes(html, 'Sam shared a Palmly reading'); // OG title
+  assertStringIncludes(html, '<h1>Sam shared a Palmly reading with you</h1>'); // on-page h1
 });
 
-Deno.test('buildInvitePage: reskinned to Quiet Cosmos — accent CTA, heritage mark, CJK-free (§7)', () => {
+Deno.test('buildInvitePage: kind-aware body copy (h1 + CTA + steps switch on o.kind — V21 bug fix)', () => {
+  const compat = buildInvitePage(base); // compatibility
+  assertStringIncludes(compat, '<h1>Mei wants to compare palms with you</h1>');
+  assertStringIncludes(compat, '>See our compatibility</a>');
+  assertStringIncludes(compat, 'See how you two match');
+
+  const generic = buildInvitePage({ ...base, kind: 'generic' });
+  assertStringIncludes(generic, '<h1>Mei shared a Palmly reading with you</h1>');
+  assertStringIncludes(generic, '>Read your palm</a>');
+  assert(!generic.includes('compare palms'), 'generic invite never says "compare palms"');
+  assert(!generic.includes('See our compatibility'), 'generic invite has no compatibility CTA');
+});
+
+Deno.test('buildInvitePage: reskinned to Vermilion — accent CTA, claret seal, CJK-free (§3/§7)', () => {
   const html = buildInvitePage(base);
-  assertStringIncludes(html, 'background:#4B57C4'); // twilight-indigo CTA (was cinnabar)
-  assertStringIncludes(html, '#C2554A'); // heritage logomark stamp (the CJK-free seal)
+  assertStringIncludes(html, '--accent:#D8402C'); // vermilion accent CSS var (drives CTA/wheel/steps)
+  assertStringIncludes(html, '#9E3B2E'); // claret heritage logomark stamp (the CJK-free seal, §3.2)
+  assert(!html.includes('#4B57C4'), 'retired indigo accent appears nowhere');
+  assert(!html.includes('rgba(75,87,196'), 'retired indigo CTA shadow gone');
+  assertStringIncludes(html, 'box-shadow:0 8px 24px var(--cta-shadow)'); // shadow now tinted from accent
   assert(!/[一-鿿]/.test(html), 'no CJK glyphs — 相 chop dropped'); // (🤝 in the OG title is emoji, not CJK)
+});
+
+Deno.test('buildInvitePage: dark-mode + reduce-motion-safe (§4 — every animation has a no-op fallback)', () => {
+  const html = buildInvitePage(base);
+  assertStringIncludes(html, '@media (prefers-color-scheme:dark)'); // dark theme
+  assertStringIncludes(html, '--accent:#FF7C63'); // dark coral accent var
+  assertStringIncludes(html, '@keyframes rise'); // the entrance motion
+  assertStringIncludes(html, '@media (prefers-reduced-motion:reduce)'); // the no-op fallback
 });
 
 Deno.test('buildInviteGonePage: expired/not-found shell has no compatibility CTA', () => {

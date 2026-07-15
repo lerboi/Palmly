@@ -16,20 +16,22 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V20 `[x]` (V0 + Launcher…Chat + History + Settings). Screen phase
-  COMPLETE (V9–V20); next is the V2 phase (V21–V23). Prior round R1–R24 archived in
-  `UIUX-Redesign-Tasks.md`.
+- **Status:** IN PROGRESS — V1–V21 `[x]` (V0 + Launcher…Settings + Server surfaces). Screen phase
+  COMPLETE (V9–V20); V2 phase started — **V21 done**; next V22 (a11y/contrast audit) + V23 (finalize).
+  Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
 - **Dark screenshots (V9+):** build a dark bundle with `EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export`
   then run `shoot.mjs` (RNW can't switch scheme client-side in a static web export). Light = normal
   export. `/dev/theme` still renders both via `forceScheme`.
 - **Locked direction (2026-07-15):** modern **vermilion** accent (`#D8402C` / `#FF7C63`), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V20** — Settings (press-spring `SettingRow` + leading-icon chips + elevated
-  groups; commercial Plan row; animated methodology timeline; danger delete-confirm; deduped
-  `PrivacyTrustCard`; fixed inert Language row) (2026-07-15).
-- **Next task:** **V21 — Server surfaces** (`supabase/functions/_shared/{card-svg,invite-page}.ts` +
-  a new shared `_shared/palette.ts` + their Deno tests).
+- **Last completed:** **V21** — Server surfaces (new shared `_shared/palette.ts` consumed by both
+  surfaces; card + invite reskinned to Vermilion off it; claret seal; warm-paper+depth card; tonal
+  chips; kind-aware invite copy bug fixed; dark-mode + reduce-motion CSS; Deno tests 17/17)
+  (2026-07-15).
+- **Next task:** **V22 — Accessibility + contrast + reduce-motion audit** (record AA for the
+  Vermilion palette; confirm every svg has a label/decorative + every animation routes through
+  `useReducedMotion`).
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -517,7 +519,7 @@ schema/migration/secret changes — none of this touches the DB.
 
 ## PHASE V2 — Server surfaces, accessibility, finalize
 
-- [ ] **V21 — Server surfaces** (`supabase/functions/_shared/card-svg.ts` + `invite-page.ts` +
+- [x] **V21 — Server surfaces** (`supabase/functions/_shared/card-svg.ts` + `invite-page.ts` +
   their tests) — extract one shared `_shared/palette.ts` (kills the "kept in sync manually" drift)
   and consume it in both; reskin `accent` → vermilion (incl. the raw indigo `rgba(75,87,196,.28)`
   CTA shadow) and **re-pin** `card-svg.test.ts` + `invite-page.test.ts`; resolve the seal/thread
@@ -530,7 +532,29 @@ schema/migration/secret changes — none of this touches the DB.
   compatibility invite's og:image matches the hook. Verify: `deno` tests re-pinned + green (or
   render/grep-verified + RUN `[~]` if deno absent); grep no `#4B57C4`/`rgba(75,87,196`; rasterize the
   card PNG + screenshot the invite HTML (light+dark, reduce-motion emulation) under
-  `docs/checkpoints/redesign/`; byteLen invite <50KB.
+  `docs/checkpoints/redesign/`; byteLen invite <50KB. (2026-07-15)
+  - DONE: new **`_shared/palette.ts`** = the ONE server palette (Vermilion light+dark role map +
+    `withAlpha` helper) — both surfaces now `import` it (drift killed). **card-svg** reskinned off
+    the shared `LIGHT`: signature palm lines → **vermilion `accent`**, corner seal → **claret
+    `heritage` `#9E3B2E`** (§3.2 seal-only, off the bright accent), **warm-paper `#FAF9F7` field +
+    a raised white panel with a soft `feDropShadow`** (production-verified through resvg), **tonal
+    `accentMuted` chips** (was outlined), stale "display serif" comment corrected (it's a heavy
+    system sans; the serif hero stays in-app). **invite-page** reskinned to CSS **custom properties**
+    generated from the palette so the whole page + inline SVG seal/wheel re-theme via one
+    `@media (prefers-color-scheme:dark)` var override; the retired indigo CTA shadow → `var(--cta-shadow)`
+    tinted from accent (`withAlpha`); **kind-aware copy bug fixed** — h1/CTA/steps now switch on
+    `o.kind` (`bodyCopy()`): generic reads "shared a Palmly reading" / "Read your palm" / "Get your
+    own reflective reading", never "compare palms"; **reduce-motion-safe** `@keyframes rise` entrance
+    with a `@media (prefers-reduced-motion:reduce)` no-op. Deno tests re-pinned to the Vermilion
+    contract + kind-aware + dark/reduce coverage → **card-svg 7 + invite-page 10 = 17/17 green**;
+    consumers (`card-render/*`, `invite-page/index.ts`) `deno check` clean. Grep: no `#4B57C4` /
+    `rgba(75,87,196` / `#C2554A` / `#ECEDF9` in rendered output (only the test negative-assertions).
+    invite bytes 5114 (compat) / 5029 (generic) — well <50KB. Screens
+    `docs/checkpoints/redesign/v21-card-feed{,-resvg}.png` (Chrome + true resvg production render) +
+    `v21-invite-{compat,compat-dark,compat-reduce,compat-320,generic,generic-dark}.png`. **Optional
+    server compat-card variant deferred** — it needs the invitee's palm (which doesn't exist at invite
+    time), so it'd be a teaser-design decision beyond a pure reskin; noted as a follow-up nicety, not
+    a blocker. Live CSS entrance motion renders as its static end-state in the screenshot `[~]`.
 - [ ] **V22 — Accessibility + contrast + reduce-motion audit** — record AA for the Vermilion palette
   (white-on-`accent` ≥4.5:1 light **and** dark; `textSecondary`/`success`/`danger`/`heritage` on
   surface; dark accent + `onAccent`) and deepen `accent` a hair if any button-label case misses;
@@ -574,3 +598,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V18 — Chat: Logomark avatar on assistant/typing bubbles, palm citation in accent (replaces green shield/success), Logomark empty state (distinct from gate), staggered bubbles + typing crossfade, speaker tails, chip press-spring+entrance+fade, send press-spring, input focus, KeyboardAvoidingView, showDivider — tsc + lint(0) + jest 39/39; `v18-chat-{typing,empty}{,-dark}.png` — 2026-07-15
 - V19 — History: legible tiled thumbnails (silhouette off, palm-vs-face distinct, accent lines), vermilion type-chips, elevation inversion fixed (empty md→sm), Logomark empty state + entrance, UnchangedBanner claret-thread ornament (green stays semantic) — tsc + lint(0) + jest 39/39; `v19-history{,-dark,-empty}.png` — 2026-07-15
 - V20 — Settings: `SettingRow` press-spring + `leadingIcon` accent chips + `caption`, `SettingGroup` elevation sm; icons wired across the suite (3 new glyphs globe/document/info); commercial `PlanRow` (accent "Upgrade" pill free / champagne "Active" badge premium); MethodologyScreen animated timeline (accent nodes + connector rail + feature icons + stagger); animated `variant="danger"` delete-confirm; deduped shared `PrivacyTrustCard`; fixed inert Language row; `/dev/settings-premium` + `/dev/privacy-confirm` — tsc + lint(0) + jest 39/39; grep no raw hex/CJK/danger-override; `v20-{settings,settings-premium,methodology,notifications,privacy,privacy-confirm,legal}{,-dark}.png` + `-320`. **Screen phase (V9–V20) complete** — 2026-07-15
+- V21 — Server surfaces: new shared `_shared/palette.ts` (Vermilion light+dark role map + `withAlpha`) consumed by both surfaces (drift killed); card-svg → vermilion signature lines + claret `#9E3B2E` seal + warm-paper `#FAF9F7` field + raised panel w/ `feDropShadow` depth (resvg-verified) + tonal `accentMuted` chips + fixed stale serif comment; invite-page → CSS custom-property theming (dark via `@media prefers-color-scheme`), accent-tinted `var(--cta-shadow)` (retired indigo shadow), **kind-aware `bodyCopy()` fixes the h1/CTA/steps compatibility bug**, `@keyframes rise` + `prefers-reduced-motion` no-op; Deno tests re-pinned + expanded → **17/17** (card 7 + invite 10), consumers `deno check` clean; grep no indigo/cinnabar in output; invite 5114/5029 bytes (<50KB); `v21-card-feed{,-resvg}.png` + `v21-invite-{compat,compat-dark,compat-reduce,compat-320,generic,generic-dark}.png`. Optional server compat-card variant deferred (needs invitee palm at invite time) — 2026-07-15

@@ -4,19 +4,26 @@
 // unique to them (the moat, §3.2). Pure + deterministic → unit-testable; the edge function
 // rasterizes it to PNG via resvg. Solo-palm variant; feed 4:5 + story 9:16.
 
+import { LIGHT } from './palette.ts';
+
 export type CardVariant = 'feed_4x5' | 'story_9x16';
 export type Point = [number, number];
 
-// Quiet Cosmos palette (redesign §3/§7). Source of truth: app/src/theme/tokens.ts (`quietCosmosSkin`
-// light). Kept in sync manually — the Deno edge runtime can't import the RN app module, so the
-// in-app share preview (`ShareView`) and this posted image share the SAME hexes to avoid drift.
+// Vermilion skin (redesign v2 §3/§7) — sourced from the ONE shared `_shared/palette.ts` so the
+// in-app share preview (`ShareView`), this posted image, and the invite page can't drift (V21 kills
+// the old "kept in sync manually" copy). The card always renders light — a posted image on warm
+// paper. Local names map to shared roles; the three-reds discipline (§3.2) is honored: signature
+// palm lines use `accent` (vermilion); the corner seal uses `heritage` (deep claret) — never the
+// bright accent.
 const PALETTE = {
-  paper: '#FFFFFF', // card surface (role: surface)
-  edge: '#E7E3DC', // hairline (role: border)
-  ink: '#1A1A1F', // role: textPrimary
-  inkWash: '#6B6B72', // role: textSecondary
-  accent: '#4B57C4', // signature / highlighted palm lines (role: accent — was cinnabar)
-  heritage: '#C2554A', // the corner stamp — softened-cinnabar heritage whisper (role: heritageAccent)
+  bg: LIGHT.bg, // warm-white paper field (role: bg)
+  paper: LIGHT.surface, // the raised card surface (role: surface)
+  edge: LIGHT.border, // hairline (role: border)
+  ink: LIGHT.ink, // role: textPrimary
+  inkWash: LIGHT.inkWash, // role: textSecondary
+  accent: LIGHT.accent, // ★ vermilion — signature / highlighted palm lines (role: accent, §3.2)
+  accentMuted: LIGHT.accentMuted, // tonal trait chips (role: accentMuted)
+  heritage: LIGHT.heritage, // deep claret — the corner seal ONLY (role: heritageAccent, §3.2)
 };
 
 // Faint hand silhouette (0–1000 frame, mirrors PalmDiagram) so the lines read as a palm.
@@ -131,22 +138,24 @@ export function buildCardSvg(input: CardInput): string {
     }
   }
 
-  // ── headline (display serif, ink, ≤2 lines, largest element) ──
+  // ── headline (bold sans display, ink, ≤2 lines, largest element — the server can't bundle the
+  //    app's editorial serif, so the posted card uses a heavy system sans; the serif hero stays
+  //    in-app on Reveal) ──
   const hlSize = input.headline.length > 34 ? 58 : 66;
   const hlLines = wrapLines(input.headline, 26, 2);
   const headline = hlLines
     .map((ln, i) => `<tspan x="${pad}" dy="${i === 0 ? 0 : hlSize * 1.15}">${esc(ln)}</tspan>`)
     .join('');
 
-  // ── trait chips (≤3, outlined) below the hero ──
+  // ── trait chips (≤3, tonal accentMuted — matches the app's branded pills) below the hero ──
   const chipY = heroY + heroSize + 44;
   let chipX = pad;
   const chips: string[] = [];
   for (const c of input.chips.slice(0, 3)) {
     const cw = 34 + c.length * 20;
     chips.push(
-      `<rect x="${chipX}" y="${chipY}" rx="30" ry="30" width="${cw}" height="60" fill="none" stroke="${PALETTE.edge}" stroke-width="2"/>` +
-        `<text x="${chipX + cw / 2}" y="${chipY + 40}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="28" fill="${PALETTE.inkWash}">${esc(c)}</text>`,
+      `<rect x="${chipX}" y="${chipY}" rx="30" ry="30" width="${cw}" height="60" fill="${PALETTE.accentMuted}"/>` +
+        `<text x="${chipX + cw / 2}" y="${chipY + 40}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="28" fill="${PALETTE.accent}">${esc(c)}</text>`,
     );
     chipX += cw + 22;
   }
@@ -176,9 +185,15 @@ export function buildCardSvg(input: CardInput): string {
         `<text x="75" y="180" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="20" fill="${PALETTE.inkWash}">scan to compare</text></g>`
       : '';
 
+  // Warm-paper field + a raised white surface panel with soft depth (matches the in-app ShareView
+  // preview — a premium card on paper, not a flat white rectangle).
+  const panelInset = 28;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-  <rect width="${w}" height="${h}" fill="${PALETTE.paper}"/>
-  <rect x="20" y="20" width="${w - 40}" height="${h - 40}" fill="none" stroke="${PALETTE.edge}" stroke-width="2"/>
+  <defs><filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="12" stdDeviation="26" flood-color="${PALETTE.ink}" flood-opacity="0.10"/>
+  </filter></defs>
+  <rect width="${w}" height="${h}" fill="${PALETTE.bg}"/>
+  <rect x="${panelInset}" y="${panelInset}" width="${w - panelInset * 2}" height="${h - panelInset * 2}" rx="40" fill="${PALETTE.paper}" stroke="${PALETTE.edge}" stroke-width="2" filter="url(#cardShadow)"/>
   <text x="${pad}" y="${L.headlineY}" font-family="Noto Sans, sans-serif" font-size="${hlSize}" font-weight="800" fill="${PALETTE.ink}">${headline}</text>
   ${silhouette}
   ${strokes.join('\n  ')}
