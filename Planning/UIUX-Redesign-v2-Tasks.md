@@ -16,9 +16,12 @@ done+verified · `[!]` blocked.
 
 - **Active skin target:** **Vermilion (skin #3)** — ADDED + `activeSkin` (V1 done). Ink &
   Cinnabar (#1) + Quiet Cosmos (#2) stay in `tokens.ts` for parity / rollback.
-- **Status:** IN PROGRESS — V1–V22 `[x]` (V0 + Launcher…Settings + Server surfaces + a11y audit).
-  Screen phase COMPLETE (V9–V20); V2 phase: **V21 + V22 done**; only **V23 (finalize + full re-shoot)**
-  remains. Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`.
+- **Status:** ✅ **DONE — REDESIGN v2 COMPLETE.** All tasks **V1–V23 `[x]`** (V0 foundation +
+  every screen V9–V20 + server surfaces V21 + a11y/contrast audit V22 + finalize V23). Whole
+  device-free suite green (tsc/lint 0/jest 39/Deno 17); full-route screenshot sweep (83 shots, light+
+  dark+320) under `docs/checkpoints/redesign/final/`; three-reds discipline holds; no indigo on any
+  rendered path; every surface has its authored motion end-state (live legs `[~]` device-pending).
+  Prior round R1–R24 archived in `UIUX-Redesign-Tasks.md`. **The loop is stopped.**
 - **Dark screenshots (V9+):** build a dark bundle with `EXPO_PUBLIC_FORCE_SCHEME=dark npx expo export`
   then run `shoot.mjs` (RNW can't switch scheme client-side in a static web export). Light = normal
   export. `/dev/theme` still renders both via `forceScheme`.
@@ -26,13 +29,12 @@ done+verified · `[!]` blocked.
   light from `#D8402C`=4.48 → 4.81:1 AA), **indigo
   fully retired** (red is the sole accent), **tasteful & premium motion** (foundation-first, every
   animation reduce-motion + web gated). See north star §2–§4.
-- **Last completed:** **V22** — A11y/contrast/reduce-motion audit: deepened light `accent`
-  `#D8402C`→`#D13B27` (white-on-accent 4.48→**4.81:1 AA**) across app+server+doc+tests; full AA table
-  recorded; every svg labeled, every animation reduce-motion-gated, dynamic type honored; tsc/jest
-  39/jest/lint/Deno 17 green (2026-07-15).
-- **Next task:** **V23 — Finalize** — full device-free re-shoot of every route (390 + 320, light+dark)
-  + the two server renders at the corrected accent; confirm no indigo/generic route, three-reds holds,
-  every surface has its authored motion end-state; mark the round DONE and STOP the loop.
+- **Last completed:** **V23 — Finalize** — full device-free suite (tsc/lint 0/jest 39/Deno 17) + a
+  full-route screenshot sweep (34 light + 32 dark + 17×320 = 83 shots) under
+  `docs/checkpoints/redesign/final/`; `/dev/theme` shows the whole Vermilion system; grep invariants
+  clean (no indigo on rendered paths, no CJK in default UI, no capture gold, reduce-motion routing +
+  svg labels); three-reds verified. **Redesign v2 complete.** (2026-07-15).
+- **Next task:** — none. **All V1–V23 done; the loop is stopped.**
 - **Blocked on:** —
 - **Key standing decisions to honor (north star §3.2 — the three-reds discipline):**
   - `accent` (vermilion) = everywhere-red: buttons, active/selected, links, **palm-line highlight**,
@@ -584,7 +586,7 @@ schema/migration/secret changes — none of this touches the DB.
     `allowFontScaling={false}` anywhere — all text honors OS scaling. Static gates: **tsc clean, jest
     39/39, lint 0, Deno 17/17**. Server checkpoints regenerated to the corrected accent
     (`v21-*` re-shot; `--accent:#D13B27` confirmed).
-- [ ] **V23 — Finalize** — extend `/dev/theme` to the full Vermilion system + confirm the "dev — state
+- [x] **V23 — Finalize** — extend `/dev/theme` to the full Vermilion system + confirm the "dev — state
   previews" route group reaches every state (analyzing-failed, reveal-pending/error, share-compat,
   chat-typing/empty, fortune-free/empty, history-empty, paywall states); finalize `tokens.test.ts` +
   `geometry.test.ts` + `motion` test; run the WHOLE device-free suite (`tsc`+`lint`+`jest` + `expo
@@ -592,7 +594,34 @@ schema/migration/secret changes — none of this touches the DB.
   the two Deno-surface renders); confirm no route reads generic/indigo, the three-reds discipline
   holds, and every surface has its authored motion end-state. Update `docs/checkpoints/redesign/` and
   mark the round DONE in STATE, then STOP the loop. Verify: full suite green (Deno RUN `[~]` if deno
-  absent); every-route screenshot sweep saved; STATE = done.
+  absent); every-route screenshot sweep saved; STATE = done. (2026-07-15)
+  - DONE: **/dev/theme** already renders the full Vermilion system (built across V3–V8, confirmed here):
+    token swatches (accent `#D13B27`/`#FF7C63`, claret heritage, champagne premium, crimson danger),
+    the type scale + editorial serif, feature markers, the full button matrix (primary/tonal/secondary/
+    ghost/**premium**/**danger**/icon/**brand-loader**/pill/disabled), pressed-state swatches +
+    selected card, header + divider, icon sheet, logomark + palm end-states — **light + dark side by
+    side**. The **dev state-preview group reaches every state** (route map `/dev/index`: analyzing-
+    failed, reveal-pending, reveal-error, share-compat, chat-typing, chat-empty, fortune-free,
+    fortune-empty, history-empty, settings-premium, privacy-confirm; paywall via `/paywall`). Contract
+    tests final + green (`tokens.test.ts` pinned to `#D13B27`, `geometry.test.ts` 9, `motion.test.ts`).
+    **WHOLE device-free suite green:** `tsc` clean, `lint` 0, `jest` **39/39**, **Deno 17/17** (RUN, not
+    `[~]` — deno 2.9.2 present). **Full route sweep saved** under `docs/checkpoints/redesign/final/`:
+    **34 routes × light** (390) + **32 × dark** + **17 × 320-wide** clip-check = **83 shots** (every
+    onboarding/capture/reading/home/settings/modal route + the launcher + all 13 dev routes), plus the
+    two server renders (`v21-card-feed{,-resvg}` + `v21-invite-*`, corrected accent). **Grep invariants
+    (§7.4) clean:** retired indigo `#4B57C4`/`rgba(75,87,196` appears ONLY in the deliberately-kept
+    Quiet-Cosmos skin #2 (rollback, north star §3.1/§8) + the guardrail negative-assertions — nowhere on
+    an active/rendered path; **no CJK in default UI** (all CJK is in comments, opt-in label maps behind a
+    `traditional` prop nothing passes, `SECTION_GLYPH` test-only, or the non-rendered `fortune.pillar`
+    whose English `pillarEn` is what renders); **no `#D9B25A` gold** in the capture ready-state;
+    `isReduceMotionEnabled` only in the hook; all 23 animating files reduce-motion-gated; Icon/Logomark/
+    PalmDiagram + server SVGs all labeled/decorative. **Spot-verified** the full-system `dev-theme`
+    (light+dark) + `fortune`/`pair` (light) + `reveal` (dark): real English content, vermilion accent
+    everywhere, three-reds discipline holding (accent=streak/markers/sub-scores/palm-highlight,
+    claret=red-thread+seal, crimson=Fortune "Avoid"/delete, green=Do/privacy), authored motion
+    end-states settled. Live reanimated motion / haptics / camera feed / native share sheet / RevenueCat
+    render as static end-states on web (`[~]` device-pending, the reduce-motion/web gate working).
+    **REDESIGN v2 COMPLETE.**
 
 ---
 
@@ -622,3 +651,4 @@ _(append one line per completed task: `V# — <what> — <evidence> — <date>`)
 - V20 — Settings: `SettingRow` press-spring + `leadingIcon` accent chips + `caption`, `SettingGroup` elevation sm; icons wired across the suite (3 new glyphs globe/document/info); commercial `PlanRow` (accent "Upgrade" pill free / champagne "Active" badge premium); MethodologyScreen animated timeline (accent nodes + connector rail + feature icons + stagger); animated `variant="danger"` delete-confirm; deduped shared `PrivacyTrustCard`; fixed inert Language row; `/dev/settings-premium` + `/dev/privacy-confirm` — tsc + lint(0) + jest 39/39; grep no raw hex/CJK/danger-override; `v20-{settings,settings-premium,methodology,notifications,privacy,privacy-confirm,legal}{,-dark}.png` + `-320`. **Screen phase (V9–V20) complete** — 2026-07-15
 - V21 — Server surfaces: new shared `_shared/palette.ts` (Vermilion light+dark role map + `withAlpha`) consumed by both surfaces (drift killed); card-svg → vermilion signature lines + claret `#9E3B2E` seal + warm-paper `#FAF9F7` field + raised panel w/ `feDropShadow` depth (resvg-verified) + tonal `accentMuted` chips + fixed stale serif comment; invite-page → CSS custom-property theming (dark via `@media prefers-color-scheme`), accent-tinted `var(--cta-shadow)` (retired indigo shadow), **kind-aware `bodyCopy()` fixes the h1/CTA/steps compatibility bug**, `@keyframes rise` + `prefers-reduced-motion` no-op; Deno tests re-pinned + expanded → **17/17** (card 7 + invite 10), consumers `deno check` clean; grep no indigo/cinnabar in output; invite 5114/5029 bytes (<50KB); `v21-card-feed{,-resvg}.png` + `v21-invite-{compat,compat-dark,compat-reduce,compat-320,generic,generic-dark}.png`. Optional server compat-card variant deferred (needs invitee palm at invite time) — 2026-07-15
 - V22 — A11y/contrast/reduce-motion audit: measured the whole palette → caught the light button-label miss (white-on-`#D8402C`=4.48<AA); **deepened light accent `#D8402C`→`#D13B27`** (white-on **4.81:1**, link 4.81; dark already 7.14) across app token + server `palette.ts` + all re-pinned tests + north-star doc + STATE; full AA table recorded (all pairs ≥4.5 except WCAG-exempt `textTertiary` disabled/hint + a redundant large-text `accent`-on-`accentMuted` chip label, both documented); grep: `isReduceMotionEnabled` only in the hook, **all 23 animating files reduce-motion-gated**, Icon/Logomark/PalmDiagram + server SVGs all labeled/decorative, no `allowFontScaling={false}`; tsc/jest 39/lint 0/Deno 17 green; server checkpoints re-shot at the corrected accent — 2026-07-15
+- V23 — Finalize: whole device-free suite green (tsc clean / lint 0 / jest **39/39** / **Deno 17/17** RUN, deno 2.9.2 present); full-route screenshot sweep **83 shots** (34 light + 32 dark + 17×320) under `docs/checkpoints/redesign/final/` covering every onboarding/capture/reading/home/settings/modal route + launcher + all 13 dev routes + the two server renders; `/dev/theme` shows the whole Vermilion system (accent `#D13B27`/`#FF7C63`, full button matrix incl. danger/premium/brand-loader, pressed states, primitives) light+dark; grep §7.4 clean (indigo only in retained skin #2 + guardrails, no CJK in default UI, no capture gold, reduce-motion routing + svg labels); spot-verified dev-theme+fortune+pair (light) + reveal (dark) — real English content, vermilion accent, three-reds discipline, motion end-states settled. **REDESIGN v2 COMPLETE (V1–V23 all `[x]`)** — 2026-07-15
