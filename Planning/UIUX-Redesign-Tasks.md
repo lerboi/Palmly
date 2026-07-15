@@ -1,4 +1,9 @@
-# Palmly — UI/UX Redesign Task Ledger
+# Palmly — UI/UX Redesign Task Ledger (R1–R24 — ARCHIVED / COMPLETE)
+
+> ⚠️ **This round (R1–R24, "Quiet Cosmos") is complete and archived.** The active redesign is
+> **v2 "Vermilion & Motion"** — see `UIUX-Redesign-v2-Tasks.md` (tasks V1–V23) and
+> `UIUX-Redesign-v2.md`. Do not resume R-tasks; run the V-ledger instead.
+
 
 **Design source of truth:** `Planning/UIUX-Redesign.md` (the "Quiet Cosmos" north star).
 **Screen behavior / flows / content:** still `Planning/UIUX-specs.md`.

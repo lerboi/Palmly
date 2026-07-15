@@ -1,5 +1,12 @@
 # Palmly — UI/UX Redesign North Star ("Quiet Cosmos")
 
+> ⚠️ **SUPERSEDED (color + motion) as of 2026-07-15 by `UIUX-Redesign-v2.md`
+> ("Vermilion & Motion").** The active redesign now uses a **modern vermilion** accent (indigo
+> retired) plus a real motion system — see the v2 doc + `UIUX-Redesign-v2-Tasks.md`. **This
+> doc's type, elevation, in-house icon set, English-first, a11y, and server-reskin guidance are
+> still authoritative** and referenced by v2; only §3 (color, indigo) and the "demote cinnabar
+> to a whisper" decision are overridden. The R1–R24 ledger below is complete/archived.
+
 > **This is the design source of truth for the redesign.** It supersedes the visual
 > identity in `UIUX-specs.md` (that doc still governs *screen behavior, flows, and
 > content*; this doc governs *how it looks and feels*). The redesign is executed as a
