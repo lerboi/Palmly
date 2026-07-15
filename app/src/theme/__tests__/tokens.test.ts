@@ -61,7 +61,8 @@ describe('design tokens — role-based skin contract (redesign §3)', () => {
     expect(activeSkin).toBe(vermilionSkin);
     expect(activeSkin.name).toBe('Vermilion');
     // ★ the one tunable that sets the whole feel — modern vermilion, not indigo.
-    expect(activeSkin.light.accent).toBe('#D8402C');
+    // Light accent is V22-deepened to #D13B27 (white-on-accent 4.81:1 AA; #D8402C measured 4.48).
+    expect(activeSkin.light.accent).toBe('#D13B27');
     expect(activeSkin.dark.accent).toBe('#FF7C63');
     // Heritage red is deepened to a claret, reserved for the red-thread + seal only (§3.2).
     expect(activeSkin.light.heritageAccent).toBe('#9E3B2E');

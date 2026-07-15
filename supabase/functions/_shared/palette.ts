@@ -35,7 +35,7 @@ export const LIGHT: ServerPalette = {
   ink: '#1A1A1F',
   inkWash: '#6B6B72',
   inkFaint: '#9A9AA0',
-  accent: '#D8402C',
+  accent: '#D13B27', // white-on-accent 4.81:1 AA (V22-deepened from #D8402C; mirrors app tokens)
   accentPressed: '#B9331F',
   accentMuted: '#FBE7E2',
   onAccent: '#FFFFFF',

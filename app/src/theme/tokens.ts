@@ -187,10 +187,11 @@ export const quietCosmosSkin: Skin = {
  * red-thread motif + corner seal ONLY (§3.2 three-reds discipline); danger is a cooler crimson
  * kept distinct so destructive confirms never read as the warm accent.
  *
- * ★ The single most defining tunable is `accent` (light `#D8402C` / dark `#FF7C63`) — change
+ * ★ The single most defining tunable is `accent` (light `#D13B27` / dark `#FF7C63`) — change
  * those two hexes and re-run the harness screenshot to re-feel the whole app (§3). The light
- * accent is tuned so white-on-accent meets WCAG AA (≈4.5:1) for button labels; the dark accent
- * is a lighter vermilion-coral with a **dark** `onAccent` (dark-on-coral) so labels stay legible.
+ * accent is tuned so white-on-accent meets WCAG AA (4.81:1) for button labels — V22 deepened it a
+ * hair from `#D8402C` (which measured 4.48:1, just under AA); the dark accent is a lighter
+ * vermilion-coral with a **dark** `onAccent` (dark-on-coral, 7.14:1) so labels stay legible.
  */
 export const vermilionSkin: Skin = {
   name: 'Vermilion',
@@ -203,7 +204,7 @@ export const vermilionSkin: Skin = {
     textPrimary: '#1A1A1F',
     textSecondary: '#6B6B72',
     textTertiary: '#9A9AA0',
-    accent: '#D8402C', // ★ modern vermilion — white-on ≈4.5:1 AA
+    accent: '#D13B27', // ★ modern vermilion — white-on 4.81:1 AA (V22-deepened a hair from #D8402C=4.48)
     accentPressed: '#B9331F',
     accentMuted: '#FBE7E2',
     onAccent: '#FFFFFF',

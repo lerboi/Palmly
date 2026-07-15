@@ -67,7 +67,7 @@ Deno.test('buildInvitePage: kind-aware body copy (h1 + CTA + steps switch on o.k
 
 Deno.test('buildInvitePage: reskinned to Vermilion — accent CTA, claret seal, CJK-free (§3/§7)', () => {
   const html = buildInvitePage(base);
-  assertStringIncludes(html, '--accent:#D8402C'); // vermilion accent CSS var (drives CTA/wheel/steps)
+  assertStringIncludes(html, '--accent:#D13B27'); // vermilion accent CSS var (drives CTA/wheel/steps)
   assertStringIncludes(html, '#9E3B2E'); // claret heritage logomark stamp (the CJK-free seal, §3.2)
   assert(!html.includes('#4B57C4'), 'retired indigo accent appears nowhere');
   assert(!html.includes('rgba(75,87,196'), 'retired indigo CTA shadow gone');
