@@ -15,8 +15,12 @@ const one = async (c, sql, p = []) => (await c.query(sql, p)).rows[0];
 const n = async (c, sql, p = []) => (await c.query(sql, p)).rows[0].n;
 const claim = (c, hash, invitee) => one(c, `select public.claim_invite($1,$2) as r`, [hash, invitee]);
 
-const seedInvite = (c, hash, { status = 'created', expires = "now() + interval '30 days'" } = {}) =>
-  one(c, `insert into public.invites (inviter_id, token_hash, status, expires_at) values ($1,$2,$3,${expires}) returning id`, [INVITER, hash, status]);
+const seedInvite = (c, hash, { status = 'created', kind = 'compatibility', expires = "now() + interval '30 days'" } = {}) =>
+  one(
+    c,
+    `insert into public.invites (inviter_id, token_hash, status, kind, expires_at) values ($1,$2,$3,$4,${expires}) returning id`,
+    [INVITER, hash, status, kind],
+  );
 
 test('claim_invite: accepts, links the invitee, and creates the canonical pair', async () => {
   await withRollback(async (c) => {
@@ -64,6 +68,41 @@ test('claim_invite: single-use — a different claimer is rejected once accepted
     await c.query('savepoint sp');
     await assert.rejects(claim(c, 'h_single', OTHER), /invite_already_claimed/);
     await c.query('rollback to savepoint sp');
+  });
+});
+
+test('claim_invite: a generic invite links the invitee but creates no pair (M14)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, INVITER);
+    await seedUser(c, INVITEE);
+    await seedInvite(c, 'h_generic', { kind: 'generic' });
+
+    const r = (await claim(c, 'h_generic', INVITEE)).r;
+    assert.equal(r.pair_id, null, 'no pair for a generic invite (spec ties pairs to compatibility invites)');
+    assert.equal(r.kind, 'generic', 'kind returned so the caller can route');
+    assert.equal(
+      await n(c, `select count(*)::int n from public.compatibility_pairs where user_a=$1 or user_b=$1`, [INVITER]),
+      0,
+      'no pair created',
+    );
+
+    // the invite itself is still accepted + linked — only the pair is gated
+    const inv = await one(c, `select status, invitee_id from public.invites where token_hash='h_generic'`);
+    assert.equal(inv.status, 'accepted');
+    assert.equal(inv.invitee_id, INVITEE);
+  });
+});
+
+test('claim_invite: the invite row is read FOR UPDATE (H3 double-claim race)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    // Structural pin. A true two-session race is NOT expressible in this harness: the fixture lives
+    // in an uncommitted, always-rolled-back transaction, so a second connection cannot see the
+    // invite to race for it. This asserts the lock that closes the race is present, and fails if a
+    // later edit drops it — it does not itself observe two concurrent claimants.
+    const { def } = await one(c, `select pg_get_functiondef('public.claim_invite(text,uuid)'::regprocedure) as def`);
+    assert.match(def, /from public\.invites where token_hash = p_token_hash\s+for update/i, 'invite select must take a row lock');
   });
 });
 

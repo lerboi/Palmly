@@ -63,5 +63,41 @@ test('record_rc_event: an event for an unknown user is logged but upserts no sub
     assert.equal(r.applied, true, 'event still recorded for audit');
     assert.equal(await n(c, `select count(*)::int n from public.subscriptions where user_id=$1`, [ghost]), 0, 'no subscription for an unknown user');
     assert.equal(await n(c, `select count(*)::int n from public.subscription_events where rc_event_id='evt_ghost'`), 1);
+    assert.equal(
+      await n(c, `select count(*)::int n from public.subscription_events where rc_event_id='evt_ghost' and applied_at is null`),
+      1,
+      'logged but NOT marked applied — the idempotency key must not swallow a never-applied event',
+    );
+  });
+});
+
+test('record_rc_event: an event logged before its user existed still applies on redelivery (H4)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    const late = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+
+    // RC beats provisioning: the event is logged for audit, but there is no profile to apply it to.
+    assert.equal((await record(c, { id: 'evt_late', userId: late })).applied, true, 'recorded for audit');
+    assert.equal(await n(c, `select count(*)::int n from public.subscriptions where user_id=$1`, [late]), 0, 'nothing to upsert yet');
+
+    // The user is provisioned, then RC redelivers the SAME event id. Before this fix the key was
+    // already consumed, so the redelivery deduped to a no-op and the entitlement was lost forever.
+    await seedUser(c, late);
+    assert.equal((await record(c, { id: 'evt_late', userId: late })).applied, true, 'redelivery applies it');
+    assert.equal(
+      (await one(c, `select status from public.subscriptions where user_id=$1`, [late])).status,
+      'active',
+      'entitlement recovered rather than permanently dropped',
+    );
+    assert.equal(
+      await n(c, `select count(*)::int n from public.subscription_events where rc_event_id='evt_late'`),
+      1,
+      'still exactly one audit row (idempotent log)',
+    );
+    assert.equal(
+      await n(c, `select count(*)::int n from public.subscription_events where rc_event_id='evt_late' and applied_at is not null`),
+      1,
+      'now stamped applied',
+    );
   });
 });

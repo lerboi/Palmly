@@ -47,6 +47,57 @@ test('kb_chunks.embedding is pgvector(1024)', async () => {
   });
 });
 
+test('drain_stub is NOT executable by anon/authenticated (C1)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    // drain_stub is SECURITY DEFINER in the Data-API-exposed `public` schema and returns int, so a
+    // PUBLIC/anon EXECUTE grant means any holder of the publishable key can archive messages off any
+    // pgmq queue via POST /rest/v1/rpc/drain_stub. Migration 0004 never revoked the default grant.
+    for (const role of ['anon', 'authenticated', 'public']) {
+      assert.equal(
+        (await c.query(`select has_function_privilege($1, 'public.drain_stub(text,int)', 'execute') as x`, [role])).rows[0].x,
+        false,
+        `${role} must NOT execute drain_stub`,
+      );
+    }
+    // ...but the cron scheduler (owner) and service_role must keep it, or the drains break.
+    for (const role of ['postgres', 'service_role']) {
+      assert.equal(
+        (await c.query(`select has_function_privilege($1, 'public.drain_stub(text,int)', 'execute') as x`, [role])).rows[0].x,
+        true,
+        `${role} must retain execute`,
+      );
+    }
+  });
+});
+
+test('RLS policy columns are indexed (M13)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    // Backend §3.3: "always index policy columns" — an unindexed policy column is a seq scan on
+    // every RLS check.
+    const REQUIRED = [
+      ['compatibility_results', 'pair_id'],
+      ['chat_threads', 'user_id'],
+      ['share_cards', 'user_id'],
+      ['devices', 'user_id'],
+      ['invites', 'invitee_id'],
+    ];
+    for (const [table, col] of REQUIRED) {
+      const { n } = (
+        await c.query(
+          `select count(*)::int n from pg_index i
+             join pg_class t on t.oid = i.indrelid
+             join pg_attribute a on a.attrelid = t.oid and a.attnum = i.indkey[0]
+           where t.relname = $1 and a.attname = $2`,
+          [table, col],
+        )
+      ).rows[0];
+      assert.ok(n >= 1, `${table}.${col} must lead an index`);
+    }
+  });
+});
+
 test('canonical-pair check (user_a < user_b) is enforced', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);

@@ -36,17 +36,17 @@ finding has exactly one owning task below; no finding is dropped silently.
 
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
-- **Baseline suites (re-pinned 2026-07-17 after B0 — observed, not inherited):**
-  **Node 100/100** (`# pass 100 / # fail 0`, 226.9s) · **Deno 133/133** (`133 passed | 0 failed`, 3s)
+- **Baseline suites (re-pinned 2026-07-17; Node grows as tasks add regression tests — B0 100 → B1 105):**
+  **Node 105/105** (`# pass 105 / # fail 0`, 233.0s) · **Deno 133/133** (`133 passed | 0 failed`, 3s)
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
   quote it. The pre-B0 "Node 96/100" is now historical.
 - **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B0** (2026-07-17) — both suites honestly green.
-- **Next task:** **B1 — Migration 0018: SECURITY DEFINER revokes · RLS indexes · claim_invite
-  race+kind · rc_event guard order.**
+- **Last completed:** **B1** (2026-07-17) — migration 0018 applied to staging (C1/M13/H3/M14 closed;
+  H4-SQL partly, ordering → B15). Suites: **Node 105/105**, **Deno 133/133**.
+- **Next task:** **B2 — C2 interim: stop the live cron from destroying real jobs.**
 - **Blocked on:** — (B14/B15 want H8; B21 records C5/M5 as H4c-blocked; none of these block B0–B13.)
 - **Human gates that findings depend on** (`Planning/Human-tasks.md`): **H4c** paid Gemini → audit
   **C5**, **M5**, and M3's Batch leg. **H8** RevenueCat account → the *live proof* of **C3**/B14/B15.
@@ -177,7 +177,60 @@ would edit nothing and wrongly report success.
 
 # PHASE 2 — Critical security & data integrity
 
-- [ ] **B1 — Migration 0018: SECURITY DEFINER revokes · RLS indexes · claim_invite race+kind · rc_event guard order** *(C1, M13, H3, M14, H4-SQL)*
+- [x] **B1 — Migration 0018: SECURITY DEFINER revokes · RLS indexes · claim_invite race+kind · rc_event guard order** *(C1, M13, H3, M14, H4-SQL)* — **2026-07-17**
+  - **DONE: C1 CONFIRMED · M13 CONFIRMED · H3 CONFIRMED · M14 CONFIRMED · H4-SQL PARTLY CONFIRMED.**
+    Landed as `supabase/migrations/20260717000018_audit_c1_h3_h4_m13_m14.sql` (counter re-read live:
+    max was 17). Verdicts, each verified against live staging before editing:
+    - **C1 CONFIRMED — and the ERRATA is vindicated exactly.** Live `pg_proc` showed
+      `drain_stub` `returns int4` + SECURITY DEFINER + `=X/postgres | anon=X | authenticated=X` →
+      genuinely RPC-callable with the publishable key. The other advisor-flagged functions
+      (`broadcast_*`, `handle_new_user`, `resolve_awaiting_compat`) all `return trigger` → **not
+      invocable over the Data API**. `kb_search` is `prosecdef=false` + intentionally granted
+      (0015:39) → untouched. `is_pair_member`/`thread_owner` ARE callable but are **RLS helpers** —
+      their policies evaluate AS `authenticated`, so revoking would break RLS (the audit's own
+      carve-out: "everything that isn't required for RLS evaluation"); left alone, and B22 already
+      records them as accepted. **Net: `drain_stub` was the only genuine over-exposure.**
+    - **M13 CONFIRMED** — all 5 tables carried only their pkey/unrelated uniques.
+    - **H3 CONFIRMED** — `0010:20` had no `for update`.
+    - **M14 CONFIRMED + ERRATA vindicated** — `kind` was genuinely absent from the `0010:20` select,
+      so the select had to widen too. `invites.kind` defaults to `'compatibility'`, so the 4 existing
+      claim tests still create pairs. A generic invite now returns `pair_id=null` + `kind`.
+    - **H4-SQL PARTLY CONFIRMED — the audit's prescribed fix does not work as written.** Two limbs
+      landed (guard, null-id defense); the ordering limb is **deferred to B15** (D-05).
+      ⚠️ **What the audit missed:** `revenuecat-webhook/index.ts` returns **HTTP 200 even when
+      `applied=false`**, so "reorder the guard before the insert" would *not* stop the drop — RC never
+      retries a 200. And `create or replace` cannot change the `boolean` return type, so a tri-state
+      is a contracting change. Worse, the literal reorder **contradicts an existing deliberate test**
+      (`revenuecat_webhook.test.mjs:58` — "an event for an unknown user is **logged** but upserts no
+      subscription", `subscription_events` = "raw webhook audit log", schema.sql:139).
+      **Built instead (D-04):** additive `subscription_events.applied_at`; the idempotency key now
+      guards the **upsert**, not merely the log row. Ghost → logged, `applied_at` null, no upsert
+      (test :58 intact); duplicate of an *applied* event → no-op (test :39 intact); **duplicate of a
+      never-applied event, once the profile exists → applies now** — which is precisely the audit's
+      "every RC retry then dedupes to a no-op forever". Plus the `coalesce(p_rc_event_id, 'md5:'||…)`
+      surrogate so a null id cannot re-upsert forever, and `for update` on the audit row to serialize
+      concurrent duplicate deliveries.
+  - Verify (observed): **Node full 105/105** (`# pass 105 / # fail 0`, 233.0s — 100 baseline + 5 new
+    regression tests); targeted set `schema+rls+invite_claim+revenuecat_webhook+queues` **32/32**;
+    Deno **133/133**. Live MCP after apply: `drain_stub` acl = `postgres=X/postgres |
+    service_role=X/postgres` (**PUBLIC/anon/authenticated gone**, owner+service_role intact → the 5
+    crons keep running); all 5 M13 indexes present; **`drain_stub` no longer appears in
+    `get_advisors`** (the remaining SECURITY DEFINER flags are exactly the triggers + RLS helpers left
+    alone by design). `list_migrations` shows `20260717000018`.
+  - Regression tests added (5): `schema.test.mjs` — drain_stub NOT executable by anon/authenticated/
+    public **and still executable by postgres+service_role** (pins both halves); M13's 5 policy
+    columns lead an index. `invite_claim.test.mjs` — generic invite creates no pair; a **structural**
+    `for update` pin. `revenuecat_webhook.test.mjs` — the H4 redelivery recovery (fails against the
+    old function: it returned false at `inserted=0` and never upserted).
+  - ⚠️ **Honest limit:** the H3 test is a *structural* pin (`pg_get_functiondef` contains `for
+    update`), **not** an observed race. A true two-session race is **not expressible** in this
+    harness — the fixture lives in an uncommitted, always-rolled-back transaction, so a second
+    connection cannot see the invite to race for it. It catches a regression that drops the lock; it
+    does not prove concurrent claimants serialize.
+  - 🔧 Tooling note for later tasks: **`supabase/tests/scripts/apply.mjs` cannot apply to deployed
+    staging** — it replays ALL migrations, so `0001` fails on "already exists". Applied 0018 via a
+    scratchpad one-shot that reuses `db.mjs`'s `connect()` (keeps the DB password out of argv/output,
+    unlike `db push --db-url`) and records the version in `supabase_migrations.schema_migrations`.
   - Research: the audit's own suggested step 1. Verify each limb live before writing:
     **C1** — `mcp__supabase__execute_sql`: `select proname, proacl from pg_proc p join pg_namespace n on
     n.oid=p.pronamespace where n.nspname='public' and proname in ('drain_stub','queue_read','kb_search');`
@@ -555,6 +608,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B1 — migration `20260717000018_audit_c1_h3_h4_m13_m14.sql` applied to staging (recorded in `supabase_migrations.schema_migrations`): C1 revoke (live acl now `postgres=X/postgres | service_role=X/postgres` — anon/authenticated/PUBLIC gone; **`drain_stub` no longer in `get_advisors`**), 5 M13 indexes (all present in `pg_indexes`), `claim_invite` FOR UPDATE + kind-gated pair, `record_rc_event` + additive `subscription_events.applied_at`. Evidence: Node `1..105 / # pass 105 / # fail 0` (232967.7ms); targeted 32/32; Deno `133 passed | 0 failed`. +5 regression tests — 2026-07-17
 - B0 — baseline honestly green: 4 stale global-count assertions scoped to their own fixtures (test-only, no product code). All 4 deltas reconciled to live staging first via MCP (worker_telemetry=2, kb_chunks=141, cards objects=2) → **zero product bugs**. Evidence: Node `1..100 / # pass 100 / # fail 0` (226886.5ms, was 96/100); Deno `133 passed | 0 failed` (3s). Files: `supabase/tests/{queues,rls,storage,worker_narrative}.test.mjs` — 2026-07-17
 
 ---
@@ -566,3 +620,5 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-04 | 2026-07-17 | **H4's fix departs from the audit's literal prescription.** Instead of "reorder the `exists(profiles)` guard before the event insert", B1 adds `subscription_events.applied_at` and makes the idempotency key guard the **upsert** rather than the log row. | The audit's version does not actually close the finding, and contradicts the code it would have to change. **(1)** `revenuecat-webhook/index.ts` returns **HTTP 200 when `applied=false`** — RC never retries a 200, so declining to consume the key changes nothing; the event is still lost. **(2)** A tri-state return would let the handler 5xx, but `create or replace` **cannot change the `boolean` return type** → contracting, out of B1's additive remit. **(3)** The literal reorder breaks `revenuecat_webhook.test.mjs:58`, which deliberately asserts an unknown-user event is *logged for audit* — matching `subscription_events`' documented purpose ("raw webhook audit log", `schema.sql:139`). The `applied_at` design fixes the audit's stated failure ("every RC retry then dedupes to a no-op forever" — a redelivery now applies) while keeping the audit log complete and all 4 existing tests green. **Residual, stated honestly:** because the handler still 200s, self-healing needs *some* redelivery (an RC dashboard resend, or any later event — which carries a different id and applies normally). Making the handler signal retry is a **product call on posture**: a not-yet-provisioned user resolves on retry, but a merged-away UUID never will, so a blanket 5xx would retry forever against a permanently-dead id. Routed to B15 with the rest of the H4 residue. |
+| D-05 | 2026-07-17 | **H4's `latest_event_at` ordering guard is deferred to B15**, not built in B1. | `0009:38` stamps `latest_event_at = now()` — **processing** time, not event time. `now()` is monotonic in processing order, so a guard written against it is true by construction and would be **decorative**: it would look like a fix and prevent nothing. A real out-of-order guard needs RC's actual event timestamp, and `RcEvent` (`_shared/revenuecat.ts:62-70`) **has no timestamp field** — the payload's real shape is exactly what B14 establishes from the vendor docs. The ledger's own B15 note already says ordering semantics depend on what RC actually sends; B1's "add an ordering guard" line is the over-eager one. A fake guard now would be worse than the bug, because it would look closed. |
