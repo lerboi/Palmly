@@ -36,17 +36,20 @@ finding has exactly one owning task below; no finding is dropped silently.
 
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
-- **Baseline suites (re-pinned 2026-07-17; Node grows as tasks add regression tests — B0 100 → B1 105 → B2 106):**
-  **Node 106/106** (`# pass 106 / # fail 0`, 237.0s) · **Deno 133/133** (`133 passed | 0 failed`, 3s)
+- **Baseline suites (re-pinned 2026-07-17; Node grows as tasks add regression tests — B0 100 → B1 105 → B2 106 → B3 109):**
+  **Node 109/109** (`# pass 109 / # fail 0`, 237.1s) · **Deno 133/133** (`133 passed | 0 failed`, 3s)
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
   quote it. The pre-B0 "Node 96/100" is now historical.
 - **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B2** (2026-07-17) — migration 0019 applied; all 5 destructive `drain_stub`
-  crons unscheduled (C2 interim; `[~]` by design). Suites: **Node 106/106**, **Deno 133/133**.
-- **Next task:** **B3 — Lifecycle predicate correctness: `crops_due_for_deletion` + `sweep_stale_anon`.**
+- **Last completed:** **B3** (2026-07-17) — migration 0020 applied; C4 predicate + H10 pair guard.
+  Suites: **Node 109/109**, **Deno 133/133**.
+- **Next task:** **B4 — Storage/DB ordering integrity: account-delete, merge_accounts, deletion_log.**
+- **Owed doc correction:** `Planning/Backend-specs.md` §9 says crops are "deleted 24h after
+  successful extraction"; the SQL keys on `created_at` **deliberately** (D-07). Fold this into
+  B22's spec-correction pass alongside the storage-path `[1]`/`[2]` row.
 - **Blocked on:** — (B14/B15 want H8; B21 records C5/M5 as H4c-blocked; none of these block B0–B13.)
 - **Human gates that findings depend on** (`Planning/Human-tasks.md`): **H4c** paid Gemini → audit
   **C5**, **M5**, and M3's Batch leg. **H8** RevenueCat account → the *live proof* of **C3**/B14/B15.
@@ -308,7 +311,47 @@ would edit nothing and wrongly report success.
     and **do not quietly build the wiring under a bug-fix ledger.** C2 closes `[~]` (interim landed,
     full wiring = buildplan) — not `[x]`.
 
-- [ ] **B3 — Lifecycle predicate correctness: `crops_due_for_deletion` + `sweep_stale_anon`** *(C4-SQL, H10)*
+- [x] **B3 — Lifecycle predicate correctness: `crops_due_for_deletion` + `sweep_stale_anon`** *(C4-SQL, H10)* — **2026-07-17**
+  - **DONE: C4-SQL PARTLY CONFIRMED (2 of 3 limbs real; 1 is a FALSE POSITIVE — the spec is wrong) ·
+    H10 CONFIRMED (and WORSE than stated).** Landed as
+    `supabase/migrations/20260717000020_c4_h10_lifecycle_predicates.sql` (counter re-read: max was 19).
+  - **C4 limb 1 — "never sweeps stuck scans": CONFIRMED, and it is the only genuine privacy defect.**
+    Live `scans_status_check` has **7** statuses (`uploaded,queued,extracting,matched,narrating,
+    complete,failed`); `0016:24` filtered to 3, so a scan abandoned in any of the other four kept its
+    crop **forever**. **ERRATA confirmed: `narrating` was missing too** — the audit lists only three.
+  - **C4 limb 2 — "failed scans not deleted immediately": CONFIRMED** (minor). Spec §9 says
+    "deleted immediately on scan failure resolution"; they waited 24h. Verified `failed` is genuinely
+    **terminal** before acting on it (`worker-scan/index.ts:85-94` sets it only on the
+    fail-fast/dead-letter branch, then archives; the retry branch never sets it) — so immediate
+    deletion cannot destroy a crop a retry still needs.
+  - **C4 limb 3 — "keys off scan creation, not successful extraction": FALSE POSITIVE — the spec is
+    wrong, the SQL is right** (D-07; the same call the audit itself makes for the storage path
+    `[1]` vs `[2]`). Keying on extraction would **only ever retain crops LONGER**, and only for scans
+    whose crop is already spent (pass 2 reads features, never the image). It cannot protect a
+    backlogged crop either — that is the stuck-scan branch, which fires at 24h either way. Re-analysis
+    already has its designed mechanism: the `keep_image` opt-in (§9). **"Fixing" this limb would have
+    made the privacy posture worse and weakened the D2 marketing claim.** Left as-is deliberately.
+  - **H10 CONFIRMED — and the audit understates the blast radius.** Live: **both**
+    `compatibility_pairs_user_a_fkey` **and** `compatibility_pairs_user_b_fkey` are `ON DELETE
+    CASCADE` → profiles, and `compatibility_results_pair_id_fkey` cascades from the pair. The audit
+    frames the victim as "an invitee who claimed but never scanned", implying only an empty pair is
+    lost. **Not so:** `request_compat` (`0011:38-41`) keys off `canonical_palm_fs` →
+    `subject_profiles`/`feature_sets`, **not `readings`** — so a user whose extraction succeeded but
+    whose narrative failed has **zero readings**, is therefore sweepable, and can hold a **COMPLETE**
+    compat result. "No readings" is not a proxy for "no compatibility".
+  - Build: predicate restated **positively** — a crop is due once it is 24h old whatever the scan is
+    doing, plus `failed` immediately, `keep_image` exempt. The status enumeration is **dropped, not
+    extended**: enumerating statuses is what caused the bug, and a future status would silently
+    reintroduce it. `sweep_stale_anon` now never purges a pair member (D-08).
+  - Verify (observed): `data_lifecycle.test.mjs` **9/9** (6 existing + 3 new); full Node **109/109**
+    (`# pass 109 / # fail 0`, 237.1s); Deno unaffected (no TS touched). The 3 pre-existing lifecycle
+    tests still pass unchanged — incl. the ERASURE test, which calls `purge_account` **directly** and
+    must still cascade the pair (an explicit account deletion is the user's own request; H10 is only
+    about the *automatic* cost-control sweep).
+  - Regression tests added (3): all four stuck states (`uploaded/queued/extracting/narrating`) at 25h
+    are swept; a `failed` scan is due immediately **and** `keep_image` still exempts it; a stale anon
+    **in a pair** is not swept and the inviter's pair + result both survive. Each fails against the
+    old predicate.
   - Research: **C4** — `0016:26` keys the age off **scan creation**, not successful extraction; `0016:24`'s
     status filter `in ('complete','matched','failed')` omits `uploaded`/`queued`/`extracting` **and
     `narrating`** (ERRATA), so abandoned uploads keep their crops forever, contradicting the D2 "deleted
@@ -637,6 +680,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B3 — migration `20260717000020_c4_h10_lifecycle_predicates.sql` applied: C4 crop predicate restated positively (24h-old crop is due whatever its status; `failed` immediate; `keep_image` exempt — status enumeration DROPPED, not extended) + H10 `sweep_stale_anon` never purges a pair member. Verdicts: C4 limb "keys off created_at" = **FALSE POSITIVE (spec wrong, SQL right — D-07)**; H10 CONFIRMED **worse than stated** (compat keys off `canonical_palm_fs`, not `readings` → a narrative-failed user has 0 readings yet can hold a COMPLETE result). Evidence: `data_lifecycle.test.mjs` 9/9; Node `1..109 / # pass 109 / # fail 0` (237130.2ms). +3 regression tests — 2026-07-17
 - B2 — migration `20260717000019_c2_unschedule_destructive_drains.sql` applied: all 5 `drain_stub` crons unscheduled (C2 interim). Evidence: `cron.job` → **0 jobs**; newest `cron.job_run_details` frozen at 21:21:00 = **no run for 4m43s** (was every 10s / 32 runs per 2min). Pre-state captured: 5 active drains, pgmq totals scan 56 / narrative 20 / compat 39 / push 130. Node `1..106 / # pass 106 / # fail 0` (237024.3ms). Test inverted: "each queue has a scheduled drain" → "no cron may invoke drain_stub". **`[~]` — pg_net wiring stays with the buildplan** — 2026-07-17
 - B1 — migration `20260717000018_audit_c1_h3_h4_m13_m14.sql` applied to staging (recorded in `supabase_migrations.schema_migrations`): C1 revoke (live acl now `postgres=X/postgres | service_role=X/postgres` — anon/authenticated/PUBLIC gone; **`drain_stub` no longer in `get_advisors`**), 5 M13 indexes (all present in `pg_indexes`), `claim_invite` FOR UPDATE + kind-gated pair, `record_rc_event` + additive `subscription_events.applied_at`. Evidence: Node `1..105 / # pass 105 / # fail 0` (232967.7ms); targeted 32/32; Deno `133 passed | 0 failed`. +5 regression tests — 2026-07-17
 - B0 — baseline honestly green: 4 stale global-count assertions scoped to their own fixtures (test-only, no product code). All 4 deltas reconciled to live staging first via MCP (worker_telemetry=2, kb_chunks=141, cards objects=2) → **zero product bugs**. Evidence: Node `1..100 / # pass 100 / # fail 0` (226886.5ms, was 96/100); Deno `133 passed | 0 failed` (3s). Files: `supabase/tests/{queues,rls,storage,worker_narrative}.test.mjs` — 2026-07-17
@@ -650,6 +694,8 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-07 | 2026-07-17 | **C4's "deletes 24h after scan creation, not after successful extraction" is closed as a FALSE POSITIVE — the spec is wrong, the SQL is right.** `crops_due_for_deletion` keeps keying the age on `created_at`. **A `Planning/Backend-specs.md` §9 correction is owed** (tracked with B22's storage-path correction). | The choice only affects scans that are **already extracted** — where the crop is spent (pass 2 reads features, never the image). For those, `created_at` deletes **sooner**, so keying on extraction would *only ever retain crops longer* and weaken the D2 claim ("analyzed, then deleted — usually within a day"). It cannot protect a backlogged crop either: that risk lives entirely in the stuck-scan branch, which fires at 24h from creation regardless. And re-analysis with improved extractors already has its designed mechanism — the `keep_image` opt-in, spec §9's own "Opt-in retained scan / until revoked" row. `created_at` is also the promise the user actually experiences ("I took a photo; it is gone within a day"). Applying the audit literally here would have **degraded privacy** while looking like a fix. Precedent: the audit makes exactly this call itself for `storage.objects.name` `[1]` vs `[2]`. |
+| D-08 | 2026-07-17 | **`sweep_stale_anon` now refuses to purge any compatibility-pair member**, accepting a bounded MAU cost rather than reassign/tombstone semantics. | This is an irreversible deletion path, so the trade is "retain a few anon rows" vs "silently destroy an active user's pair + result". Verified live that both `compatibility_pairs` FKs cascade and results cascade from the pair, so there is no way to keep the pair while deleting the member. Tombstone/reassign would bound both costs, but inventing tombstone semantics for a **shared relationship row** (who owns it? what does the survivor see?) is a product decision, not a bug fix — out of this ledger's remit. The MAU consequence is real and recorded: an anon who claims an invite and never returns is now retained indefinitely. If that cost bites, the follow-up is a tombstone design, not re-enabling the destructive cascade. |
 | D-06 | 2026-07-17 | **B2 unschedules all 5 `drain_stub` crons, not just the 2 the audit names.** | The audit's "disable the drain crons for `compat_jobs`/`push_jobs`" is right about *today* — verified: only those two have live SQL enqueuers (`0011:50,73`; `0013:16`, `0014:76`). But `drain_stub` **archives every message it reads** and **nothing consumes any of these queues**, so every scheduled drain is pure destruction with zero upside — not a worker, just a shredder on a 10s timer. Leaving the scan/narrative drains armed is a live trap for the very next buildplan task (`scan-create`/`scan-ingest`, P4): the first real scan job would be eaten within 10 seconds, and the symptom (a job that simply vanishes) is miserable to debug. The stub's proof-of-path value is retained — `queues.test.mjs` calls `drain_stub` directly and never depended on the schedule. Fully reversible; the exact restore SQL is in the migration header, and restoring is only correct once the command is a real worker invocation. |
 | D-04 | 2026-07-17 | **H4's fix departs from the audit's literal prescription.** Instead of "reorder the `exists(profiles)` guard before the event insert", B1 adds `subscription_events.applied_at` and makes the idempotency key guard the **upsert** rather than the log row. | The audit's version does not actually close the finding, and contradicts the code it would have to change. **(1)** `revenuecat-webhook/index.ts` returns **HTTP 200 when `applied=false`** — RC never retries a 200, so declining to consume the key changes nothing; the event is still lost. **(2)** A tri-state return would let the handler 5xx, but `create or replace` **cannot change the `boolean` return type** → contracting, out of B1's additive remit. **(3)** The literal reorder breaks `revenuecat_webhook.test.mjs:58`, which deliberately asserts an unknown-user event is *logged for audit* — matching `subscription_events`' documented purpose ("raw webhook audit log", `schema.sql:139`). The `applied_at` design fixes the audit's stated failure ("every RC retry then dedupes to a no-op forever" — a redelivery now applies) while keeping the audit log complete and all 4 existing tests green. **Residual, stated honestly:** because the handler still 200s, self-healing needs *some* redelivery (an RC dashboard resend, or any later event — which carries a different id and applies normally). Making the handler signal retry is a **product call on posture**: a not-yet-provisioned user resolves on retry, but a merged-away UUID never will, so a blanket 5xx would retry forever against a permanently-dead id. Routed to B15 with the rest of the H4 residue. |
 | D-05 | 2026-07-17 | **H4's `latest_event_at` ordering guard is deferred to B15**, not built in B1. | `0009:38` stamps `latest_event_at = now()` — **processing** time, not event time. `now()` is monotonic in processing order, so a guard written against it is true by construction and would be **decorative**: it would look like a fix and prevent nothing. A real out-of-order guard needs RC's actual event timestamp, and `RcEvent` (`_shared/revenuecat.ts:62-70`) **has no timestamp field** — the payload's real shape is exactly what B14 establishes from the vendor docs. The ledger's own B15 note already says ordering semantics depend on what RC actually sends; B1's "add an ordering guard" line is the over-eager one. A fake guard now would be worse than the bug, because it would look closed. |

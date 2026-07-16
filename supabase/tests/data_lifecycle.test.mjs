@@ -93,6 +93,51 @@ test('crop auto-deletion: >24h terminal crops are due; kept + fresh are exempt',
   });
 });
 
+test('crop auto-deletion: a scan abandoned in ANY non-terminal state is swept (C4)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, U);
+    // The old predicate filtered `status in ('complete','matched','failed')`, so a scan abandoned in
+    // any of these four kept its crop FOREVER — contradicting the D2 promise ("analyzed, then
+    // deleted — usually within a day"). 'narrating' is the one the audit itself missed.
+    const STUCK = ['uploaded', 'queued', 'extracting', 'narrating'];
+    for (const s of STUCK) {
+      await c.query(
+        `insert into public.scans (user_id, kind, status, storage_path, created_at)
+         values ($1,'palm',$2,$3, now()-interval '25 hours')`,
+        [U, s, `${U}/stuck-${s}.jpg`],
+      );
+    }
+    const due = (await c.query(`select storage_path from public.crops_due_for_deletion(200)`)).rows.map((r) => r.storage_path);
+    for (const s of STUCK) {
+      assert.ok(due.includes(`${U}/stuck-${s}.jpg`), `a scan stuck in '${s}' for 25h must be swept`);
+    }
+  });
+});
+
+test('crop auto-deletion: a failed scan is swept immediately, not after 24h (C4)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, U);
+    // Spec §9: "Deleted immediately on scan failure resolution." status='failed' is terminal —
+    // worker-scan sets it only on the fail-fast/dead-letter branch, never to retry.
+    await c.query(
+      `insert into public.scans (user_id, kind, status, storage_path, created_at)
+       values ($1,'palm','failed',$2, now()-interval '1 minute')`,
+      [U, `${U}/failed-now.jpg`],
+    );
+    // ...but an opted-in crop is still exempt (§9 "Opt-in retained scan — until revoked").
+    await c.query(
+      `insert into public.scans (user_id, kind, status, storage_path, keep_image, created_at)
+       values ($1,'palm','failed',$2, true, now()-interval '1 minute')`,
+      [U, `${U}/failed-kept.jpg`],
+    );
+    const due = (await c.query(`select storage_path from public.crops_due_for_deletion(200)`)).rows.map((r) => r.storage_path);
+    assert.ok(due.includes(`${U}/failed-now.jpg`), 'a fresh failed scan is due immediately');
+    assert.ok(!due.includes(`${U}/failed-kept.jpg`), 'keep_image still exempts a failed scan');
+  });
+});
+
 test('request_image_deletion: marks all the user\'s crops + returns paths + audits', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);
@@ -140,6 +185,30 @@ test('sweep_stale_anon: >30d anon with no readings is erased; others survive', a
     for (const id of [anonWithReading, freshAnon, oldPermanent]) {
       assert.equal(await n(c, `select count(*)::int n from auth.users where id=$1`, [id]), 1, `${id} survives`);
     }
+  });
+});
+
+test('sweep_stale_anon: a stale anon in a compatibility pair is NOT swept — the partner keeps their pair + result (H10)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    const inviter = 'd7000000-0000-0000-0000-0000000000d7'; // a real, active user
+    const staleInvitee = 'd8000000-0000-0000-0000-0000000000d8'; // anon, 40d, no readings
+    await seedUser(c, inviter, { isAnonymous: false });
+    await seedUser(c, staleInvitee, { isAnonymous: true });
+    await c.query(`update auth.users set created_at = now()-interval '40 days' where id = any($1)`, [[inviter, staleInvitee]]);
+
+    // The pair the inviter owns a half of. Both compatibility_pairs FKs are ON DELETE CASCADE to
+    // profiles, and compatibility_results cascades from the pair — so before this fix, sweeping the
+    // invitee silently destroyed the INVITER's pair and result.
+    const [a, b] = inviter < staleInvitee ? [inviter, staleInvitee] : [staleInvitee, inviter];
+    const pair = (await c.query(`insert into public.compatibility_pairs (user_a, user_b) values ($1,$2) returning id`, [a, b])).rows[0].id;
+    await c.query(`insert into public.compatibility_results (pair_id, algorithm_version) values ($1,'compat.v1')`, [pair]);
+
+    const swept = (await c.query(`select public.sweep_stale_anon(30) as n`)).rows[0].n;
+    assert.equal(swept, 0, 'a pair member is never purged, however stale');
+    assert.equal(await n(c, `select count(*)::int n from auth.users where id=$1`, [staleInvitee]), 1, 'invitee retained');
+    assert.equal(await n(c, `select count(*)::int n from public.compatibility_pairs where id=$1`, [pair]), 1, "the inviter's pair survives");
+    assert.equal(await n(c, `select count(*)::int n from public.compatibility_results where pair_id=$1`, [pair]), 1, "the inviter's result survives");
   });
 });
 
