@@ -81,6 +81,10 @@ async function expectDenied(c, sql, params, label) {
 
 const countOf = async (c, table) =>
   (await c.query(`select count(*)::int n from public.${table}`)).rows[0].n;
+// Shared reference tables carry committed staging rows, so their reads must be scoped to the
+// test's own seeded fixture; the rollback harness isolates writes, not reads.
+const countWhere = async (c, table, where, params = []) =>
+  (await c.query(`select count(*)::int n from public.${table} where ${where}`, params)).rows[0].n;
 const affected = async (c, sql, params) => (await c.query(sql, params)).rowCount;
 
 test('owner reads own scan; stranger cannot', async () => {
@@ -316,8 +320,12 @@ test('shared reference tables (fortune_templates, kb_chunks) readable by any aut
        values ('v1','palmistry','heart_line.deep_long','...')`,
     );
     await asRole(c, { uid: A });
-    assert.equal(await countOf(c, 'fortune_templates'), 1, 'fortune_templates readable');
-    assert.equal(await countOf(c, 'kb_chunks'), 1, 'kb_chunks readable');
+    assert.equal(
+      await countWhere(c, 'fortune_templates', `fortune_date=current_date and pillar_bucket='wood_wood' and locale='en'`),
+      1,
+      'fortune_templates readable',
+    );
+    assert.equal(await countWhere(c, 'kb_chunks', `feature_key=$1`, ['heart_line.deep_long']), 1, 'kb_chunks readable');
     await resetRole(c);
   });
 });

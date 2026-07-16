@@ -77,7 +77,17 @@ test('worker-narrative DB flow: feature_set → narrative_job → readings (stam
     assert.equal(await n(c, `select count(*)::int n from public.readings where feature_set_id=$1`, [fs.id]), 1, 'reading stored');
     assert.equal(await n(c, `select jsonb_array_length(narrative->'sections')::int n from public.readings where id=$1`, [reading.id]), 2, 'narrative sections persisted');
     assert.equal(await n(c, `select count(*)::int n from pgmq.q_narrative_jobs`), 0, 'narrative_job archived');
-    assert.equal(await n(c, `select count(*)::int n from public.worker_telemetry where worker='worker-narrative' and status='ok'`), 1, 'telemetry written');
+    // Scoped to THIS test's msg_id — staging carries committed worker-narrative telemetry rows.
+    assert.equal(
+      await n(
+        c,
+        `select count(*)::int n from public.worker_telemetry
+         where worker='worker-narrative' and status='ok' and msg_id=$1`,
+        [msg.msg_id],
+      ),
+      1,
+      'telemetry written',
+    );
   });
 });
 

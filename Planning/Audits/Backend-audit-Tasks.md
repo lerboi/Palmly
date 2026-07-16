@@ -1,0 +1,568 @@
+# Palmly — Backend Audit Fix Ledger
+
+**Findings source of truth:** [`Planning/Audits/Backend-audit.md`](./Backend-audit.md) (audit dated
+2026-07-15). **Specs it is judged against:** `Planning/Backend-specs.md` · `Planning/mvp_spec.md`.
+**Build ledger this one is a side-round of:** `Planning/MVP_Buildplan.md` (its STATE is NOT updated by
+this round — see Decision Log D-01).
+
+This ledger is a checkbox task machine — same conventions as `MVP_Buildplan.md` and the completed
+`UIUX-Redesign-v2-Tasks.md` (V1–V23, archived). It converts the audit's **findings** (§4 Critical/High,
+§5 Medium/Low) into ordered, independently-verifiable tasks **B0–B22**.
+
+Checkbox: `[ ]` not started · `[~]` in progress/partial (resume note required) · `[x]` done+verified
+(includes *closed as false positive* and *closed as decision*) · `[!]` blocked.
+
+---
+
+## SCOPE
+
+**IN scope — the audit's finding list:** C1–C5, H1–H10, M1–M14, and the §5 Low/informational bullets —
+plus **§3.3's test coverage gaps** (B21), which are the audit's own final suggested work item. Every
+finding has exactly one owning task below; no finding is dropped silently.
+
+**OUT of scope:**
+- **§NOT YET BUILT** (`scan-create`/`scan-ingest`, cron→worker wiring, KB embeddings, push enqueuers,
+  depth-2 path, SSE chat, client wiring, ops delivery, P12 items…) — that is `MVP_Buildplan.md`'s job.
+  **One deliberate exception:** C2 and C4 are *findings* whose complete fix requires the cron→worker
+  wiring. This ledger delivers the **in-scope interim** (B2/B3: stop the destruction, fix the
+  predicate) and defers the full `pg_net`+Vault wiring to the buildplan. **If the loop finds itself
+  building the pg_net/Vault wiring, it has left this ledger's scope — stop and say so.**
+- **§RECOMMENDED ADDITIONS** (invite rewards, streaks, weekly recap, 本命年 flavor, fortune chat chip,
+  `app_config`, dead-letter replay) — feature proposals, not defects. Not tracked here.
+
+---
+
+## STATE
+
+- **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
+  red test is this round's own regression.
+- **Baseline suites (re-pinned 2026-07-17 after B0 — observed, not inherited):**
+  **Node 100/100** (`# pass 100 / # fail 0`, 226.9s) · **Deno 133/133** (`133 passed | 0 failed`, 3s)
+  · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
+  quote it. The pre-B0 "Node 96/100" is now historical.
+- **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
+  no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
+  `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
+  is expected to produce a **real, observed** test count.
+- **Last completed:** **B0** (2026-07-17) — both suites honestly green.
+- **Next task:** **B1 — Migration 0018: SECURITY DEFINER revokes · RLS indexes · claim_invite
+  race+kind · rc_event guard order.**
+- **Blocked on:** — (B14/B15 want H8; B21 records C5/M5 as H4c-blocked; none of these block B0–B13.)
+- **Human gates that findings depend on** (`Planning/Human-tasks.md`): **H4c** paid Gemini → audit
+  **C5**, **M5**, and M3's Batch leg. **H8** RevenueCat account → the *live proof* of **C3**/B14/B15.
+  **H6** domain → part of H9's teaser story. **H7** store accounts → the App Store ID placeholder.
+  Leaked-password protection is a **dashboard toggle** (human). None of these can be closed by code.
+- **Live DB:** single project pre-launch — `palmly-staging` (`rphtdgoggsldshtdbkaj`). All 17
+  migrations applied. **`pg_net` is NOT installed** (that's why the cron wiring is out of scope).
+- **Standing hazards** (learned the hard way in recon — read before your first command):
+  - **`npx supabase@latest` ALWAYS.** The `supabase` on PATH (scoop shim 2.101.0) **cannot parse
+    `config.toml`** and fails with a confusing config error, not a version complaint.
+  - **Docker engine is DOWN** → `supabase start` / `db reset` / `supabase test db` are unavailable.
+    The staging + begin/rollback harness is the only working backend test path, by design.
+  - **`supabase/tests/lib/db.mjs` resolves `{ ...loadEnvStaging(), ...process.env }`** — a stray
+    `SUPABASE_DB_URL` / `SUPABASE_STAGING_*` in your shell **silently redirects the whole suite at a
+    different database**. Check the ambient env before blaming a test.
+  - **Never `git add -A` blindly** — `Planning/Prompt` is a tracked file modified in the working tree.
+
+---
+
+## EXECUTION PROTOCOL (per task — follow literally)
+
+1. **Re-ground.** Read `Planning/Audits/Backend-audit.md` for the finding text, then this ledger's
+   STATE + ERRATA + the task. **Read the current source file(s) before editing** and match surrounding
+   style.
+2. **Pick** the first task in document order that is `[ ]` or `[~]`. **Never reorder** — the sequence
+   encodes real dependencies (B0 gates every Verify; B5 owns the `readings` constraint before B7 edits
+   the same file; B4 sets the storage-ordering invariant B16 copies).
+3. **RESEARCH — the triage gate. Do this before writing any code, and record the verdict.**
+   - Re-verify the finding **against the current code** (the audit is 2 days old and **several of its
+     cites are wrong — see ERRATA**) and **against live staging** via the **read-only** `mcp__supabase__*`
+     tools (ACLs, `cron.job`, constraints, advisors, row counts). Never guess where a read tool exists.
+   - Reach a verdict, one of: **CONFIRMED** · **PARTLY CONFIRMED** (say which limb) · **FALSE POSITIVE**
+     · **OBSOLETE** (already fixed) · **DECISION** (works as built; the spec or a product call is what
+     changes).
+   - **A FALSE POSITIVE is a first-class success.** Do not manufacture a fix to look productive. Record
+     `- DONE: FALSE POSITIVE — <evidence>` and mark `[x]`. Changing correct code to satisfy a wrong
+     audit line is the worst outcome available to this loop.
+   - Then research **the correct fix**: repo precedent first (there is almost always one — e.g. the
+     `0006` revoke/grant pattern), then the spec section, then official vendor docs via WebSearch/
+     WebFetch (mandatory for B14). Write a 2–5 line plan under the task **before** editing.
+4. **Build** the **smallest correct change**. Standing rules:
+   - **Never edit an applied migration.** All 17 are applied. Every SQL fix is a **new file**. **Re-read
+     the real max counter in `supabase/migrations/` at the start of the task** — the numbers in this
+     ledger are *indicative only*; two tasks must never claim the same counter. Convention:
+     `<YYYYMMDD><6-digit global monotonic counter>_<snake_name>.sql` (next: `20260717000018_*.sql`).
+   - **Expand-contract**: additive in one step. A contracting change (drop/rename/NOT NULL) needs its
+     own task + sequence (that is exactly why B15 and B18 exist).
+   - Copy the repo's SECURITY DEFINER idiom verbatim: `set search_path = ''` in the body +
+     `revoke all on function public.f(argtypes) from public, anon, authenticated;` +
+     `grant execute on function public.f(argtypes) to service_role;` (precedent: `0006:20-25`, repeated
+     in 12 other migrations).
+   - Versioned artifacts (`prompts/`, `kb/`, `schemas/`): bump, never mutate in place — **but read the
+     B9 note first, the toolchain does not honor this rule yet.**
+   - Secrets never enter code, queries, output, or the commit.
+5. **Verify.** Run the task's **Verify** line literally. **Never report a green you did not see** —
+   paste the real numbers. Add/extend a regression test wherever the suites can hold one (that is what
+   stops the finding from returning). A finding that cannot be tested says so out loud.
+6. **Record — only when Verify actually passed.** Mark `[x]` + today's date · append a **Build Log**
+   line with real evidence (test counts, MCP query output, file:line) · update **STATE** · add a
+   **Decision Log** row if the task made a judgment call · `git commit` as **`B# <Title>: <details>`**
+   (the form `git log` actually uses — space + colon; **not** `B#.<slug>`). Stage explicit paths.
+7. **On failure:** 3 genuinely different approaches, then `[!]` + what you tried + STATE `Blocked on`,
+   and move to the next unblocked task. A stalled ledger beats a falsely-green one.
+8. **Loop control:** keep going while context allows; before it runs low, park the in-flight task `[~]`
+   with a resume note, update STATE, commit, end the iteration cleanly.
+
+---
+
+## ⚠️ AUDIT ERRATA — recon-verified 2026-07-17
+
+**Trust this table over the audit's own cites.** A loop following the audit verbatim on these lines
+would edit nothing and wrongly report success.
+
+| Audit says | Truth |
+|---|---|
+| H8/M4 cite `_shared/render.ts` | **That file has never existed.** It is `supabase/functions/card-render/render.ts`. |
+| H1 cites `_shared/consistency.ts` for `deriveGeometry`/`geometryDistance` | They live at **`_shared/features.ts:69`** and **`:80`**. `consistency.ts` only re-imports them at `:6-7`. |
+| Low: secret gate `===` "in `_shared/context.ts`?" | The compare is at **`_shared/auth-resolve.ts:44`**. |
+| H7 cites `*_merge_accounts*.sql` | The file is **`20260713000008_account_merge.sql`** (noun order reversed) — the glob matches nothing. |
+| H4 "rc_event_id is nullable" cited in `0009` | The declaration is in **`schema.sql:141`** (`rc_event_id text unique`). TRANSFER isn't in SQL at all — it's `_shared/revenuecat.ts:85`. |
+| C1: advisors flag `handle_new_user`, `broadcast_*`, `resolve_awaiting_compat` as RPC-exposed | Those **`return trigger`** and **cannot be invoked over the Data API**. Only `drain_stub` (`returns int`) is genuinely RPC-callable. **`kb_search` is granted to `authenticated` INTENTIONALLY** (`0015:39`) and is not SECURITY DEFINER — **do not "fix" it**; you would break chat. |
+| H2: "copy `worker-compat`'s guard" | `worker-compat:65-68` is a **status check** on a row `compat-request` already created. `worker-narrative` has **no such row** → the fix needs a DB unique constraint or SELECT-before-insert, **not** a copy-paste. It pulls in a migration. |
+| M14: "0010:36-40 creates a pair for generic" | True, **but `kind` is never fetched** by the select at `0010:20` — the guard requires changing the select too. |
+| C4 predicate omits `uploaded`/`queued`/`extracting` | Also omits **`narrating`** — the audit missed one. |
+| H6: push-dispatch "archives regardless of ticket outcome" | **Worse:** `:47` pushes `msg_id` into `archived` **before `sendExpoPush` is even called** at `:53` — jobs die even when the Expo POST *throws*. |
+| H5: "orders ascending, then slices last 8" | The `slice(-8)` at `chat.ts:149` is a **no-op**; the bug is purely the order clause at `chat-send/index.ts:96`. |
+| §3.2 "neither suite is runnable" | **Runnable here.** Deno **133/133 green**; Node **96/100** (B0). The "3 tests never in a recorded green run" question is resolved — they pass. |
+
+---
+
+# PHASE 1 — Baseline
+
+- [x] **B0 — Baseline: make both backend suites honestly green** *(pre-req; audit §3.2 caveat)* — **2026-07-17**
+  - **DONE: CONFIRMED (all 4) — stale global-count assertions, zero product bugs.** Every delta
+    reconciled arithmetically against live staging via MCP *before* any edit:
+    | Test | Asserted | Live staging | +seeded | = got |
+    |---|---|---|---|---|
+    | `queues.test.mjs:49` | `worker_telemetry` = 0 | **2** (both worker-narrative/narrative_jobs/ok) | 0 | 2 |
+    | `rls.test.mjs:320` | `kb_chunks` = 1 | **141** | 1 | 142 |
+    | `storage.test.mjs:84` | cards objects = 1 | **2** | 1 | 3 |
+    | `worker_narrative.test.mjs:80` | worker-narrative/ok = 1 | **2** | 1 | 3 |
+    Fix = scope each read to its own fixture (the harness rolls back *writes*; it cannot hide staging's
+    committed rows from *reads* — that distinction is the whole bug). Test-only; no product code.
+    `queues`→ delta (count before == after); `worker_narrative`→ scoped to its own `msg_id`;
+    `storage`→ `countObjects(bucket, name)`; `rls`→ new `countWhere` scoped to the seeded fixture
+    (`fortune_templates` PK is `(fortune_date,pillar_bucket,locale)` → provably ≤1; `kb_chunks`
+    `feature_key='heart_line.deep_long'` verified 0 live).
+  - Research: **measured first-hand 2026-07-17: Node `# pass 96 / # fail 4` (226.7s), Deno `133 passed |
+    0 failed` (3s).** All 4 failures are **stale unscoped global `count(*)` assertions** that assumed a
+    pristine staging DB — live counts explain every delta arithmetically, **zero product bugs**. The four,
+    by their real test names:
+    - `not ok 64 — draining an empty queue is a safe no-op` (`queues.test.mjs:49` — worker_telemetry expects 0, gets 2)
+    - `not ok 81 — shared reference tables (fortune_templates, kb_chunks) readable by any authenticated user` (`rls.test.mjs:319` — kb_chunks expects 1, gets 142)
+    - `not ok 91 — cards bucket: publicly readable by the anonymous role` (`storage.test.mjs:81` — cards objects expects 1, gets 3)
+    - `not ok 93 — worker-narrative DB flow: feature_set → narrative_job → readings (stamped) → complete → telemetry` (`worker_narrative.test.mjs:80` — expects 1, gets 3)
+
+    Confirm each against live counts before touching it — **if a delta does NOT reconcile, that one is a
+    real bug and gets its own task.** (Note #91's gets-3 is itself downstream of **H8**: card-render
+    publishes to the public bucket for every reading — B7's fix will change this count again.)
+  - Build: scope each assertion to its **own seeded fixture** (or assert a **delta**, not an absolute).
+    The harness's begin/rollback guarantees no test *writes* persist — it does **not** hide committed
+    staging rows from *reads*. That distinction is the whole bug. Test-only changes; no product code.
+  - Verify: `cd supabase/tests && npm test` → **100/100** (~233s; 100 serialized network round-trips —
+    it is not hung). `cd supabase/functions && deno test --allow-read --allow-env` → **133/133**. Paste
+    both real counts. Re-pin the stale numbers in this ledger's STATE.
+  - Note: **every downstream task's Verify is "the suites are green."** Until B0 lands, the loop cannot
+    distinguish its own regressions from pre-existing rot. This is why it is task 1.
+
+# PHASE 2 — Critical security & data integrity
+
+- [ ] **B1 — Migration 0018: SECURITY DEFINER revokes · RLS indexes · claim_invite race+kind · rc_event guard order** *(C1, M13, H3, M14, H4-SQL)*
+  - Research: the audit's own suggested step 1. Verify each limb live before writing:
+    **C1** — `mcp__supabase__execute_sql`: `select proname, proacl from pg_proc p join pg_namespace n on
+    n.oid=p.pronamespace where n.nspname='public' and proname in ('drain_stub','queue_read','kb_search');`
+    → `drain_stub` must currently show anon/authenticated. **Read the ERRATA row on C1 first** — scope
+    the revoke to genuinely RPC-callable functions; leave `kb_search` alone.
+    **M13** — `select tablename, indexname from pg_indexes where schemaname='public';` → confirm the 5
+    columns are unindexed. **H3/M14** — re-read `0010` in full (the `kind` select gap). **H4-SQL** —
+    `0009:22-24` insert vs `:31` guard; `:33/:38` unconditional `latest_event_at = now()`.
+  - Build: **ONE new migration** (`20260717000018_*.sql` — *re-read the real max counter first*). All
+    additive/backward-compatible:
+    (a) **C1** revoke/grant per the `0006:20-25` idiom, full arg-type lists, keep `set search_path = ''`.
+    (b) **M13** five `create index if not exists` — `compatibility_results.pair_id`, `chat_threads.user_id`,
+    `share_cards.user_id`, `devices.user_id`, `invites.invitee_id`. **No `CONCURRENTLY`** — the CLI wraps
+    each migration in one transaction and it is illegal there; staging tables are tiny.
+    (c) **H3 + M14** — ONE `create or replace function public.claim_invite(...)`: add `for update` to the
+    select **and** fetch `kind` so the pair-create is gated to compatibility invites. They rewrite the same
+    body; shipping them separately means the second clobbers the first.
+    (d) **H4-SQL** — reorder so the `exists(profiles)` guard precedes the event insert; add an ordering
+    guard on `latest_event_at`; add the **additive** `coalesce` defense for null `rc_event_id`.
+  - Verify: apply → `npx supabase@latest db push --db-url <SUPABASE_DB_URL from .env.staging>` (or
+    `CONFIRM=1 node supabase/tests/scripts/apply.mjs`). Then: `mcp__supabase__list_migrations` shows
+    `20260717000018`; the C1 ACL query above shows anon/authenticated **gone** from `drain_stub` and the
+    owner+service_role grants intact; `mcp__supabase__get_advisors` drops the fixed items;
+    `cd supabase/tests && node --test --test-concurrency=1 schema.test.mjs rls.test.mjs invite_claim.test.mjs
+    revenuecat_webhook.test.mjs queues.test.mjs` green, then the **full 100/100**. Add assertions pinning
+    the ACL + the 5 indexes so they stay fixed.
+  - Note: **the C1 revoke must not break the crons.** `drain_stub` is scheduled 5× at `0004:60-64`;
+    pg_cron jobs run as the **scheduling role** (postgres/owner), which keeps EXECUTE independently of the
+    PUBLIC grant. Revoke from `public, anon, authenticated` only — **never** from the owner or service_role.
+    **H4's NOT-NULL leg is deliberately excluded here** (contracting → B15).
+
+- [ ] **B2 — C2 interim: stop the live cron from destroying real jobs** *(C2)*
+  - Research: **before unscheduling anything**, capture the ground truth via MCP:
+    `select jobid, jobname, schedule, command, active from cron.job;` (expect the 5 `drain_stub`
+    schedules) and `select * from pgmq.metrics_all();`. Confirm which queues carry **real** enqueues
+    (`0011` `request_compat`/`resolve_awaiting_compat`, `0013`/`0014` `enqueue_push*`) versus which are
+    still inert — that decides whether you disable the 2 destructive drains or all 5.
+  - Build: a new migration that **unschedules the destructive drains** (`cron.unschedule`). This is the
+    audit's own interim recommendation. Reversible; record exactly how to restore it.
+  - Verify: MCP → the drains are inactive/unscheduled; `select * from cron.job_run_details order by
+    start_time desc limit 10;` shows **no new `drain_stub` runs**; `pgmq.metrics_all()` shows enqueued
+    messages now **survive**. Full Node suite still 100/100.
+  - Note: **the full fix (cron→`net.http_post` against the deployed workers) is OUT of scope** —
+    `pg_net` is not installed and it needs a Vault-held service key, the security-sensitive design the
+    buildplan deliberately parked (§NOT YET BUILT A.3). Deliver the interim, write a Decision Log row,
+    and **do not quietly build the wiring under a bug-fix ledger.** C2 closes `[~]` (interim landed,
+    full wiring = buildplan) — not `[x]`.
+
+- [ ] **B3 — Lifecycle predicate correctness: `crops_due_for_deletion` + `sweep_stale_anon`** *(C4-SQL, H10)*
+  - Research: **C4** — `0016:26` keys the age off **scan creation**, not successful extraction; `0016:24`'s
+    status filter `in ('complete','matched','failed')` omits `uploaded`/`queued`/`extracting` **and
+    `narrating`** (ERRATA), so abandoned uploads keep their crops forever, contradicting the D2 "deleted
+    within a day" promise. Decide the correct predicate against Backend-specs §9 — it must also delete
+    **failed scans immediately**. **H10** — confirm the cascade: `sweep_stale_anon:120` → `purge_account`
+    → `delete auth.users` (`:99`) → profiles → `compatibility_pairs` (`schema:89-90`, ON DELETE CASCADE on
+    **both** user_a and user_b) → `compatibility_results` (`schema:100`). Verify live that the constraint
+    shape is still that.
+  - Build: new migration, `create or replace` of both functions. C4: predicate keyed off extraction
+    success + a stuck/abandoned sweep + immediate failed-scan deletion. H10: guard on **pair membership**
+    (reassign/tombstone rather than cascade) so purging a stale anon never wipes the surviving partner's
+    pair/result.
+  - Verify: `cd supabase/tests && node --test --test-concurrency=1 data_lifecycle.test.mjs` — extend it
+    with the adversarial cases: a stuck `uploaded` scan **is** swept; a `failed` scan goes immediately; an
+    anon invitee's purge **leaves the inviter's pair intact**. Then full 100/100.
+  - Note: not grouped into B1 on purpose — **getting a deletion predicate wrong destroys user data.** Own
+    research, own verify.
+
+- [ ] **B4 — Storage/DB ordering integrity: account-delete, merge_accounts, deletion_log** *(H7)*
+  - Research: one finding, three limbs, **one invariant — never destroy the DB reference before the blob
+    is gone.** (a) `account-delete/index.ts:17-27` purges rows then best-effort removes objects (`:26`
+    `if (!sErr) removed += paths.length; // best-effort`) → a storage failure orphans palm/face crops with
+    **zero** remaining DB reference and no retry path (cleanup sweeps work off `scans` rows, now gone).
+    (b) `20260713000008_account_merge.sql:34` re-parents 12 tables but never touches `storage.objects` →
+    the loser's blobs stay under `{loser_id}/…` (survivor can't read them; orphaned on loser deletion).
+    (c) `deletion_log.completed_at` is stamped at `0016:55` and `:97` **before** the Edge Function does the
+    storage work.
+  - Build: reorder to **collect paths → delete objects → verify → purge rows → log completion last**.
+    Merge: move/re-parent the objects too. GDPR/D2 framing — be conservative.
+  - Verify: `node --test --test-concurrency=1 account_merge.test.mjs data_lifecycle.test.mjs` + full
+    100/100; `deno check supabase/functions/account-delete/index.ts`; a storage round-trip proving a
+    simulated storage failure **does not** leave an orphan (audit §3.3 gap #2 — there is no storage
+    round-trip test today; this is the place to add the first one).
+  - Note: this establishes the **collect→delete→log invariant that B16 must copy.**
+
+# PHASE 3 — Worker & pipeline hardening
+
+- [ ] **B5 — worker-narrative hardening: dedupe guard · redelivery · vt** *(H2-narrative, M2-narrative)*
+  - Research: `worker-narrative/index.ts:105-167` — no "reading already exists for (feature_set_id,
+    depth_level)" guard → a crash after the model call → visibility-timeout redelivery → **second Gemini
+    charge + duplicate `readings` row**. **Read the ERRATA row on H2**: worker-compat's guard is a *status
+    check* on a pre-existing row; narrative has no such row, so this needs a DB `unique (feature_set_id,
+    depth_level)` on `readings` + upsert/onConflict (or SELECT-before-insert). **Budget a migration.**
+    `vt=60` at `:167` is too short for a 2–3-vote extraction with retries. M2: `store_failed` → retry →
+    full regeneration; no `feature_hash` short-circuit.
+  - Build: the constraint migration + the guard + vt tuning + the redelivery short-circuit.
+  - Verify: `node --test --test-concurrency=1 worker_narrative.test.mjs` (extend: a redelivered job must
+    **not** produce a second row or a second model call) + full 100/100; `deno test --allow-read
+    --allow-env` 133+/133+; `deno check supabase/functions/worker-narrative/index.ts`.
+  - Note: **B5 must precede B7** — B7 edits `worker-narrative:148` (the `preRenderCard` call) which this
+    task also rewrites. First of the worker pass; owns the `readings` constraint.
+
+- [ ] **B6 — worker-scan hardening: redelivery/status regression · vt · subject_profiles insert error** *(H2-scan, M2-scan, H1's insert-error half)*
+  - Research: if the final `archive` fails after enqueueing narrative, redelivery re-extracts, *matches*
+    the just-created subject, and sets `status='matched'` — **regressing a `narrating`/`complete` scan
+    mid-pipeline** and broadcasting the regression to the client, while a duplicate narrative job is still
+    in flight. `vt=60` at `:184`. The `subject_profiles` insert at `:166` **ignores its error** (unlike the
+    `feature_sets` insert at `:155-164`, which handles `fsErr`). **Live check first:** does
+    `subject_profiles` actually have `unique(user_id, kind)`? H1's severity depends on it — if there is no
+    constraint, the failure mode is unbounded row growth instead.
+  - Build: a redelivery/status guard (never regress a terminal-or-later state), vt tuning, and the
+    3-line defensive insert-error handling.
+  - Verify: `node --test --test-concurrency=1 worker_scan.test.mjs worker_retry.test.mjs` + full 100/100;
+    `deno test ... _shared/consistency.test.ts`; `deno check`. Add a redelivery-regression regression test.
+  - Note: **this is only H1's *second* half.** The schema/geometry half is B9 — a different risk profile.
+    Do not mark H1 done here.
+
+- [ ] **B7 — card-render: private-by-default · share-intent publication · fonts · self-hosted wasm** *(H8, M4)*
+  - Research: **H8** — `worker-narrative:148` pre-renders for **every** completed reading and
+    `card-render/render.ts:63-68` uploads to the **public** `cards` bucket at a guessable, enumerable path
+    (`${userId}/${sourceId}_${variant}.png`, `getPublicUrl` at `:78`) with display-name attribution,
+    **before any share intent** — spec §13/§9 says the public bucket holds only *user-initiated* cards.
+    Advisors also flag `cards_public_read` as permitting **bucket listing** (public buckets don't need a
+    broad SELECT for URL access). **M4** — `card-render/fonts/` **does not exist at all** and `render.ts:36`
+    passes `loadSystemFonts:false`, so every card today has **zero fonts — text is DROPPED, not
+    mis-fonted**; `render.ts:14` fetches the resvg wasm from **unpkg.com** at cold start.
+  - Build: render on share intent (or keep pre-render but store **private** and copy/publish on first
+    share); drop the listing policy (new migration); bundle the three Noto binaries; self-host the wasm.
+    **Check font licences and whether binary assets belong in git** before committing them — flag it if
+    unsure rather than guessing.
+  - Verify: `git grep -n "unpkg.com" -- supabase/functions` → **0 hits**; `ls
+    supabase/functions/card-render/fonts` lists the three files; render a card and **look at the PNG** —
+    text must be present (today it is not); the public bucket must contain **no** un-shared card; advisors
+    stop flagging the listing policy. `deno test` + full Node suite green.
+  - Note: **AFTER B5** (shared file). The audit's `_shared/render.ts` cite is **wrong** — see ERRATA.
+
+- [ ] **B8 — push-dispatch: archive-after-send · receipts · N+1 · loop-until-empty** *(H6)*
+  - Research: **worse than the audit states (ERRATA)** — `:47` pushes `msg_id` into `archived` **before
+    `sendExpoPush` is called** at `:53`, so jobs die even when the Expo POST *throws*; `:63` archives
+    everything unconditionally; `:42` is an N+1 devices SELECT inside the job loop; `:33` is a hard
+    `p_qty: 100` ceiling per 15s tick with no loop-until-empty (a 10K-user fortune send ≈ 25 min). Spec §4
+    receipts are never fetched, so `DeviceNotRegistered` pruning (predominantly a **receipt-time** error)
+    is largely ineffective. `_shared/push.ts` has `EXPO_PUSH_URL`/`sendExpoPush`/`tokensToPrune` but **no
+    `getReceipt`** — receipt polling is genuinely net-new surface. Read Expo's current push-receipt docs.
+  - Build: archive only on success; batch the device query; loop-until-empty with a wall-clock budget;
+    add receipt polling + prune on `DeviceNotRegistered`.
+  - Verify: `deno test --allow-read --allow-env _shared/push.test.ts` (extend: a 5xx batch must **not**
+    archive) + full 133+; `node --test --test-concurrency=1 push_dispatch.test.mjs` + full 100/100.
+
+- [ ] **B9 — H1: face repeat-scan consistency (face geometry signature)** *(H1 — schema/geometry half)*
+  - Research: **verified by executing the real modules — `distance(faceA, faceA) = Infinity` and
+    `matchSubject = null`: a face cannot match ITSELF.** `schemas/face_features.v1.json` has no
+    `line_geometry`; `deriveGeometry` reads only palm lines (**`_shared/features.ts:69`/`:80` — NOT
+    `consistency.ts`, see ERRATA**) → face geometry is all-null → `geometryDistance` = ∞. It **fails
+    CLOSED** (no false-match leak) — so this is *urgent-by-cost* (every repeat face scan pays 2–3 votes +
+    a new narrative + drift risk, exactly what P1 forbids), not urgent-by-danger. Design a face-specific
+    signature from the face schema's existing landmark data.
+  - Build: **strongly prefer NUMERIC landmark ratios over new enums** — recon proved the asymmetry: a
+    numeric field does **not** trip `kb/audit.mjs` (its `enumLeaves` walks enum leaves only, and
+    `palm_features.v1.json`'s `line_geometry` already sets exactly this precedent — palmistry's KEY_MAP has
+    no `line_geometry` entry and the audit still passes 94/94). A **new enum** THROWS `unmapped schema enum
+    path(s)` (`audit.mjs:141-143`) and forces a new KB chunk per value + a fresh KB load.
+  - Verify: `node kb/audit.mjs` → must print `P5T4_OK`, `required=141 chunks=141` · `node
+    prompts/build-prompts.mjs --check` → `PROMPTS_OK` · `cd eval && npm run p5t1` (Ajv accept/reject
+    fixtures → `P5T1_OK`) · `deno test ... _shared/features.test.ts _shared/consistency.test.ts` — add the
+    test that would have caught this: **`distance(faceA, faceA)` must be ~0 and a face must match its own
+    subject profile.** Full Deno + Node green.
+  - Note: ⚠️ **the toolchain cannot follow its own standing rule.** `MVP_Buildplan.md:51` says "bump
+    versions, never mutate in place", but `prompts/build-prompts.mjs:29` **hardcodes `'v1'`** and skips any
+    family lacking that exact path — a `prompts/*/v2` would emit no `.generated.ts` while `--check` still
+    prints `PROMPTS_OK`: **a FALSE GREEN in CI** (`ci.yml:70`). There is **no v2 precedent** anywhere in
+    the repo or git history. Decide **explicitly** (Decision Log): additive-to-v1 vs a real v2 that
+    requires fixing the compiler first. **`kb/audit.mjs` is NOT in CI** — its Verify leg above is
+    mandatory and manual.
+
+# PHASE 4 — Surface hardening
+
+- [ ] **B10 — Chat: history ordering + persisted citations** *(H5, M12b)*
+  - Research: **H5** — `chat-send/index.ts:96` orders **ascending** with `limit(8)` → the model is fed the
+    **eight oldest turns forever**; `chat.ts:149`'s `slice(-8)` is a **no-op** (ERRATA). Fix = order
+    descending + limit + reverse. **M12b** — citations are returned in the HTTP body (`:108`) but the insert
+    at `:103-106` writes only thread_id/role/content/tokens_in/tokens_out, `chat_messages` (`schema.sql:174-181`)
+    has **no citations column** (`grep 'citation'` over all migrations = 0 hits), and the reload at `:96`
+    selects only role,content → a reloaded thread loses the "cites your…" trust line.
+  - Build: the order fix + an **additive** citations column migration + persist + select it.
+  - Verify: `deno test ... _shared/chat.test.ts` — add the test that pins **most-recent**-8 ordering (the
+    one that would have caught H5) + full 133+; `node --test --test-concurrency=1 chat.test.mjs` + full
+    100/100.
+
+- [ ] **B11 — Compat surface: free-tier gate atomicity + display_name injection** *(M8, M9)*
+  - Research: **M8** — `compat-request/index.ts:23-29` non-atomic count→act (two parallel first requests
+    both pass); `ctx.userId` string-interpolated into a PostgREST `.or()` filter at `:24` (safe only while
+    `verify_jwt` guarantees a UUID sub — `_shared/revenuecat.ts:114` already exports `isUuid`; assert it
+    regardless). **M9** — `worker-compat/index.ts:77-91` passes raw `profiles.display_name` into the model
+    payload → **a hostile name is a prompt-injection channel into prose shown to the *other* person.**
+  - Build: make the gate atomic (a partial unique index is the likely shape); assert `isUuid`; sanitize +
+    cap display names at the model boundary.
+  - Verify: `deno test` + `node --test --test-concurrency=1 compat_lifecycle.test.mjs worker_compat.test.mjs`
+    + both suites full green. Add an injection-attempt test fixture.
+  - Note: chat deflection regexes being English-only is **acceptable for an EN launch** (audit agrees) —
+    record it, don't fix it.
+
+- [ ] **B12 — Invite surface: context validation + clicked-attribution accuracy** *(M6, M7)*
+  - Research: **M6** — `invite-create/index.ts:22-31` writes `context: body.context ?? {}` straight into the
+    invites row with **no allowlist/length caps** on `inviter_name`/`card_image_url`, which `invite-page`
+    renders on the trusted domain (XSS-escaped, but phishing framing + OG image unconstrained). **M7** —
+    `invite-page/index.ts:47-48` is already a correct compare-and-set, so the fix is purely **bot-UA
+    filtering** (messenger link-preview crawlers flip `created→clicked`) / moving `clicked` to the CTA tap
+    beacon; 5-min CDN caching also undercounts real repeat clicks.
+  - Build: length caps + a URL allowlist; bot-UA filter and/or the CTA beacon.
+  - Verify: `deno test ... _shared/invite-page.test.ts _shared/invite.test.ts` + `node --test
+    --test-concurrency=1 invite_create.test.mjs invite_page.test.mjs` + both suites green.
+  - Note: **excludes H9** (B13) — that is net-new surface + a product decision, a different risk profile.
+
+- [ ] **B13 — H9: manual short-code claim path + rate limiting** *(H9)*
+  - Research: confirmed — `deriveShortCode` (`_shared/invite.ts:35`) is derived and printed at
+    `_shared/invite-page.ts:139`, but **no endpoint resolves it**: `invite-claim/index.ts:33` hashes the
+    full 43-char token and matches the complete `token_hash`. The spec's "always present, guarantees the
+    loop closes" fallback **terminates in UI text**. Spec §13 **explicitly requires rate-limiting on
+    `invite-claim`** (an unauthenticated-adjacent brute-force surface), and on invite-create/chat-send/
+    compat-request generally. **Short-code lookup by prefix has collision + brute-force implications — that
+    is exactly why the spec pairs it with rate limiting.** Needs a product decision; ask if unsure.
+  - Build: the resolver endpoint + rate limiting on the four named surfaces.
+  - Verify: `git grep -n "deriveShortCode" -- supabase/functions` shows a **resolver**, not just
+    invite.ts/invite-page.ts; a brute-force attempt is throttled (test it); both suites green.
+  - Note: this is the one HIGH finding whose fix **overlaps §NOT YET BUILT** (B.6 + B.7). It is in scope
+    because H9 is a *finding*, but keep it minimal — do not build the whole teaser story (H6-gated).
+
+# PHASE 5 — Vendor, contract & closure
+
+- [ ] **B14 — C3: verify the RevenueCat webhook signature scheme against current RC docs** *(C3)*
+  - Research: **this is the finding the loop's RESEARCH step exists for — the highest-blast-radius item in
+    the codebase.** `_shared/revenuecat.ts:38-59` implements a **Stripe-style** `t=<ts>,v1=<hexHMAC>` scheme.
+    The *implementation* is excellent (raw-body, ±300s replay window at `:56`, constant-time compare at
+    `:58`); the *scheme* is the question. RC's shipped webhook auth is reportedly a **static `Authorization`
+    header value** configured in the dashboard. If wrong: every webhook 401s → `subscriptions` never
+    updates → **chat/compat gates permanently 402 paying customers.** **WebFetch RevenueCat's CURRENT
+    webhook docs** — do not decide from memory or from the audit's assertion.
+  - Build: whatever the docs actually say. Support the real scheme.
+  - Verify: 🧑 **H8-gated for the live proof.** The deliverable is a **docs-verified decision + the code
+    behind it**, recorded in the Decision Log with the doc URL and date — **explicitly NOT a live green.**
+    ⚠️ **The trap:** `rcSignature` (`_shared/revenuecat.ts:35`) makes a unit test that signs with our own
+    helper and verifies with our own verifier **trivially green regardless of whether the scheme is right**.
+    **Do not mark C3 `[x]` on a self-consistent test.** Mark `[~]` (code + docs decision landed, live proof
+    pending H8).
+
+- [ ] **B15 — H4 residue: rc_event_id NOT NULL · TRANSFER · expires_at:null** *(H4 residue, Low: entitlement expires_at)*
+  - Research: split out of B1 because these cannot ride an additive migration or are policy calls.
+    (1) `subscription_events.rc_event_id text unique` (`schema.sql:141`) is **nullable** — NULLs never
+    conflict in Postgres, so a NULL-id event re-inserts and re-upserts forever. **NOT NULL is a CONTRACTING
+    change** → needs a real expand/backfill/contract sequence (B1 carries only the additive `coalesce`
+    defense). (2) **TRANSFER** isn't in SQL at all — it's in the ACTIVATING set at `_shared/revenuecat.ts:85`
+    and grants the destination **without revoking the source**; correct behavior is a **product decision**.
+    (3) `entitlement.ts:18` treats `expires_at: null` as premium-forever while status ≠ expired.
+  - Build: the expand/backfill/contract sequence; the TRANSFER decision; the expires_at semantics.
+  - Verify: both suites green; `node --test --test-concurrency=1 revenuecat_webhook.test.mjs`. Decision Log
+    rows for TRANSFER + expires_at.
+  - Note: **strictly after B14** — the right TRANSFER/ordering semantics depend on what RC actually sends.
+
+- [ ] **B16 — M12(c): callable image-deletion path** *(M12c)*
+  - Research: `request_image_deletion` (`0016:43-57`) is revoked from anon/authenticated (`0016:131`) and
+    granted only to service_role (`:137`), and **a grep across all 20 function dirs finds ZERO callers** —
+    while its siblings *are* wired (`account-delete`→`purge_account`, `cleanup`→`crops_due_for_deletion`/
+    `mark_crop_deleted`). The SQL author anticipated the wrapper (`0016:40-41` — "returns the paths for the
+    Edge Function to purge from storage") and it was never written, so `PrivacyCenter`'s "Delete my scan
+    photos now" has **no callable path**.
+  - Build: the new Edge Function + `config.toml` entry (`verify_jwt=true` — it is user-mode). **Honor B4's
+    collect→delete→log ordering.**
+  - Verify: `deno check`; deploy + a live posture curl (no-JWT → 403); the blob is actually gone from
+    storage afterwards; `mcp__supabase__list_edge_functions` shows ACTIVE with the right `verify_jwt`.
+  - Note: the **app-side** half (`PrivacyCenter.tsx:25-27` is an empty stub) is **P6 wiring scope** — this
+    task delivers the callable **server** path only.
+
+- [ ] **B17 — M12(a): decide the locked-section teaser contract** *(M12a)*
+  - Research: **the only finding whose right answer might be "delete the client field."** Verified:
+    `reading_sections.v1.json:16` sets `additionalProperties:false` and `:39` requires `body`, and Ajv
+    (`narrative.ts:239`, invoked `:296`) **REJECTS** a section carrying `teaser` ("must NOT have additional
+    properties") — so `teaser` **can never arrive from the server**; a schema change is mandatory to add it.
+    Compounding: `worker-narrative:87` defaults `depth_level=1` and `narrative.ts:273` `filterDepth` strips
+    depth≥2, so `lockedSections()` (`reveal.ts:48`) returns `[]` against real data and
+    `RevealView.tsx:111-122`'s whole "Go deeper" block is **dead**. The schema's own description (line 5)
+    says only headline/title/body are model-authored → **a code-derived truncation is the
+    contract-consistent option; a 4th generative field is not.** Mishandling leaks premium prose.
+  - Build: the decided contract (prefer code-derived truncation) across schema + narrative + app.
+  - Verify: `node kb/audit.mjs` · `node prompts/build-prompts.mjs --check` · `cd eval && npm run p5t1` ·
+    `cd app && npm run typecheck && npm run lint && npx jest --ci`. ⚠️ **All 39 app tests assert against the
+    `PREVIEW_*` fixtures themselves, so a server-contract change leaves 39/39 green — the app suite
+    structurally CANNOT catch M12.** Do not treat app-green as evidence here; verify the real payload shape.
+    (`@testing-library/react-native` is not installed, so no render test can be added without a new dep.)
+
+- [ ] **B18 — M10: deprecate the un-deduped push enqueue path** *(M10)*
+  - Research: `public.enqueue_push` (`0013:4-20`, language sql, no dedupe/cap, calls `queue_send` directly)
+    and `public.enqueue_push_deduped` (`0014:35-81`, marketing cap + notification_log slot reservation) are
+    **both live and both granted to service_role** (`0013:23`, `0014:84`) — `0013`'s own header calls itself
+    "the single enqueue entry point", which `0014` silently superseded without deprecating it. The audit's
+    secondary note belongs here too: the marketing cap is **check-then-insert (race)** and **UTC-day based**.
+  - Build: migrate any caller, then revoke/drop the raw path — **a contracting step**, hence its own file
+    and its own verify, not a passenger in B1.
+  - Verify: `git grep -n "enqueue_push\b" -- supabase` shows **no remaining callers** of the raw path;
+    `node --test --test-concurrency=1 notification_dedupe.test.mjs queues.test.mjs` + full 100/100.
+
+- [ ] **B19 — M3: fortune-generate resilience (bounded concurrency + resume)** *(M3)*
+  - Research: `fortune-generate/index.ts:35-56` awaits one Gemini call + one upsert per bucket across
+    `allPillarBuckets()` = **61 entries** (`_shared/pillar.ts:66-75`: 60 sexagenary + 1 generic) with **zero
+    concurrency**, and **swallows every per-bucket error at `:50-53`** — so a bad Gemini day silently
+    generates only a **prefix** of the 61 and **still returns 200**. `buildFortuneBatch`
+    (`_shared/fortune.ts:74`) is genuinely dead in production (its only consumer is `fortune.test.ts:43`).
+  - Build: **the Batch-API rewrite is H4c-blocked** → in-scope fix is bounded concurrency +
+    resume-missing-buckets + an **honest non-200/alert on partial completion**. EN-only stays (record it).
+  - Verify: `deno test ... _shared/fortune.test.ts` (add: partial failure must **not** return 200) + full
+    133+; `node --test --test-concurrency=1 fortune_generate.test.mjs` + full 100/100.
+
+- [ ] **B20 — Housekeeping: the Low/informational bullets** *(Low ×5, M11)*
+  - Research + Build (six items, grouped because each costs more to track than to fix):
+    (a) **remove `hello/`** — an 11-line unauthenticated echo of the decoded-but-unverified JWT sub.
+    (b) **constant-time secret gate** — the `token === env.serviceKey` compare is at
+    **`_shared/auth-resolve.ts:44`** (**not** `context.ts` — ERRATA); one file, **18-function reach**, with
+    an existing `auth-resolve.test.ts` net. Theoretical (the secret *is* the key), but cheap.
+    (c) **moddatetime** trigger for `profiles.updated_at` (new migration).
+    (d) **narrow the broadcast payload** from the full `scans` row (incl. `storage_path`, `capture_meta`) to
+    status — no leak (owner-only topic), just wider than it should be.
+    (e) **M11** — align `config.toml:178-217` with live staging (`enable_anonymous_sign_ins=true` per
+    cleared H5; manual linking; Turnstile). Harmless until someone pushes config.
+    (f) **leaked-password protection** — 🧑 a **dashboard toggle**, not code. Flag `[!]`/human **inside**
+    this task; do not let it block the other five.
+  - Verify: `ls supabase/functions/hello` **fails**; `deno test ... _shared/auth-resolve.test.ts` + full
+    133+; both suites green; `verify_jwt` posture unchanged (`mcp__supabase__list_edge_functions`).
+  - Note: **`verify_jwt` is SECURITY-LOAD-BEARING** — `auth-resolve.decodeJwtSub` decodes the JWT sub
+    **without verifying it**; user-mode fns need `verify_jwt=true`, workers/webhooks `false`. Never flip one.
+
+- [ ] **B21 — §3.3 test coverage gaps: HTTP handlers · storage round-trip · untested `_shared`** *(audit §3.3)*
+  - Research: the audit's own final suggested work item, and the gaps are real (recon confirmed): **(1) no
+    test exercises ANY Edge Function HTTP handler** — all 23 Deno test files live in `_shared/`, the ~29
+    Node tests speak only SQL, and handler auth/routing was verified by **one-off live curls only**. That
+    is a thin net under a **security-load-bearing** matrix (6 user-mode `verify_jwt=true` / 11 worker/public
+    gating on the service key in-function). **(2) Storage is tested at SQL-policy level only** — no real
+    upload/signed-URL/delete round-trip (B4 should already have added the first one; extend it).
+    **(3) Untested `_shared` modules:** `context.ts`, `telemetry.ts`, `palette.ts`.
+  - Build: smoke tests for the 17 handlers — at minimum the **posture** matrix per function (no-JWT → 403,
+    no-key → 403, key → 200) plus routing/shape. Then the storage round-trip and the three module tests.
+  - Verify: both suites green with the new counts (Deno **>133**, Node **100**) — paste them. Every new
+    handler test must **fail** if you deliberately flip a `verify_jwt` or drop a gate (prove the net
+    actually catches something; a test that passes against broken code is worse than no test).
+  - Note: live-Gemini paths (image extraction, caching) are **untestable until H4c** — say so, don't fake
+    them. Per-task regression tests (B0–B20) come first; this task closes **what's left over**. If context
+    is short, land the handler posture matrix (the highest-value slice) and park the rest `[~]`.
+
+- [ ] **B22 — Record-only: findings that close as decisions, not code** *(C5, M1, M5, Low ×5)*
+  - Research + Record — **a single terminal task so the ledger can honestly reach all-`[x]`/`[!]` without
+    pretending these are code work.** Write one Decision Log row each:
+    - **C5** (free-tier Gemini) = **H4c** — human, already tracked. Hard production blocker (the free tier
+      **trains on submitted content** — disqualifying for real palm/face photos). `[!]` human.
+    - **M1** (zero-cost repeat scan) — needs **P4 capture-time landmarks that do not exist yet**. A genuine
+      deferral, not a bug to fix now. Record the cost/latency consequence.
+    - **M5** (explicit context caching) — `_shared/gemini.ts` is 58 lines: `withRetry` + `generateContent`,
+      **no `createCache` anywhere**. Hard-blocked by H4c (`429 FreeTier limit=0`). ⚠️ **And it must never be
+      interleaved:** `gemini.ts` is imported by **five** functions (worker-scan, worker-narrative,
+      worker-compat, chat-send, fortune-generate) — a caching change there widens **every** other finding's
+      blast radius. `[!]` H4c.
+    - **Low: storage path `[1]` vs `[2]`** — **the audit itself resolves this against the spec** ("the spec
+      is wrong, the SQL is right" — `storage.objects.name` excludes the bucket prefix). Correct output is a
+      Decision Log row **+ a `Planning/Backend-specs.md` correction** — **not a code edit.**
+    - **Low: enum case-sensitivity** — moot (Ajv rejects wrong case first). Record.
+    - **Low: `is_pair_member`/`thread_owner` RPC-probing** — standard pattern, UUID-entropy-protected. Record.
+    - **Low: invites RLS reads `is_anonymous` from the JWT** — fails **safe**; worth a client-side refresh
+      after linking (that is P6/P7 client scope). Record.
+    - **Low: `chat_messages` has no client INSERT policy** — **a sound narrowing** of spec §3.3 that keeps
+      the entitlement gate authoritative. Record as working-as-intended.
+    - **Low: App Store ID placeholder `id0000000000`** — 🧑 **H7**-gated. Record.
+  - Verify: every finding ID from the audit's §4/§5 appears exactly once across B0–B22 with a terminal
+    state. Produce the **final report**: confirmed vs false-positive vs deferred counts.
+
+---
+
+## Build Log
+
+> One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
+
+- B0 — baseline honestly green: 4 stale global-count assertions scoped to their own fixtures (test-only, no product code). All 4 deltas reconciled to live staging first via MCP (worker_telemetry=2, kb_chunks=141, cards objects=2) → **zero product bugs**. Evidence: Node `1..100 / # pass 100 / # fail 0` (226886.5ms, was 96/100); Deno `133 passed | 0 failed` (3s). Files: `supabase/tests/{queues,rls,storage,worker_narrative}.test.mjs` — 2026-07-17
+
+---
+
+## Decision Log
+
+| # | Date | Decision | Rationale |
+|---|---|---|---|
+| D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
+| D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
+| D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |

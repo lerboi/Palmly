@@ -16,8 +16,16 @@ async function setup(c) {
   for (const u of [A, B]) await seedUser(c, u);
 }
 
-const countObjects = async (c, bucket) =>
-  (await c.query(`select count(*)::int n from storage.objects where bucket_id = $1`, [bucket])).rows[0].n;
+// `name` scopes the count to this test's own seeded object — staging carries committed objects
+// that the rollback harness isolates us from writing to, but not from reading.
+const countObjects = async (c, bucket, name = null) =>
+  (
+    await c.query(
+      `select count(*)::int n from storage.objects
+       where bucket_id = $1 and ($2::text is null or name = $2)`,
+      [bucket, name],
+    )
+  ).rows[0].n;
 
 async function expectDenied(c, sql, params, label) {
   await c.query('savepoint sp');
@@ -77,11 +85,12 @@ test('scans bucket: owner reads/writes own path; stranger cannot read or write i
 test('cards bucket: publicly readable by the anonymous role', async () => {
   await withRollback(async (c) => {
     await setup(c);
-    await c.query(`insert into storage.objects (bucket_id, name) values ('cards', 'reading-abc.png')`);
+    const card = 'reading-abc.png';
+    await c.query(`insert into storage.objects (bucket_id, name) values ('cards', $1)`, [card]);
 
     // the truly-unauthenticated `anon` role (public CDN request path) can read
     await asRole(c, { role: 'anon' });
-    assert.equal(await countObjects(c, 'cards'), 1, 'anonymous can read a public card');
+    assert.equal(await countObjects(c, 'cards', card), 1, 'anonymous can read a public card');
     await resetRole(c);
   });
 });

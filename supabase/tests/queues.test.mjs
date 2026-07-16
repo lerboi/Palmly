@@ -45,7 +45,10 @@ test('enqueue → stub drains + archives → telemetry row written', async () =>
 test('draining an empty queue is a safe no-op', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);
+    // Assert a DELTA, not an absolute: the rollback harness hides this test's writes from staging,
+    // but it does not hide staging's committed rows from our reads.
+    const before = await n(c, `select count(*)::int n from public.worker_telemetry`);
     assert.equal(await n(c, `select public.drain_stub('push_jobs') as n`), 0, 'no messages → 0 drained');
-    assert.equal(await n(c, `select count(*)::int n from public.worker_telemetry`), 0, 'no telemetry written');
+    assert.equal(await n(c, `select count(*)::int n from public.worker_telemetry`), before, 'no telemetry written');
   });
 });
