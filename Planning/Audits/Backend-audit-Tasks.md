@@ -36,18 +36,19 @@ finding has exactly one owning task below; no finding is dropped silently.
 
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
-- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111; Deno 133 → B4 137):**
-  **Node 111/111** (`# pass 111 / # fail 0`, 241.0s) · **Deno 137/137** (`137 passed | 0 failed`, 4s)
+- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112; Deno 133 → B4 137):**
+  **Node 112/112** (`# pass 112 / # fail 0`, 242.3s) · **Deno 137/137** (`137 passed | 0 failed`, 2s)
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
   quote it. The pre-B0 "Node 96/100" is now historical.
 - **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B4** (2026-07-17) — migration 0021 applied; H7's storage-ordering invariant
-  landed in `_shared/cleanup.ts`. Suites: **Node 111/111**, **Deno 137/137**.
-- **Next task:** **B5 — worker-narrative hardening: dedupe guard · redelivery · vt** (owns the
-  `readings` unique constraint; **must precede B7**, which edits the same file).
+- **Last completed:** **B5** (2026-07-17) — migration 0022 applied; `readings` unique constraint +
+  narrative dedupe guard + vt 180. Suites: **Node 112/112**, **Deno 137/137**.
+- **Next task:** **B6 — worker-scan hardening: redelivery/status regression · vt · subject_profiles
+  insert error.** (B5's precede-B7 dependency is now discharged — B7 may edit `worker-narrative:148`
+  freely; note the `preRenderCard` call is now at **:171**, after B5's guard shifted line numbers.)
 - **Carried forward:** B21 additionally owns the **live storage round-trip** (audit §3.3 gap #2),
   which B4 could not close without a new dep + persistent staging mutation (D-09). B16 must **import
   `purgeAccountStorageFirst`** rather than re-implement the ordering.
@@ -456,7 +457,45 @@ would edit nothing and wrongly report success.
 
 # PHASE 3 — Worker & pipeline hardening
 
-- [ ] **B5 — worker-narrative hardening: dedupe guard · redelivery · vt** *(H2-narrative, M2-narrative)*
+- [x] **B5 — worker-narrative hardening: dedupe guard · redelivery · vt** *(H2-narrative, M2-narrative)* — **2026-07-17**
+  - **DONE: H2-narrative CONFIRMED · vt CONFIRMED (by arithmetic, not vibes) · M2-narrative PARTLY
+    CONFIRMED.** Landed as `supabase/migrations/20260717000022_h2_readings_unique.sql` +
+    `worker-narrative/index.ts` (counter re-read: max was 21).
+  - **H2 CONFIRMED + the ERRATA is exactly right.** Live `readings` carried **only** `readings_pkey(id)`
+    and `readings_user_id_created_at_idx` — **no uniqueness at all**. worker-compat's guard is a
+    *status check on a row that already exists* (`compat-request` creates the result row up front);
+    worker-narrative has no such row — **the reading IS the output** — so there is nothing to
+    status-check and a copy-paste was never possible. The invariant had to go in the DB.
+    `depth_level` is `int not null default 1` (schema.sql:77), so there is **no NULL escape hatch** to
+    defeat the index (the exact trap H4 hit with `rc_event_id`). `readings` has 0 rows live → safe.
+  - **vt CONFIRMED — and it is provably too short, not just "feels tight".** Worst case through
+    `withRetry` (`_shared/gemini.ts:20`: `maxRetries: 4` → **5 attempts**) at spec §11.2's 5–20s per
+    call, plus ~4.8–7.2s of backoff (`400·2^n` + jitter) = **≈107s > the 60s vt**. So a *healthy but
+    slow* narrative call was redelivered while the first worker was still running — a concurrent
+    duplicate and a second charge with no crash required. Raised to **180s** (~1.7× headroom, without
+    stranding a genuinely crashed job).
+  - **M2-narrative PARTLY CONFIRMED** — the guard is the short-circuit the audit asks for, but only
+    for the case where the reading actually landed. **Stated honestly:** a *true* `store_failed` (the
+    row genuinely did not commit) still regenerates, and that is unavoidable without caching the
+    narrative JSON — there is nothing to reuse. Cost is one flash-lite call. Not built: a narrative
+    cache would be new surface, not a defect fix.
+  - Build: two layers, deliberately. **Guard** — an indexed `select` on (feature_set_id, depth_level)
+    **before** the paid model call → redelivery settles the job instead of regenerating (saves the
+    charge). **Constraint** — the unique index makes a duplicate row impossible even if two workers
+    race (saves the data). `23505` on insert is now handled as `settleExisting('unique_violation_race')`
+    — success-by-someone-else, **not** a transient fault; retrying it would only pay Gemini again.
+  - Verify (observed): `deno check worker-narrative/index.ts` → clean; `worker_narrative.test.mjs`
+    **4/4**; full Node **112/112** (`# pass 112 / # fail 0`, 242.3s); Deno **137/137**.
+  - Regression test added (1): a second depth-1 reading for the same feature_set is **rejected**
+    (`readings_feature_set_id_depth_level_key`), while **depth 1 + depth 2 still coexist** — the
+    constraint must not break progressive unlock (§4.5), which is the one way this index could have
+    been wrong.
+  - ⚠️ **Honest limit:** the "no second **model call**" half is **not** unit-testable today. The
+    constraint half is proven above, but the guard lives in `processMessage`, which is unexported and
+    needs a `SupabaseClient`; no Deno test stubs one (all 23 live in `_shared/`). `geminiCall` is
+    already injected, so once **B21** lands handler-level tests, a counting `geminiCall` + a stub db
+    proves it in a few lines. Until then the *charge* is protected by code review; the *data* is
+    protected by the DB.
   - Research: `worker-narrative/index.ts:105-167` — no "reading already exists for (feature_set_id,
     depth_level)" guard → a crash after the model call → visibility-timeout redelivery → **second Gemini
     charge + duplicate `readings` row**. **Read the ERRATA row on H2**: worker-compat's guard is a *status
@@ -747,6 +786,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B5 — migration `20260717000022_h2_readings_unique.sql` applied + `worker-narrative/index.ts`: guard before the paid model call (redelivery settles instead of regenerating), `23505` handled as success-by-someone-else, `vt` 60→**180**. vt proven too short by arithmetic: withRetry = 5 attempts × 5-20s (§11.2) + ~7s backoff ≈ **107s > 60s**, so a *healthy slow* call was redelivered — no crash needed. Live pre-state: `readings` had only pkey + (user_id,created_at) — no uniqueness. Evidence: `deno check` clean; `worker_narrative` 4/4; Node `# pass 112 / # fail 0` (242257.6ms); Deno `137 passed | 0 failed`. +1 regression test (duplicate depth-1 rejected; depth 1+2 coexist). **"No second model call" not unit-testable until B21** — 2026-07-17
 - B4 — migration `20260717000021_h7_storage_ordering.sql` applied + `_shared/cleanup.ts` (`purgeAccountStorageFirst`, `mergedStoragePath`) + `account-delete`/`account-merge` rewired: H7's collect→delete→purge→log-last invariant now lives in ONE reusable function (**B16 must import it**). Precedent: `cleanup/index.ts` already did it right; account-delete was the outlier. `deletion_log` now records a request (`completed_at` NULL) + new `mark_deletion_complete`. merge re-parents AND rewrites the owner path prefix in one statement, returns `storage_moves`; the Edge fn moves blobs first. Evidence: Deno `137 passed | 0 failed` (was 133); `deno check` clean on all 3; `account_merge+data_lifecycle` 14/14; Node `1..111 / # pass 111 / # fail 0` (240969.9ms). +6 regression tests. **Storage round-trip NOT closed → B21 (D-09)** — 2026-07-17
 - B3 — migration `20260717000020_c4_h10_lifecycle_predicates.sql` applied: C4 crop predicate restated positively (24h-old crop is due whatever its status; `failed` immediate; `keep_image` exempt — status enumeration DROPPED, not extended) + H10 `sweep_stale_anon` never purges a pair member. Verdicts: C4 limb "keys off created_at" = **FALSE POSITIVE (spec wrong, SQL right — D-07)**; H10 CONFIRMED **worse than stated** (compat keys off `canonical_palm_fs`, not `readings` → a narrative-failed user has 0 readings yet can hold a COMPLETE result). Evidence: `data_lifecycle.test.mjs` 9/9; Node `1..109 / # pass 109 / # fail 0` (237130.2ms). +3 regression tests — 2026-07-17
 - B2 — migration `20260717000019_c2_unschedule_destructive_drains.sql` applied: all 5 `drain_stub` crons unscheduled (C2 interim). Evidence: `cron.job` → **0 jobs**; newest `cron.job_run_details` frozen at 21:21:00 = **no run for 4m43s** (was every 10s / 32 runs per 2min). Pre-state captured: 5 active drains, pgmq totals scan 56 / narrative 20 / compat 39 / push 130. Node `1..106 / # pass 106 / # fail 0` (237024.3ms). Test inverted: "each queue has a scheduled drain" → "no cron may invoke drain_stub". **`[~]` — pg_net wiring stays with the buildplan** — 2026-07-17

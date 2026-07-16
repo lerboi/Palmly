@@ -91,6 +91,37 @@ test('worker-narrative DB flow: feature_set → narrative_job → readings (stam
   });
 });
 
+test('H2: a redelivered narrative job cannot produce a second reading for the same (feature_set, depth_level)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, A);
+    const scan = await one(c, `insert into public.scans (user_id, kind, side, status) values ($1,'palm','left','narrating') returning id`, [A]);
+    const fs = await one(
+      c,
+      `insert into public.feature_sets (scan_id, user_id, kind, side, features, feature_schema_version, extractor_version, geometry, feature_hash)
+       values ($1,$2,'palm','left','{}'::jsonb, 1, 'x', '{}'::jsonb, 'dupe1') returning id`,
+      [scan.id, A],
+    );
+    const insert = (depth) =>
+      c.query(
+        `insert into public.readings (user_id, feature_set_id, kind, narrative, depth_level, model_id, prompt_version, kb_version)
+         values ($1,$2,'palm',$3,$4,'gemini-3.1-flash-lite','narrative.v1','v1')`,
+        [A, fs.id, JSON.stringify(NARRATIVE), depth],
+      );
+
+    await insert(1);
+    // The worker short-circuits before the model call, but the DB is the backstop: even if two
+    // workers race the same redelivered message, a duplicate row is impossible.
+    await c.query('savepoint sp');
+    await assert.rejects(insert(1), /duplicate key value|readings_feature_set_id_depth_level_key/, 'a second depth-1 reading is rejected');
+    await c.query('rollback to savepoint sp');
+
+    // ...but progressive unlock (§4.5) must still be able to add deeper sections for the same features
+    await insert(2);
+    assert.equal(await n(c, `select count(*)::int n from public.readings where feature_set_id=$1`, [fs.id]), 2, 'depth 1 + depth 2 coexist');
+  });
+});
+
 test('deterministic keyed KB lookup resolves the feature_keys a reading grounds on', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);

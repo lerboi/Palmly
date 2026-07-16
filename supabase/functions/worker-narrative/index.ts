@@ -104,6 +104,29 @@ async function processMessage(db: SupabaseClient, msg: NarrativeMessage, geminiC
 
   if (exhausted(msg.read_ct)) return applyFailure('exhausted');
 
+  /** Finish a job whose reading already exists — the work is done, only the bookkeeping is owed. */
+  const settleExisting = async (why: string) => {
+    if (scanId) await setStatus(db, scanId, 'complete');
+    await writeTelemetry(db, {
+      ...telem, status: 'ok', model_latency_ms: Date.now() - started,
+      detail: { redelivery_short_circuit: why, depth_level: depthLevel },
+    });
+    await archive(db, msg.msg_id);
+    return { featureSetId, outcome: 'already_exists', reason: why };
+  };
+
+  // H2/M2: has this reading already been produced? Generation is a PAID model call, and a crash
+  // between it and `archive` below means pgmq redelivers this exact message. Without this check the
+  // retry regenerates from scratch — a second charge and (pre-0022) a duplicate row. Checking costs
+  // one indexed select; skipping it costs a Gemini call.
+  const { data: existing } = await db
+    .from('readings')
+    .select('id')
+    .eq('feature_set_id', featureSetId)
+    .eq('depth_level', depthLevel)
+    .maybeSingle();
+  if (existing) return settleExisting('reading_exists');
+
   const { data: fs } = await db.from('feature_sets').select('id,user_id,kind,features').eq('id', featureSetId).single();
   if (!fs) return applyFailure('missing_feature_set');
 
@@ -141,6 +164,9 @@ async function processMessage(db: SupabaseClient, msg: NarrativeMessage, geminiC
     })
     .select('id')
     .single();
+  // 23505 = the 0022 unique index fired: a concurrent worker won the race for this exact reading.
+  // That is success-by-someone-else, not a transient fault — retrying would only pay Gemini again.
+  if (insErr?.code === '23505') return settleExisting('unique_violation_race');
   if (insErr || !reading) return applyFailure('store_failed', insErr?.message); // transient DB error → retry
 
   // pre-render the share card so sharing is instant (§6.1) — best-effort, never blocks completion,
@@ -164,7 +190,12 @@ Deno.serve(
     requireMode(createContext(req), 'secret'); // internal only — cron/pipeline invokes with the service key
     const db = admin();
     const geminiCall = realGeminiCall();
-    const { data: msgs } = await db.rpc('queue_read', { p_queue: 'narrative_jobs', p_vt: 60, p_qty: 1 });
+    // vt must exceed the worst-case processing time, or pgmq redelivers a message a healthy worker
+    // is still working on — a concurrent duplicate + a second Gemini charge. Worst case here:
+    // withRetry is 5 attempts (maxRetries 4, _shared/gemini.ts:20) × a 5-20s call (spec §11.2), plus
+    // ~7s of backoff (400·2^n + jitter) ≈ 107s — comfortably past the old 60s. 180s keeps headroom
+    // without stranding a genuinely crashed job for long.
+    const { data: msgs } = await db.rpc('queue_read', { p_queue: 'narrative_jobs', p_vt: 180, p_qty: 1 });
     const list = (msgs ?? []) as NarrativeMessage[];
     const outcomes = [];
     for (const m of list) outcomes.push(await processMessage(db, m, geminiCall));
