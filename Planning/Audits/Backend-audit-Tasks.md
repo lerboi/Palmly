@@ -47,6 +47,8 @@ finding has exactly one owning task below; no finding is dropped silently.
 - **Last completed:** **B3** (2026-07-17) — migration 0020 applied; C4 predicate + H10 pair guard.
   Suites: **Node 109/109**, **Deno 133/133**.
 - **Next task:** **B4 — Storage/DB ordering integrity: account-delete, merge_accounts, deletion_log.**
+  Its three limbs are already **researched + confirmed** (see the banked note under B4) — start at
+  the build, not the triage.
 - **Owed doc correction:** `Planning/Backend-specs.md` §9 says crops are "deleted 24h after
   successful extraction"; the SQL keys on `created_at` **deliberately** (D-07). Fold this into
   B22's spec-correction pass alongside the storage-path `[1]`/`[2]` row.
@@ -371,6 +373,31 @@ would edit nothing and wrongly report success.
     research, own verify.
 
 - [ ] **B4 — Storage/DB ordering integrity: account-delete, merge_accounts, deletion_log** *(H7)*
+  - 📋 **RESEARCH BANKED 2026-07-17 (not started — no code written). All three limbs CONFIRMED
+    against current source + live schema. Start from here; do not re-derive.**
+    - **(a) CONFIRMED** — `account-delete/index.ts:17-18` calls `purge_account` (DB purge) **first**,
+      then removes objects at `:22-27` with `if (!sErr) removed += paths.length; // best-effort`, and
+      **still returns `{deleted:true}` + HTTP 200 when storage fails**. The blobs then have zero DB
+      reference and no retry path (cleanup sweeps work off `scans` rows, now deleted).
+    - **(b) CONFIRMED** — `20260713000008_account_merge.sql:34` re-parents `scans.user_id` (+11 more
+      tables) but never touches `storage.objects`, and **does not rewrite `scans.storage_path`**,
+      which still reads `{loser_id}/…`. The bucket RLS is owner-path based (path segment `[1]`), so
+      the survivor cannot read their own re-parented crops.
+    - **(c) CONFIRMED** — `completed_at` is stamped at `0016:55` (`request_image_deletion`) and
+      `0016:97` (`purge_account`), both **before** the Edge Function does any storage work.
+    - 🔑 **Live schema fact that shapes the fix:** `deletion_log` has **only a PK — no FK on
+      `user_id`** (which is why the audit row correctly survives `delete auth.users`), and it already
+      carries **both `requested_at` AND `completed_at`**. The table was *designed* for
+      request-then-complete; `purge_account` simply collapses them. So the fix is the table's own
+      intent: insert with `completed_at = null`, and stamp it from a new
+      `mark_deletion_complete(p_user_id, p_scope)` only after the storage work succeeds.
+    - **Shape of the build:** `purge_account` does collect + purge + log in one call, so the
+      collect→delete→purge→log order needs it split. Expand-contract: add
+      `account_storage_paths(uuid)` (read-only collect) + `mark_deletion_complete(uuid,text)`
+      additively, leave `purge_account` in place, and contract in a later task. Note (b) needs a real
+      **S3 object move** (Storage API `move`, per object) — SQL alone cannot re-parent a blob.
+    - ⚠️ **Cost note:** this task owns the repo's **first** storage round-trip test (audit §3.3 gap
+      #2) — genuinely new test capability, not just an assertion. Budget for it.
   - Research: one finding, three limbs, **one invariant — never destroy the DB reference before the blob
     is gone.** (a) `account-delete/index.ts:17-27` purges rows then best-effort removes objects (`:26`
     `if (!sErr) removed += paths.length; // best-effort`) → a storage failure orphans palm/face crops with
