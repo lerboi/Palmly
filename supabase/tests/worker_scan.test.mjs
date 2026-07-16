@@ -25,6 +25,33 @@ test('queue RPC wrappers (queue_send/read/archive) drive pgmq', async () => {
   });
 });
 
+test('H1: subject_profiles enforces unique(user_id, kind) — the insert error worker-scan used to swallow', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, A);
+    const scan = await one(c, `insert into public.scans (user_id, kind, side, status) values ($1,'face','left','extracting') returning id`, [A]);
+    const fs = await one(
+      c,
+      `insert into public.feature_sets (scan_id, user_id, kind, features, feature_schema_version, extractor_version, geometry, feature_hash)
+       values ($1,$2,'face','{}'::jsonb,1,'x','{}'::jsonb,'h1') returning id`,
+      [scan.id, A],
+    );
+    const insertSubject = () =>
+      c.query(`insert into public.subject_profiles (user_id, kind, canonical_feature_set_id) values ($1,'face',$2)`, [A, fs.id]);
+
+    await insertSubject();
+    // This is why H1's severity is "silent no-op" and not "unbounded row growth": the constraint
+    // exists, so a repeat face scan's follow-up insert genuinely FAILS — and worker-scan discarded
+    // that error (no destructuring at all, unlike feature_sets' fsErr). It is now surfaced in
+    // telemetry as subject_profile='exists_unmatched', which is the H1 face-geometry bug's signal.
+    await c.query('savepoint sp');
+    await assert.rejects(insertSubject(), /duplicate key value|subject_profiles_user_id_kind_key/, 'a second face subject for the same user is rejected');
+    await c.query('rollback to savepoint sp');
+
+    assert.equal(await n(c, `select count(*)::int n from public.subject_profiles where user_id=$1 and kind='face'`, [A]), 1, 'exactly one face subject per user');
+  });
+});
+
 test('worker-scan DB flow: enqueue → store feature_set → narrating → enqueue narrative → telemetry', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);

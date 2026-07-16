@@ -57,3 +57,16 @@ export const decideSuccess = (): Outcome => ({ action: 'archive', telemetry: 'ok
 
 /** True when a just-read message should be dead-lettered before we even try to process it again. */
 export const exhausted = (readCt: number): boolean => readCt > MAX_ATTEMPTS;
+
+/**
+ * Scan states the pipeline has already moved past. A redelivered `scan_jobs` message for one of
+ * these must settle (archive only) and never re-extract (audit H2): worker-scan inserts the
+ * subject_profile before archiving, so a re-run would match the subject THIS scan just created and
+ * set status back to 'matched' — regressing a 'narrating'/'complete' scan, broadcasting that
+ * regression to the client, and duplicating the narrative job.
+ *
+ * 'extracting' is deliberately NOT here: a worker that crashed mid-extraction leaves the scan there,
+ * and that job must still be retried. 'uploaded'/'queued' are pre-work states.
+ */
+const PROCESSED_STATES = new Set(['matched', 'narrating', 'complete', 'failed']);
+export const alreadyProcessed = (status: string): boolean => PROCESSED_STATES.has(status);

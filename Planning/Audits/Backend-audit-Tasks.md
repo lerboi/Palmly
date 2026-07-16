@@ -36,19 +36,24 @@ finding has exactly one owning task below; no finding is dropped silently.
 
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
-- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112; Deno 133 → B4 137):**
-  **Node 112/112** (`# pass 112 / # fail 0`, 242.3s) · **Deno 137/137** (`137 passed | 0 failed`, 2s)
+- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113; Deno 133 → B4 137 → B6 138):**
+  **Node 113/113** (`# pass 113 / # fail 0`, 242.9s) · **Deno 138/138** (`138 passed | 0 failed`, 2s)
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
   quote it. The pre-B0 "Node 96/100" is now historical.
 - **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B5** (2026-07-17) — migration 0022 applied; `readings` unique constraint +
-  narrative dedupe guard + vt 180. Suites: **Node 112/112**, **Deno 137/137**.
-- **Next task:** **B6 — worker-scan hardening: redelivery/status regression · vt · subject_profiles
-  insert error.** (B5's precede-B7 dependency is now discharged — B7 may edit `worker-narrative:148`
-  freely; note the `preRenderCard` call is now at **:171**, after B5's guard shifted line numbers.)
+- **Last completed:** **B6** (2026-07-17) — worker-scan status guard + vt 300 + subject_profiles
+  error surfaced. Suites: **Node 113/113**, **Deno 138/138**.
+- **Next task:** **B7 — card-render: private-by-default · share-intent publication · fonts ·
+  self-hosted wasm** *(H8, M4)*. B5's precede-B7 dependency is **discharged**; note `preRenderCard`
+  is now at **`worker-narrative:171`** (B5's guard shifted the line numbers off the audit's `:148`).
+  ⚠️ **B7 needs a product decision from the user** (font licences / whether binaries belong in git) —
+  per loop rule 16, ask before committing font binaries.
+- **Carried to B22:** **M2-scan** — a `feature_hash` short-circuit is impossible by construction
+  (the hash is computed *from* the extraction output, so it cannot gate the extraction); it needs
+  P4 capture-time landmarks, which is **M1's** existing deferral. Record the two together.
 - **Carried forward:** B21 additionally owns the **live storage round-trip** (audit §3.3 gap #2),
   which B4 could not close without a new dep + persistent staging mutation (D-09). B16 must **import
   `purgeAccountStorageFirst`** rather than re-implement the ordering.
@@ -510,7 +515,50 @@ would edit nothing and wrongly report success.
   - Note: **B5 must precede B7** — B7 edits `worker-narrative:148` (the `preRenderCard` call) which this
     task also rewrites. First of the worker pass; owns the `readings` constraint.
 
-- [ ] **B6 — worker-scan hardening: redelivery/status regression · vt · subject_profiles insert error** *(H2-scan, M2-scan, H1's insert-error half)*
+- [x] **B6 — worker-scan hardening: redelivery/status regression · vt · subject_profiles insert error** *(H2-scan, M2-scan, H1's insert-error half)* — **2026-07-17**
+  - **DONE: H2-scan CONFIRMED · vt CONFIRMED · H1-insert-error CONFIRMED.** No migration needed —
+    every fix is in `worker-scan/index.ts` + `_shared/retry.ts`.
+  - **The ledger's live question is answered: `subject_profiles_user_id_kind_key UNIQUE (user_id,
+    kind)` EXISTS on staging.** So H1's insert-error half is real and its failure mode is a **silent
+    no-op**, *not* unbounded row growth: the repeat-face insert genuinely violates the constraint and
+    the error was **discarded entirely** (no destructuring at all, unlike `feature_sets`' `fsErr`).
+  - **H2-scan CONFIRMED — and it is self-reinforcing, which is what makes it nasty.** The
+    `subject_profiles` insert lands *before* `archive`, so on redelivery `matchSubject` **recognizes
+    the subject this very scan just created** → `status='matched'` → a `narrating`/`complete` scan is
+    regressed, the regression is broadcast to the client, and the duplicate narrative job is already
+    in flight. The bug supplies its own trigger.
+  - **vt CONFIRMED — worse than worker-narrative's.** Up to 3 votes × (5 attempts (`withRetry`
+    `maxRetries: 4`) × a 5–20s call (§11.2) + ~7s backoff) ≈ **320s** against a **60s** vt — so even
+    an untroubled 3-vote scan (~60s) sat right at the limit. Raised to **300s**: covers the realistic
+    path with headroom, while the pathological all-retries-on-every-vote case stays bounded by
+    `read_ct` → dead-letter, **and the new status guard makes a redelivery harmless rather than
+    destructive** (defence in depth, not just a bigger number).
+  - Build: (1) the guard — `alreadyProcessed(status)` extracted into `_shared/retry.ts` (the repo's
+    existing home for pipeline policy, alongside `decideFailure`/`exhausted`) so the **policy is
+    unit-testable** rather than buried in an unexported worker function; `matched/narrating/complete/
+    failed` settle, and **`extracting` deliberately stays retryable** — a worker crashing
+    mid-extraction leaves it there and excluding it would strand the scan forever. (2) vt 60→300.
+    (3) the `subject_profiles` error is surfaced as telemetry `subject_profile:
+    'exists_unmatched' | 'error:<code>' | 'created'` instead of swallowed — **`exists_unmatched` is
+    precisely the H1 face-geometry signal** (B9), so the same line that fixes the swallow also gives
+    B9 its live detector.
+  - Verify (observed): `deno check worker-scan/index.ts _shared/retry.ts` → clean; Deno **138/138**
+    (+1); `worker_scan + worker_retry` **6/6**; full Node **113/113** (`# pass 113 / # fail 0`, 242.9s).
+  - Regression tests added (2): **Deno** — `alreadyProcessed` pins both halves (the 4 post-extraction
+    states settle; `uploaded/queued/extracting` stay retryable — the second half is the one that would
+    strand scans if someone "tidied" the set). **Node** — `subject_profiles` unique(user_id,kind)
+    rejects a second face subject, pinning the constraint H1's severity depends on.
+  - ⚠️ **Honest limit (same as B5):** the guard's *wiring* into `processMessage` is not
+    unit-testable today (unexported, needs a `SupabaseClient`; all 23 Deno tests live in `_shared/`).
+    Extracting the **policy** to `_shared/retry.ts` means the decision itself is now genuinely tested;
+    only the call site rests on review until **B21**.
+  - **M2-scan: NOT fixed — deferred, and the audit's own framing is why.** M2 asks for a
+    `feature_hash` short-circuit so a `store_failed` retry does not re-extract. But `feature_hash` is
+    computed **from the extraction output** (`featureHash(features)` after the votes), so it cannot
+    key a check that must run **before** paying for the extraction. A real fix needs capture-time
+    landmarks — which is **exactly M1's known deferral** ("needs P4 capture geometry"). Recorded under
+    B22 with M1 rather than faked here. The status guard already removes the *harmful* redelivery
+    outcome; what remains is only cost, on a rare transient-DB-error path.
   - Research: if the final `archive` fails after enqueueing narrative, redelivery re-extracts, *matches*
     the just-created subject, and sets `status='matched'` — **regressing a `narrating`/`complete` scan
     mid-pipeline** and broadcasting the regression to the client, while a duplicate narrative job is still
@@ -786,6 +834,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B6 — `worker-scan/index.ts` + `_shared/retry.ts` (no migration): status guard via new `alreadyProcessed()` (policy extracted to `_shared` so it is unit-testable), `vt` 60→**300**, `subject_profiles` insert error surfaced as telemetry instead of swallowed. Live answer to the ledger's question: **`subject_profiles_user_id_kind_key UNIQUE (user_id,kind)` EXISTS** → H1's insert half is a **silent no-op**, not row growth. H2-scan is self-reinforcing: the subject_profile insert precedes `archive`, so a redelivery matches the subject the scan itself just created → regresses narrating→matched. vt arithmetic: 3 votes × ~107s ≈ **320s > 60s**. `exists_unmatched` telemetry is now B9's live H1 detector. Evidence: `deno check` clean; Deno `138 passed | 0 failed` (+1); `worker_scan+worker_retry` 6/6; Node `# pass 113 / # fail 0` (242881.4ms). +2 regression tests. **M2-scan deferred → B22 w/ M1** (feature_hash is computed *from* the extraction, so it cannot gate the extraction) — 2026-07-17
 - B5 — migration `20260717000022_h2_readings_unique.sql` applied + `worker-narrative/index.ts`: guard before the paid model call (redelivery settles instead of regenerating), `23505` handled as success-by-someone-else, `vt` 60→**180**. vt proven too short by arithmetic: withRetry = 5 attempts × 5-20s (§11.2) + ~7s backoff ≈ **107s > 60s**, so a *healthy slow* call was redelivered — no crash needed. Live pre-state: `readings` had only pkey + (user_id,created_at) — no uniqueness. Evidence: `deno check` clean; `worker_narrative` 4/4; Node `# pass 112 / # fail 0` (242257.6ms); Deno `137 passed | 0 failed`. +1 regression test (duplicate depth-1 rejected; depth 1+2 coexist). **"No second model call" not unit-testable until B21** — 2026-07-17
 - B4 — migration `20260717000021_h7_storage_ordering.sql` applied + `_shared/cleanup.ts` (`purgeAccountStorageFirst`, `mergedStoragePath`) + `account-delete`/`account-merge` rewired: H7's collect→delete→purge→log-last invariant now lives in ONE reusable function (**B16 must import it**). Precedent: `cleanup/index.ts` already did it right; account-delete was the outlier. `deletion_log` now records a request (`completed_at` NULL) + new `mark_deletion_complete`. merge re-parents AND rewrites the owner path prefix in one statement, returns `storage_moves`; the Edge fn moves blobs first. Evidence: Deno `137 passed | 0 failed` (was 133); `deno check` clean on all 3; `account_merge+data_lifecycle` 14/14; Node `1..111 / # pass 111 / # fail 0` (240969.9ms). +6 regression tests. **Storage round-trip NOT closed → B21 (D-09)** — 2026-07-17
 - B3 — migration `20260717000020_c4_h10_lifecycle_predicates.sql` applied: C4 crop predicate restated positively (24h-old crop is due whatever its status; `failed` immediate; `keep_image` exempt — status enumeration DROPPED, not extended) + H10 `sweep_stale_anon` never purges a pair member. Verdicts: C4 limb "keys off created_at" = **FALSE POSITIVE (spec wrong, SQL right — D-07)**; H10 CONFIRMED **worse than stated** (compat keys off `canonical_palm_fs`, not `readings` → a narrative-failed user has 0 readings yet can hold a COMPLETE result). Evidence: `data_lifecycle.test.mjs` 9/9; Node `1..109 / # pass 109 / # fail 0` (237130.2ms). +3 regression tests — 2026-07-17

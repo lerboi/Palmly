@@ -8,7 +8,7 @@ import { EXTRACTION_MODEL, extractFeatures, type GeminiCall, type GeminiResponse
 import { deriveGeometry, featureHash, type Geometry } from '../_shared/features.ts';
 import { fieldMajority, matchSubject, sameFeatures, type SubjectCandidate } from '../_shared/consistency.ts';
 import { writeTelemetry } from '../_shared/telemetry.ts';
-import { decideFailure, exhausted } from '../_shared/retry.ts';
+import { alreadyProcessed, decideFailure, exhausted } from '../_shared/retry.ts';
 import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 import { createContext, requireMode } from '../_shared/context.ts';
 
@@ -97,8 +97,22 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
   // poison / retry-exhausted message → dead-letter before spending another Gemini call on it
   if (exhausted(msg.read_ct)) return applyFailure('exhausted');
 
-  const { data: scan } = await db.from('scans').select('id,user_id,kind,side,storage_path').eq('id', scanId).single();
+  const { data: scan } = await db.from('scans').select('id,user_id,kind,side,storage_path,status').eq('id', scanId).single();
   if (!scan) return applyFailure('missing_scan');
+
+  // H2: never re-run a scan the pipeline has already moved past. If `archive` below fails after the
+  // narrative job is enqueued, pgmq redelivers this message — and because subject_profiles was
+  // already inserted, matchSubject would now recognize the subject THIS scan just created, set
+  // status='matched', and broadcast that regression to a client watching a 'narrating'/'complete'
+  // scan, while a duplicate narrative job is still in flight. These states mean the work is done;
+  // only the archive is owed. 'extracting' is deliberately NOT terminal — a worker that crashed
+  // mid-extraction leaves it there and must be retried.
+  if (alreadyProcessed(scan.status)) {
+    await writeTelemetry(db, { ...telem, status: 'ok', model_latency_ms: Date.now() - started, detail: { redelivery_short_circuit: scan.status } });
+    await archive(db, msg.msg_id);
+    return { scanId, outcome: 'already_processed', status: scan.status };
+  }
+
   await setStatus(db, scanId, 'extracting');
 
   const dl = await db.storage.from('scans').download(scan.storage_path);
@@ -163,14 +177,24 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
     .single();
   if (fsErr || !fs) return applyFailure('store_failed'); // transient DB error → retry
 
-  await db.from('subject_profiles').insert({ user_id: scan.user_id, kind: subjectKind, canonical_feature_set_id: fs.id });
+  // subject_profiles has unique(user_id, kind) (verified live), so reaching here with an existing
+  // profile means matchSubject failed to recognize a subject we have already stored — today that is
+  // the H1 face-geometry bug (face geometry is all-null → distance ∞ → a face never matches itself).
+  // Not fatal: the reading still lands and the scan completes. But swallowing the error hid H1 for
+  // this long, so it is surfaced in telemetry instead of discarded.
+  const { error: spErr } = await db
+    .from('subject_profiles')
+    .insert({ user_id: scan.user_id, kind: subjectKind, canonical_feature_set_id: fs.id });
+  const subjectProfile = spErr ? (spErr.code === '23505' ? 'exists_unmatched' : `error:${spErr.code ?? 'unknown'}`) : 'created';
+  if (spErr) console.error('[worker-scan] subject_profiles insert failed (non-fatal):', spErr.message);
+
   await setStatus(db, scanId, 'narrating');
   await db.rpc('queue_send', { p_queue: 'narrative_jobs', p_msg: { scan_id: scanId, feature_set_id: fs.id } });
   await writeTelemetry(db, {
     worker: 'worker-scan', queue: 'scan_jobs', msg_id: msg.msg_id, status: 'ok',
     queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started,
     tokens_in: a.usage?.promptTokenCount, tokens_out: a.usage?.candidatesTokenCount,
-    cache_hit: (a.usage?.cachedContentTokenCount ?? 0) > 0, detail: { votes },
+    cache_hit: (a.usage?.cachedContentTokenCount ?? 0) > 0, detail: { votes, subject_profile: subjectProfile },
   });
   await archive(db, msg.msg_id);
   return { scanId, outcome: 'new_subject', feature_set_id: fs.id, votes };
@@ -181,7 +205,14 @@ Deno.serve(
     requireMode(createContext(req), 'secret'); // internal only — cron/pipeline invokes with the service key
     const db = admin();
     const geminiCall = realGeminiCall();
-    const { data: msgs } = await db.rpc('queue_read', { p_queue: 'scan_jobs', p_vt: 60, p_qty: 1 });
+    // vt must exceed worst-case processing or pgmq redelivers a message a healthy worker is still
+    // on — here that costs 2-3 PAID extractions, the most expensive duplicate in the system. Worst
+    // case: 3 votes × (5 attempts (withRetry maxRetries 4) × a 5-20s call (spec §11.2) + ~7s
+    // backoff) ≈ 320s, vs the old 60s — so even an untroubled 3-vote scan (~60s) was at the limit.
+    // 300s covers the realistic path with headroom; the pathological all-retries-on-every-vote case
+    // is bounded by read_ct → dead-letter, and the status guard above now makes a redelivery
+    // harmless rather than destructive.
+    const { data: msgs } = await db.rpc('queue_read', { p_queue: 'scan_jobs', p_vt: 300, p_qty: 1 });
     const list = (msgs ?? []) as ScanMessage[];
     const outcomes = [];
     for (const m of list) outcomes.push(await processMessage(db, m, geminiCall));

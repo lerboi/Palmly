@@ -1,5 +1,5 @@
 import { assert, assertEquals } from '@std/assert';
-import { classifyFailure, decideFailure, decideSuccess, exhausted, MAX_ATTEMPTS } from './retry.ts';
+import { alreadyProcessed, classifyFailure, decideFailure, decideSuccess, exhausted, MAX_ATTEMPTS } from './retry.ts';
 
 Deno.test('classifyFailure: content/validation → permanent, infra/model-availability → transient', () => {
   for (const r of ['not_a_hand', 'not_a_face', 'schema_invalid', 'invalid_json', 'no_sections', 'content_safety']) {
@@ -48,4 +48,19 @@ Deno.test('exhausted() flips exactly after MAX_ATTEMPTS reads', () => {
 
 Deno.test('decideSuccess archives with ok telemetry', () => {
   assertEquals(decideSuccess(), { action: 'archive', telemetry: 'ok' });
+});
+
+Deno.test('alreadyProcessed: a redelivered scan is never regressed out of a post-extraction state (H2)', () => {
+  // worker-scan inserts the subject_profile before archiving, so a re-run would MATCH the subject
+  // this scan just created and set status back to 'matched' — regressing a narrating/complete scan,
+  // broadcasting that regression, and duplicating the narrative job.
+  for (const s of ['matched', 'narrating', 'complete', 'failed']) {
+    assert(alreadyProcessed(s), `'${s}' is past extraction — a redelivery must settle, not re-extract`);
+  }
+  // ...but a scan that never got through extraction MUST still be retried. 'extracting' is the one
+  // that matters: a worker crashing mid-extraction leaves it there, and excluding it would strand
+  // the scan forever.
+  for (const s of ['uploaded', 'queued', 'extracting']) {
+    assert(!alreadyProcessed(s), `'${s}' has not completed extraction — it must remain retryable`);
+  }
 });
