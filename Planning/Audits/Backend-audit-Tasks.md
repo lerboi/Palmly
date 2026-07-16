@@ -36,19 +36,21 @@ finding has exactly one owning task below; no finding is dropped silently.
 
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
-- **Baseline suites (re-pinned 2026-07-17; Node grows as tasks add regression tests — B0 100 → B1 105 → B2 106 → B3 109):**
-  **Node 109/109** (`# pass 109 / # fail 0`, 237.1s) · **Deno 133/133** (`133 passed | 0 failed`, 3s)
+- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111; Deno 133 → B4 137):**
+  **Node 111/111** (`# pass 111 / # fail 0`, 241.0s) · **Deno 137/137** (`137 passed | 0 failed`, 4s)
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
   quote it. The pre-B0 "Node 96/100" is now historical.
 - **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B3** (2026-07-17) — migration 0020 applied; C4 predicate + H10 pair guard.
-  Suites: **Node 109/109**, **Deno 133/133**.
-- **Next task:** **B4 — Storage/DB ordering integrity: account-delete, merge_accounts, deletion_log.**
-  Its three limbs are already **researched + confirmed** (see the banked note under B4) — start at
-  the build, not the triage.
+- **Last completed:** **B4** (2026-07-17) — migration 0021 applied; H7's storage-ordering invariant
+  landed in `_shared/cleanup.ts`. Suites: **Node 111/111**, **Deno 137/137**.
+- **Next task:** **B5 — worker-narrative hardening: dedupe guard · redelivery · vt** (owns the
+  `readings` unique constraint; **must precede B7**, which edits the same file).
+- **Carried forward:** B21 additionally owns the **live storage round-trip** (audit §3.3 gap #2),
+  which B4 could not close without a new dep + persistent staging mutation (D-09). B16 must **import
+  `purgeAccountStorageFirst`** rather than re-implement the ordering.
 - **Owed doc correction:** `Planning/Backend-specs.md` §9 says crops are "deleted 24h after
   successful extraction"; the SQL keys on `created_at` **deliberately** (D-07). Fold this into
   B22's spec-correction pass alongside the storage-path `[1]`/`[2]` row.
@@ -372,9 +374,47 @@ would edit nothing and wrongly report success.
   - Note: not grouped into B1 on purpose — **getting a deletion predicate wrong destroys user data.** Own
     research, own verify.
 
-- [ ] **B4 — Storage/DB ordering integrity: account-delete, merge_accounts, deletion_log** *(H7)*
-  - 📋 **RESEARCH BANKED 2026-07-17 (not started — no code written). All three limbs CONFIRMED
-    against current source + live schema. Start from here; do not re-derive.**
+- [x] **B4 — Storage/DB ordering integrity: account-delete, merge_accounts, deletion_log** *(H7)* — **2026-07-17**
+  - **DONE: CONFIRMED (all three limbs).** Landed as `supabase/migrations/20260717000021_h7_storage_ordering.sql`
+    (counter re-read: max was 20) + `_shared/cleanup.ts` + `account-delete/index.ts` + `account-merge/index.ts`.
+  - **The invariant is now stated once, in code:** `purgeAccountStorageFirst` (`_shared/cleanup.ts`) —
+    **collect → delete objects → purge rows → log completion last**. **B16 must reuse this function**,
+    not re-implement the ordering.
+  - **Repo precedent found (and it vindicates the invariant):** `cleanup/index.ts:27-31` **already**
+    does it right — `storage.remove` then `mark_crop_deleted` only `if (!error)`. `account-delete` was
+    the one surface that inverted it. The fix aligns them.
+  - **(a) CONFIRMED + FIXED** — collect is now a separate read-only RPC (`account_storage_paths`), so
+    a storage failure **throws before any row is touched** and the delete stays retryable, instead of
+    stranding crops with zero DB reference behind a 200 `{deleted:true}`.
+  - **(b) CONFIRMED + FIXED** — `merge_accounts` now re-parents **and rewrites the owner path prefix
+    in the same statement** (the row cannot be found by `loser_id` once `user_id` has changed), and
+    returns `storage_moves`. SQL cannot move an S3 blob, so `account-merge/index.ts` moves the objects
+    **first**, then merges: a move failure aborts with the DB untouched. Return type stayed `jsonb`, so
+    `storage_moves` is an additive key, not a signature change.
+  - **(c) CONFIRMED + FIXED** — `purge_account`/`request_image_deletion` now insert with
+    `completed_at` **NULL**; the new `mark_deletion_complete(uuid,text)` stamps it last. This is the
+    table's own design: `deletion_log` already had **both** `requested_at` and `completed_at` and no FK
+    on `user_id`; `0016` merely collapsed them.
+  - Verify (observed): `deno check account-delete/index.ts account-merge/index.ts _shared/cleanup.ts`
+    → **clean** (first attempt failed `TS2739`: supabase-js `rpc()` returns a thenable
+    `PostgrestFilterBuilder`, not a `Promise` — `PurgeDeps` takes `PromiseLike`); Deno **137/137**
+    (was 133, +4); `account_merge + data_lifecycle` **14/14**; full Node **111/111**
+    (`# pass 111 / # fail 0`, 241.0s).
+  - Regression tests added (6): Deno — ordering is asserted **as a call sequence**
+    (`['collect','remove:scans','remove:cards','purge','complete']`); **a storage failure never
+    purges the rows and never stamps completion** (the H7 test); a row-purge failure never stamps
+    completion; `mergedStoragePath` re-homes only owner-prefixed paths (incl. the `aaaa-11/` vs
+    `aaaa-1/` lookalike). Node — `deletion_log` records a request with `completed_at` NULL until
+    `mark_deletion_complete`; merge re-homes crop+card paths, reports `storage_moves=2`, and leaves a
+    non-owner-prefixed path alone.
+  - ⚠️ **Honest limit — the audit §3.3 gap #2 "storage round-trip" is NOT closed here (D-09).** The
+    Node harness depends on `pg` only (no `@supabase/supabase-js`), and a real round-trip would
+    persistently mutate staging, which the begin/rollback harness exists to prevent. Instead the
+    *property the finding is about* — "a storage failure must not orphan a crop" — is proven
+    **hermetically** via the injectable seam, which is strictly better for that property (it can
+    simulate an S3 outage; a live round-trip cannot). **A genuine round-trip against the Storage API
+    remains open and belongs to B21**, which already owns handler/HTTP test infrastructure.
+  - 📋 Original research note (kept — all three limbs were confirmed before any code was written):
     - **(a) CONFIRMED** — `account-delete/index.ts:17-18` calls `purge_account` (DB purge) **first**,
       then removes objects at `:22-27` with `if (!sErr) removed += paths.length; // best-effort`, and
       **still returns `{deleted:true}` + HTTP 200 when storage fails**. The blobs then have zero DB
@@ -707,6 +747,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B4 — migration `20260717000021_h7_storage_ordering.sql` applied + `_shared/cleanup.ts` (`purgeAccountStorageFirst`, `mergedStoragePath`) + `account-delete`/`account-merge` rewired: H7's collect→delete→purge→log-last invariant now lives in ONE reusable function (**B16 must import it**). Precedent: `cleanup/index.ts` already did it right; account-delete was the outlier. `deletion_log` now records a request (`completed_at` NULL) + new `mark_deletion_complete`. merge re-parents AND rewrites the owner path prefix in one statement, returns `storage_moves`; the Edge fn moves blobs first. Evidence: Deno `137 passed | 0 failed` (was 133); `deno check` clean on all 3; `account_merge+data_lifecycle` 14/14; Node `1..111 / # pass 111 / # fail 0` (240969.9ms). +6 regression tests. **Storage round-trip NOT closed → B21 (D-09)** — 2026-07-17
 - B3 — migration `20260717000020_c4_h10_lifecycle_predicates.sql` applied: C4 crop predicate restated positively (24h-old crop is due whatever its status; `failed` immediate; `keep_image` exempt — status enumeration DROPPED, not extended) + H10 `sweep_stale_anon` never purges a pair member. Verdicts: C4 limb "keys off created_at" = **FALSE POSITIVE (spec wrong, SQL right — D-07)**; H10 CONFIRMED **worse than stated** (compat keys off `canonical_palm_fs`, not `readings` → a narrative-failed user has 0 readings yet can hold a COMPLETE result). Evidence: `data_lifecycle.test.mjs` 9/9; Node `1..109 / # pass 109 / # fail 0` (237130.2ms). +3 regression tests — 2026-07-17
 - B2 — migration `20260717000019_c2_unschedule_destructive_drains.sql` applied: all 5 `drain_stub` crons unscheduled (C2 interim). Evidence: `cron.job` → **0 jobs**; newest `cron.job_run_details` frozen at 21:21:00 = **no run for 4m43s** (was every 10s / 32 runs per 2min). Pre-state captured: 5 active drains, pgmq totals scan 56 / narrative 20 / compat 39 / push 130. Node `1..106 / # pass 106 / # fail 0` (237024.3ms). Test inverted: "each queue has a scheduled drain" → "no cron may invoke drain_stub". **`[~]` — pg_net wiring stays with the buildplan** — 2026-07-17
 - B1 — migration `20260717000018_audit_c1_h3_h4_m13_m14.sql` applied to staging (recorded in `supabase_migrations.schema_migrations`): C1 revoke (live acl now `postgres=X/postgres | service_role=X/postgres` — anon/authenticated/PUBLIC gone; **`drain_stub` no longer in `get_advisors`**), 5 M13 indexes (all present in `pg_indexes`), `claim_invite` FOR UPDATE + kind-gated pair, `record_rc_event` + additive `subscription_events.applied_at`. Evidence: Node `1..105 / # pass 105 / # fail 0` (232967.7ms); targeted 32/32; Deno `133 passed | 0 failed`. +5 regression tests — 2026-07-17
@@ -721,6 +762,7 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-09 | 2026-07-17 | **B4 proves H7's "no orphan" property with an injectable seam instead of the live storage round-trip its Verify line asks for.** The real round-trip stays open, reassigned to B21. | Two blockers and one better option. **Blockers:** the Node harness depends on `pg` alone — a live round-trip needs `@supabase/supabase-js` (a new dependency, the same call B17 flags for `@testing-library/react-native`) or hand-rolled Storage REST calls; and it would **persistently mutate staging**, which the begin/rollback harness exists specifically to prevent (a failed test would leave a real object behind). **Better option:** the property H7 is actually about is *"a storage failure must not orphan a crop"* — a live round-trip **cannot test that**, because it cannot make S3 fail on demand. An injected failing `removeObjects` can, and asserts the exact invariant (`purgeRows` never runs). This is the repo's own idiom (`revenuecat.ts`: "Pure/injectable … so it is unit-testable without the network"). What is genuinely NOT covered: that the Storage API calls work at all against a real bucket — that is handler-integration scope, which B21 owns. |
 | D-07 | 2026-07-17 | **C4's "deletes 24h after scan creation, not after successful extraction" is closed as a FALSE POSITIVE — the spec is wrong, the SQL is right.** `crops_due_for_deletion` keeps keying the age on `created_at`. **A `Planning/Backend-specs.md` §9 correction is owed** (tracked with B22's storage-path correction). | The choice only affects scans that are **already extracted** — where the crop is spent (pass 2 reads features, never the image). For those, `created_at` deletes **sooner**, so keying on extraction would *only ever retain crops longer* and weaken the D2 claim ("analyzed, then deleted — usually within a day"). It cannot protect a backlogged crop either: that risk lives entirely in the stuck-scan branch, which fires at 24h from creation regardless. And re-analysis with improved extractors already has its designed mechanism — the `keep_image` opt-in, spec §9's own "Opt-in retained scan / until revoked" row. `created_at` is also the promise the user actually experiences ("I took a photo; it is gone within a day"). Applying the audit literally here would have **degraded privacy** while looking like a fix. Precedent: the audit makes exactly this call itself for `storage.objects.name` `[1]` vs `[2]`. |
 | D-08 | 2026-07-17 | **`sweep_stale_anon` now refuses to purge any compatibility-pair member**, accepting a bounded MAU cost rather than reassign/tombstone semantics. | This is an irreversible deletion path, so the trade is "retain a few anon rows" vs "silently destroy an active user's pair + result". Verified live that both `compatibility_pairs` FKs cascade and results cascade from the pair, so there is no way to keep the pair while deleting the member. Tombstone/reassign would bound both costs, but inventing tombstone semantics for a **shared relationship row** (who owns it? what does the survivor see?) is a product decision, not a bug fix — out of this ledger's remit. The MAU consequence is real and recorded: an anon who claims an invite and never returns is now retained indefinitely. If that cost bites, the follow-up is a tombstone design, not re-enabling the destructive cascade. |
 | D-06 | 2026-07-17 | **B2 unschedules all 5 `drain_stub` crons, not just the 2 the audit names.** | The audit's "disable the drain crons for `compat_jobs`/`push_jobs`" is right about *today* — verified: only those two have live SQL enqueuers (`0011:50,73`; `0013:16`, `0014:76`). But `drain_stub` **archives every message it reads** and **nothing consumes any of these queues**, so every scheduled drain is pure destruction with zero upside — not a worker, just a shredder on a 10s timer. Leaving the scan/narrative drains armed is a live trap for the very next buildplan task (`scan-create`/`scan-ingest`, P4): the first real scan job would be eaten within 10 seconds, and the symptom (a job that simply vanishes) is miserable to debug. The stub's proof-of-path value is retained — `queues.test.mjs` calls `drain_stub` directly and never depended on the schedule. Fully reversible; the exact restore SQL is in the migration header, and restoring is only correct once the command is a real worker invocation. |

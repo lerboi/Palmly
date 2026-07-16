@@ -74,6 +74,33 @@ test('merge_accounts re-parents all of the anonymous loser\'s content onto the s
   });
 });
 
+test('merge_accounts re-homes the loser\'s owner-prefixed storage paths onto the survivor (H7)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, S, { isAnonymous: false });
+    await seedUser(c, L, { isAnonymous: true });
+
+    // The loser's crop + card live under `{loser}/…`. Storage policies key on path segment [1], so
+    // before this fix the merge re-parented scans.user_id but left storage_path pointing at the
+    // loser's folder — the survivor could not read what was now theirs, and the blobs were orphaned
+    // outright once the loser was deleted.
+    const scan = (await one(c, `insert into public.scans (user_id,kind,side,status,storage_path) values ($1,'palm','left','complete',$2) returning id`, [L, `${L}/crop.jpg`])).id;
+    const fs = await seedFeatureSet(c, L, scan);
+    const reading = (await one(c, `insert into public.readings (user_id, feature_set_id, kind, narrative, model_id, prompt_version, kb_version) values ($1,$2,'palm','{}'::jsonb,'m','p','v1') returning id`, [L, fs])).id;
+    await c.query(`insert into public.share_cards (user_id, source_type, source_id, variant, locale, storage_path) values ($1,'reading',$2,'feed_4x5','en',$3)`, [L, reading, `${L}/card.png`]);
+    // a path NOT under the loser's prefix must never be rewritten
+    const foreign = (await one(c, `insert into public.scans (user_id,kind,side,status,storage_path) values ($1,'face','left','complete',$2) returning id`, [L, `elsewhere/keep.jpg`])).id;
+
+    const r = (await one(c, `select public.merge_accounts($1,$2) as r`, [S, L])).r;
+    assert.equal(r.storage_moves, 2, 'reports the objects the Edge Function must move (crop + card)');
+
+    assert.equal((await one(c, `select storage_path from public.scans where id=$1`, [scan])).storage_path, `${S}/crop.jpg`, 'crop path re-homed to the survivor');
+    assert.equal((await one(c, `select storage_path from public.share_cards where user_id=$1`, [S])).storage_path, `${S}/card.png`, 'card path re-homed');
+    assert.equal((await one(c, `select storage_path from public.scans where id=$1`, [foreign])).storage_path, 'elsewhere/keep.jpg', 'a non-owner-prefixed path is left alone');
+    assert.equal(await n(c, `select count(*)::int n from public.scans where user_id=$1 and storage_path like $2`, [S, `${L}/%`]), 0, 'no survivor row still points into the loser folder');
+  });
+});
+
 test('merge_accounts refuses self-merge and non-anonymous losers (theft guard)', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);

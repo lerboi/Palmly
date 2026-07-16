@@ -212,6 +212,28 @@ test('sweep_stale_anon: a stale anon in a compatibility pair is NOT swept — th
   });
 });
 
+test('H7: deletion_log records a REQUEST, and completion is stamped only when it is true', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, U);
+    await populate(c, U);
+
+    // account_storage_paths collects WITHOUT destroying — the caller can now delete the blobs first.
+    const paths = (await c.query(`select bucket, path from public.account_storage_paths($1) order by bucket`, [U])).rows;
+    assert.deepEqual(paths.map((r) => `${r.bucket}:${r.path}`), [`cards:${U}/card.png`, `scans:${U}/s.jpg`]);
+    assert.equal(await n(c, `select count(*)::int n from public.scans where user_id=$1`, [U]), 1, 'collect must not delete anything');
+
+    await c.query(`select * from public.purge_account($1)`, [U]);
+    const log = (await c.query(`select requested_at, completed_at from public.deletion_log where user_id=$1 and scope='account'`, [U])).rows[0];
+    assert.ok(log.requested_at, 'requested_at stamped');
+    assert.equal(log.completed_at, null, 'completed_at must NOT be claimed before the storage work runs');
+
+    await c.query(`select public.mark_deletion_complete($1,'account')`, [U]);
+    const done = (await c.query(`select completed_at from public.deletion_log where user_id=$1 and scope='account'`, [U])).rows[0];
+    assert.ok(done.completed_at, 'completed_at stamped once the caller confirms the blobs are gone');
+  });
+});
+
 test('lifecycle RPCs are service-role only (no client access)', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);

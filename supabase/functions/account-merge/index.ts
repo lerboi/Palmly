@@ -14,6 +14,7 @@
 // identity providers → Human-tasks H1/H7. This function + its `merge_accounts` core are complete.
 import { createContext, requireMode } from '../_shared/context.ts';
 import { AppError, jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
+import { mergedStoragePath, type BucketPath } from '../_shared/cleanup.ts';
 
 interface MergeBody {
   anon_access_token?: string;
@@ -41,6 +42,21 @@ Deno.serve(
     if (anon.user.is_anonymous !== true) {
       // never re-parent a real account's data — the loser must be an anonymous session
       throw new AppError('forbidden', 'the source session is not an anonymous account', 403);
+    }
+
+    // H7(b): move the loser's blobs BEFORE re-parenting the rows. Storage policies key on path
+    // segment [1], so a merge that only re-parents `scans.user_id` leaves the crops under
+    // `{loser_id}/…` — unreadable by the survivor who now owns them, and orphaned once the loser is
+    // deleted. SQL cannot move an S3 object, so it happens here; merge_accounts then rewrites each
+    // path prefix in the same statement that re-parents the row. Moving first means a storage
+    // failure aborts with the DB untouched, rather than stranding the survivor's data.
+    const { data: toMove, error: pathErr } = await ctx.admin.rpc('account_storage_paths', { p_user_id: loserId });
+    if (pathErr) throw new AppError('merge_failed', pathErr.message, 500);
+    for (const { bucket, path } of (toMove ?? []) as BucketPath[]) {
+      const dest = mergedStoragePath(path, loserId, survivorId);
+      if (dest === path) continue; // not owner-prefixed → nothing to re-home
+      const { error: mvErr } = await ctx.admin.storage.from(bucket).move(path, dest);
+      if (mvErr) throw new AppError('merge_failed', `storage move failed for ${bucket}/${path}: ${mvErr.message}`, 500);
     }
 
     // Atomic re-parent (the DB function re-checks is_anonymous as a second line of defence).
