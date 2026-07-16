@@ -9,16 +9,24 @@ import { withRollback, applyMigrations } from './lib/db.mjs';
 const QUEUES = ['scan_jobs', 'narrative_jobs', 'compat_jobs', 'push_jobs', 'cleanup_jobs'];
 const n = async (c, sql, p = []) => (await c.query(sql, p)).rows[0].n;
 
-test('all 5 queues exist and each has a scheduled cron drain', async () => {
+test('all 5 queues exist', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);
     const queues = (await c.query(`select queue_name from pgmq.list_queues()`)).rows.map((r) => r.queue_name);
     for (const q of QUEUES) assert.ok(queues.includes(q), `queue ${q} exists`);
+  });
+});
 
-    const jobs = (await c.query(`select command from cron.job`)).rows.map((r) => r.command);
-    for (const q of QUEUES) {
-      assert.ok(jobs.some((cmd) => cmd.includes(`'${q}'`)), `cron drain scheduled for ${q}`);
-    }
+test('no cron job invokes the destructive drain_stub (C2)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    // This assertion used to be its inverse ("each queue has a scheduled cron drain") — which
+    // encoded the bug: drain_stub archives every message it reads, and nothing consumes these
+    // queues, so each scheduled drain silently destroyed real compat/push jobs (0011/0013/0014
+    // enqueue them today). Migration 0019 unschedules them until the cron→worker wiring lands.
+    // Re-arming a drain_stub cron must fail here.
+    const armed = (await c.query(`select jobname, command from cron.job where command like '%drain_stub%'`)).rows;
+    assert.deepEqual(armed, [], 'no drain_stub cron may be scheduled while it is a no-op archiver');
   });
 });
 

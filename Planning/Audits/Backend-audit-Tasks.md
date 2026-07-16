@@ -36,17 +36,17 @@ finding has exactly one owning task below; no finding is dropped silently.
 
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
-- **Baseline suites (re-pinned 2026-07-17; Node grows as tasks add regression tests — B0 100 → B1 105):**
-  **Node 105/105** (`# pass 105 / # fail 0`, 233.0s) · **Deno 133/133** (`133 passed | 0 failed`, 3s)
+- **Baseline suites (re-pinned 2026-07-17; Node grows as tasks add regression tests — B0 100 → B1 105 → B2 106):**
+  **Node 106/106** (`# pass 106 / # fail 0`, 237.0s) · **Deno 133/133** (`133 passed | 0 failed`, 3s)
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
   quote it. The pre-B0 "Node 96/100" is now historical.
 - **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B1** (2026-07-17) — migration 0018 applied to staging (C1/M13/H3/M14 closed;
-  H4-SQL partly, ordering → B15). Suites: **Node 105/105**, **Deno 133/133**.
-- **Next task:** **B2 — C2 interim: stop the live cron from destroying real jobs.**
+- **Last completed:** **B2** (2026-07-17) — migration 0019 applied; all 5 destructive `drain_stub`
+  crons unscheduled (C2 interim; `[~]` by design). Suites: **Node 106/106**, **Deno 133/133**.
+- **Next task:** **B3 — Lifecycle predicate correctness: `crops_due_for_deletion` + `sweep_stale_anon`.**
 - **Blocked on:** — (B14/B15 want H8; B21 records C5/M5 as H4c-blocked; none of these block B0–B13.)
 - **Human gates that findings depend on** (`Planning/Human-tasks.md`): **H4c** paid Gemini → audit
   **C5**, **M5**, and M3's Batch leg. **H8** RevenueCat account → the *live proof* of **C3**/B14/B15.
@@ -262,7 +262,36 @@ would edit nothing and wrongly report success.
     PUBLIC grant. Revoke from `public, anon, authenticated` only — **never** from the owner or service_role.
     **H4's NOT-NULL leg is deliberately excluded here** (contracting → B15).
 
-- [ ] **B2 — C2 interim: stop the live cron from destroying real jobs** *(C2)*
+- [~] **B2 — C2 interim: stop the live cron from destroying real jobs** *(C2)* — **2026-07-17** —
+  interim landed; `[~]` **by design** (the full cron→worker wiring is the buildplan's, per SCOPE).
+  - **DONE: CONFIRMED.** Live ground truth captured before touching anything: all 5 `drain_stub`
+    crons `active` (jobid 1-5, 10s/10s/15s/15s/1min); `pgmq.metrics_all()` showed real throughput
+    history — scan 56 / narrative 20 / compat 39 / push 130 `total_messages`, all `queue_length` 0
+    (i.e. everything ever enqueued was archived into the trash).
+  - Which drains are *genuinely* destructive today (`grep queue_send` over migrations): **only
+    `compat_jobs`** (`0011:50`, `0011:73`) **and `push_jobs`** (`0013:16`, `0014:76`) have live SQL
+    enqueuers that fire from user actions with no worker deployed — the audit's "disable the 2" is
+    correct about *today*. `scan_jobs`/`narrative_jobs`/`cleanup_jobs` have no SQL enqueuer and are
+    inert only because `scan-create`/`scan-ingest` do not exist yet.
+  - Built `supabase/migrations/20260717000019_c2_unschedule_destructive_drains.sql` — unschedules
+    **all 5** (D-06), idempotently (driven off a select over `cron.job`, since `cron.unschedule(name)`
+    raises when the job is already gone). Exact restore SQL is recorded in the migration header.
+  - Verify (observed): `cron.job where command like '%drain_stub%'` → **0**; `cron.job` → **0 jobs
+    scheduled**; `cron.job_run_details` newest run frozen at `21:21:00` — **no cron run for 4m43s**,
+    where the drains previously fired every 10s (32 runs in the preceding 2 minutes). Full Node
+    **106/106** (`# pass 106 / # fail 0`, 237.0s — B2 splits the old combined test in two).
+  - Regression test: `queues.test.mjs` — the old assertion *"each queue has a scheduled cron drain"*
+    **encoded the bug** and was inverted into a C2 pin: **no cron job may invoke `drain_stub`** while
+    it is a no-op archiver. Re-arming one now fails the suite. The queue-existence half is kept as
+    its own test, and the drain-path proof is unaffected (the other tests call `drain_stub` directly,
+    not via cron).
+  - ⚠️ **Could NOT verify by the letter:** the Verify line asks for `pgmq.metrics_all()` proof that
+    "enqueued messages now survive". The Supabase MCP is **read-only** and staging must not be
+    persistently mutated, so no message was enqueued to watch. The equivalent proof given instead is
+    causal and stronger: **there is no longer any consumer** (0 drain_stub crons, 0 cron jobs at
+    all), so nothing can archive an enqueued message.
+  - **Scope held:** `pg_net` is still NOT installed and no Vault/`net.http_post` wiring was written.
+    C2's remaining half stays with `MVP_Buildplan.md` (§NOT YET BUILT A.3).
   - Research: **before unscheduling anything**, capture the ground truth via MCP:
     `select jobid, jobname, schedule, command, active from cron.job;` (expect the 5 `drain_stub`
     schedules) and `select * from pgmq.metrics_all();`. Confirm which queues carry **real** enqueues
@@ -608,6 +637,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B2 — migration `20260717000019_c2_unschedule_destructive_drains.sql` applied: all 5 `drain_stub` crons unscheduled (C2 interim). Evidence: `cron.job` → **0 jobs**; newest `cron.job_run_details` frozen at 21:21:00 = **no run for 4m43s** (was every 10s / 32 runs per 2min). Pre-state captured: 5 active drains, pgmq totals scan 56 / narrative 20 / compat 39 / push 130. Node `1..106 / # pass 106 / # fail 0` (237024.3ms). Test inverted: "each queue has a scheduled drain" → "no cron may invoke drain_stub". **`[~]` — pg_net wiring stays with the buildplan** — 2026-07-17
 - B1 — migration `20260717000018_audit_c1_h3_h4_m13_m14.sql` applied to staging (recorded in `supabase_migrations.schema_migrations`): C1 revoke (live acl now `postgres=X/postgres | service_role=X/postgres` — anon/authenticated/PUBLIC gone; **`drain_stub` no longer in `get_advisors`**), 5 M13 indexes (all present in `pg_indexes`), `claim_invite` FOR UPDATE + kind-gated pair, `record_rc_event` + additive `subscription_events.applied_at`. Evidence: Node `1..105 / # pass 105 / # fail 0` (232967.7ms); targeted 32/32; Deno `133 passed | 0 failed`. +5 regression tests — 2026-07-17
 - B0 — baseline honestly green: 4 stale global-count assertions scoped to their own fixtures (test-only, no product code). All 4 deltas reconciled to live staging first via MCP (worker_telemetry=2, kb_chunks=141, cards objects=2) → **zero product bugs**. Evidence: Node `1..100 / # pass 100 / # fail 0` (226886.5ms, was 96/100); Deno `133 passed | 0 failed` (3s). Files: `supabase/tests/{queues,rls,storage,worker_narrative}.test.mjs` — 2026-07-17
 
@@ -620,5 +650,6 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-06 | 2026-07-17 | **B2 unschedules all 5 `drain_stub` crons, not just the 2 the audit names.** | The audit's "disable the drain crons for `compat_jobs`/`push_jobs`" is right about *today* — verified: only those two have live SQL enqueuers (`0011:50,73`; `0013:16`, `0014:76`). But `drain_stub` **archives every message it reads** and **nothing consumes any of these queues**, so every scheduled drain is pure destruction with zero upside — not a worker, just a shredder on a 10s timer. Leaving the scan/narrative drains armed is a live trap for the very next buildplan task (`scan-create`/`scan-ingest`, P4): the first real scan job would be eaten within 10 seconds, and the symptom (a job that simply vanishes) is miserable to debug. The stub's proof-of-path value is retained — `queues.test.mjs` calls `drain_stub` directly and never depended on the schedule. Fully reversible; the exact restore SQL is in the migration header, and restoring is only correct once the command is a real worker invocation. |
 | D-04 | 2026-07-17 | **H4's fix departs from the audit's literal prescription.** Instead of "reorder the `exists(profiles)` guard before the event insert", B1 adds `subscription_events.applied_at` and makes the idempotency key guard the **upsert** rather than the log row. | The audit's version does not actually close the finding, and contradicts the code it would have to change. **(1)** `revenuecat-webhook/index.ts` returns **HTTP 200 when `applied=false`** — RC never retries a 200, so declining to consume the key changes nothing; the event is still lost. **(2)** A tri-state return would let the handler 5xx, but `create or replace` **cannot change the `boolean` return type** → contracting, out of B1's additive remit. **(3)** The literal reorder breaks `revenuecat_webhook.test.mjs:58`, which deliberately asserts an unknown-user event is *logged for audit* — matching `subscription_events`' documented purpose ("raw webhook audit log", `schema.sql:139`). The `applied_at` design fixes the audit's stated failure ("every RC retry then dedupes to a no-op forever" — a redelivery now applies) while keeping the audit log complete and all 4 existing tests green. **Residual, stated honestly:** because the handler still 200s, self-healing needs *some* redelivery (an RC dashboard resend, or any later event — which carries a different id and applies normally). Making the handler signal retry is a **product call on posture**: a not-yet-provisioned user resolves on retry, but a merged-away UUID never will, so a blanket 5xx would retry forever against a permanently-dead id. Routed to B15 with the rest of the H4 residue. |
 | D-05 | 2026-07-17 | **H4's `latest_event_at` ordering guard is deferred to B15**, not built in B1. | `0009:38` stamps `latest_event_at = now()` — **processing** time, not event time. `now()` is monotonic in processing order, so a guard written against it is true by construction and would be **decorative**: it would look like a fix and prevent nothing. A real out-of-order guard needs RC's actual event timestamp, and `RcEvent` (`_shared/revenuecat.ts:62-70`) **has no timestamp field** — the payload's real shape is exactly what B14 establishes from the vendor docs. The ledger's own B15 note already says ordering semantics depend on what RC actually sends; B1's "add an ordering guard" line is the over-eager one. A fake guard now would be worse than the bug, because it would look closed. |
