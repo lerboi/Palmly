@@ -107,7 +107,7 @@ export function RevealView({ reading, geometry, state = 'ready', onBack, onRetry
           </View>
         ))}
 
-        {/* ── Locked premium depth → paywall (real title + blurred teaser) ── */}
+        {/* ── Locked premium depth → paywall (real, code-derived title; no premium prose) ── */}
         {locked.length > 0 ? (
           <View style={{ marginTop: theme.spacing.sm }}>
             <Text variant="heading" style={{ marginBottom: theme.spacing.md }}>
@@ -295,12 +295,10 @@ function LockedCard({ section, onUnlock }: { section: ReadingSection; onUnlock: 
         <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
           <FeatureIcon icon="lock" tone="premium" size={44} />
           <View style={{ flex: 1 }}>
+            {/* The title IS the tease: it is code-derived from the deterministic claim skeleton, so
+                it says "you have a Fate Line chapter" without generating — or leaking — a word of
+                the premium prose. There is no `teaser` field by design (M12a / D-25). */}
             <Text variant="bodyMedium">{section.title}</Text>
-            {section.teaser ? (
-              <Text variant="caption" tone="secondary" numberOfLines={2} style={{ marginTop: 2, opacity: 0.45 }}>
-                {section.teaser}
-              </Text>
-            ) : null}
             <Text variant="caption" tone="premium" style={{ marginTop: theme.spacing.sm }}>
               Unlock with Premium
             </Text>

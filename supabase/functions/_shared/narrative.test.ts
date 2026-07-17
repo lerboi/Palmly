@@ -1,4 +1,5 @@
 import { assert, assertEquals } from '@std/assert';
+import AjvDefault from 'ajv';
 import {
   bannedHits,
   filterDepth,
@@ -115,4 +116,60 @@ Deno.test('generateNarrative: MAX_TOKENS / invalid JSON / content-safety failure
 Deno.test('bannedHits flags claim phrasing but not palmistry vocabulary', () => {
   assertEquals(bannedHits('Your life line is deep and your heart line is warm.'), []);
   assert(bannedHits('this predicts your death and your lifespan').length >= 2);
+});
+
+// ── M12(a): the locked-section teaser contract ──────────────────────────────────────────────────
+
+Deno.test('M12a: a model-emitted `teaser` is DROPPED, never stored — graft is an allowlist', async () => {
+  // The audit frames Ajv as what stops a teaser reaching the client. Reading the code, the FIRST
+  // line of defence is stronger than that: `graft` rebuilds every section from the deterministic
+  // skeleton and takes only `title`/`body` from the model, so an extra field never even reaches the
+  // validator. This proves it against the real pipeline rather than restating the design.
+  const { sections } = selectClaims('palm', palm01 as Record<string, unknown>, PALM_KB);
+  const chosen = filterDepth(sections, 2);
+  const sneaky = mock({
+    headline: 'A vivid headline',
+    summary: 'A warm overview.',
+    sections: chosen.map((s) => ({
+      key: s.key,
+      title: s.title,
+      body: `Prose for ${s.key}.`,
+      teaser: 'A tempting sliver of the premium prose…', // ← the field the app used to render
+    })),
+    disclaimer: 'For reflection and entertainment.',
+  });
+
+  const r = await gen(palm01 as Record<string, unknown>, PALM_KB, 'palm', sneaky);
+  assertEquals(r.ok, true, `the narrative itself is fine; only the extra field is at issue`);
+  if (r.ok) {
+    for (const section of r.narrative.sections) {
+      assert(!('teaser' in section), `graft must not carry a model-invented field into storage: ${JSON.stringify(section)}`);
+    }
+  }
+});
+
+Deno.test('M12a: the schema forbids a 4th section field — re-adding `teaser` cannot be quiet', async () => {
+  // The second line of defence, and the one that matters for regressions: if someone "fixes" M12a by
+  // teaching the code to emit a teaser, `additionalProperties: false` rejects it. Compiled here from
+  // the real schema file, so this tracks the contract rather than a copy of it.
+  const schema = JSON.parse(await Deno.readTextFile(new URL('../../../schemas/reading_sections.v1.json', import.meta.url)));
+  const ajv = new (AjvDefault as unknown as new (o?: Record<string, unknown>) => {
+    compile(sch: unknown): (d: unknown) => boolean;
+  })({ allErrors: true, strict: false });
+  const validate = ajv.compile(schema);
+
+  const section = {
+    key: 'fate',
+    title: 'Your Fate Line',
+    body: 'A body long enough to be real prose.',
+    depth_level: 2,
+    tags: ['fate_line.present.clear'],
+    feature_refs: ['fate_line.present.clear'],
+  };
+  assertEquals(validate({ headline: 'H', sections: [section] }), true, 'the legitimate shape validates');
+  assertEquals(
+    validate({ headline: 'H', sections: [{ ...section, teaser: 'a sliver of premium prose' }] }),
+    false,
+    'a `teaser` is rejected — adding it requires a DELIBERATE schema change, which is the point (D-25)',
+  );
 });

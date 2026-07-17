@@ -8,8 +8,13 @@ export interface ReadingSection {
   depth_level: number; // 1 = free, ≥2 = premium (locked)
   tags: string[];
   feature_refs?: string[];
-  /** A short, safe-to-show tease for a locked section — rendered blurred behind the paywall. */
-  teaser?: string;
+  // NOTE: there is deliberately no `teaser` field (audit M12a, Decision Log D-25).
+  // `reading_sections.v1.json` is `additionalProperties: false`, so Ajv rejects any section
+  // carrying one — the server could never send it. And it should not: depth-2 prose is generated
+  // only ON UNLOCK (§NOT YET BUILT C.12), so before purchase there is no locked prose to tease
+  // FROM. A field that can only ever be filled by premium prose is an invitation to ship exactly
+  // the leak the finding warns about. The locked card teases with the section's real `title`,
+  // which is code-derived from the deterministic claim skeleton and costs nothing.
 }
 export interface Reading {
   headline: string;
@@ -114,7 +119,6 @@ export const PREVIEW_READING: Reading = {
       depth_level: 2,
       tags: ['fate_line.origin.wrist'],
       feature_refs: ['fate_line.origin.wrist'],
-      teaser: 'It rises straight from the wrist — the mark of a self-made path, steered by your own hand more than by circumstance…',
     },
     {
       key: 'markings',
@@ -123,7 +127,6 @@ export const PREVIEW_READING: Reading = {
       depth_level: 2,
       tags: ['markings.star'],
       feature_refs: ['markings.star'],
-      teaser: 'A star sits on the mount of Apollo — one of the rarer, more fortunate signs a palm can carry…',
     },
   ],
   disclaimer: 'For reflection and entertainment.',

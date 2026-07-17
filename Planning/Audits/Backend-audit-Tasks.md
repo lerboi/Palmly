@@ -36,28 +36,24 @@ finding has exactly one owning task below; no finding is dropped silently.
 
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
-- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114 → B10 117 → B11 119 → B13 124 → B15 127 → B16 130; Deno 133 → B4 137 → B6 138 → B8 140 → B10 141 → B11 143 → B12 147 → B13 148 → B14 151 → B15 152):**
-  **Node 130/130** (`# pass 130 / # fail 0`, 274.5s) · **Deno 152/152** (`152 passed | 0 failed`, 2s)
+- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114 → B10 117 → B11 119 → B13 124 → B15 127 → B16 130; Deno 133 → B4 137 → B6 138 → B8 140 → B10 141 → B11 143 → B12 147 → B13 148 → B14 151 → B15 152 → B17 154):**
+  **Node 130/130** (`# pass 130 / # fail 0`, 274.4s) · **Deno 154/154** (`154 passed | 0 failed`, 2s)
+  · app jest **39/39** (8 suites) — but see B17: the app suite asserts against its own `PREVIEW_*`
+  fixtures, so it **structurally cannot** catch a server-contract change. Never cite it as evidence.
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
   quote it. The pre-B0 "Node 96/100" is now historical.
 - **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B16** (2026-07-17) — migration 0028 applied; `image-delete` Edge fn built on
-  B4's imported invariant. Suites: **Node 130/130**, **Deno 152/152**.
-- **Next task:** **B17 — M12(a): decide the locked-section teaser contract**. ⚠️ **The teaser
-  contract is the loop's call** (rule 16). Its Verify has **mandatory manual legs** — `node
-  kb/audit.mjs` → `P5T4_OK`, `required=141 chunks=141`; `node prompts/build-prompts.mjs --check` →
-  `PROMPTS_OK`; `cd eval && npm run p5t1` → `P5T1_OK`; `cd app && npm run typecheck && npm run lint
-  && npx jest --ci` — and **`kb/audit.mjs` is NOT in CI**. ⚠️ **All 39 app tests assert against the
-  `PREVIEW_*` fixtures themselves, so a server-contract change leaves them 39/39 green — the app
-  suite structurally CANNOT catch M12.** Do not treat app-green as evidence. Prefer **code-derived
-  truncation** (see the task's own analysis: `reading_sections.v1.json:16` is
-  `additionalProperties:false` and Ajv REJECTS a `teaser`, so a 4th generative field is not the
-  contract-consistent option). **D-15 applies: additive-to-v1, never a `prompts/*/v2`** —
-  `build-prompts.mjs:29` hardcodes `'v1'` and a v2 would emit nothing while `--check` still prints
-  `PROMPTS_OK` (a false green in CI).
+- **Last completed:** **B17** (2026-07-17) — M12a closed by **deleting** the `teaser` field (D-25);
+  no schema change. Suites: **Node 130/130**, **Deno 154/154**, app jest **39/39**.
+- **Next task:** **B18 — M10: deprecate the un-deduped push enqueue path**. A **contracting** step
+  (revoke/drop the raw `enqueue_push`), hence its own file + verify. `0013`'s own header calls itself
+  "the single enqueue entry point", which `0014` silently superseded. Check callers first:
+  `git grep -n "enqueue_push\b" -- supabase`. The audit's secondary note belongs here too: the
+  marketing cap is **check-then-insert (race)** and **UTC-day based** — the same class as M8, which
+  D-17 fixed by moving the count into the same transaction as the act.
 - 🚩 **Standing, ledger-wide (D-24): nothing here is deployed.** Migrations ARE applied to staging;
   Edge Functions are **not** — there is no `SUPABASE_ACCESS_TOKEN`, and `deploy.yml` (merge to main,
   `staging-deploy` env) owns that, gated by **H3/H4b-2**. Every fix is closed *in the repo*, not *in
@@ -1325,7 +1321,54 @@ would edit nothing and wrongly report success.
   - Note: the **app-side** half (`PrivacyCenter.tsx:25-27` is an empty stub) is **P6 wiring scope** — this
     task delivers the callable **server** path only.
 
-- [ ] **B17 — M12(a): decide the locked-section teaser contract** *(M12a)*
+- [x] **B17 — M12(a): decide the locked-section teaser contract** *(M12a)* — **2026-07-17**
+  - **DONE: M12a CONFIRMED on every limb — and the ledger's own hunch was right: the correct answer
+    IS "delete the client field" (D-25).** No migration, no schema change. Changed:
+    `app/src/features/reading/reveal.ts` + `RevealView.tsx`.
+  - **CONFIRMED:** `reading_sections.v1.json` is `additionalProperties: false` with
+    `required: [key,title,body,depth_level,tags,feature_refs]`, and its own description says **"only
+    `headline`, `title`, `body` are model-authored"** — everything else is code-derived. Meanwhile
+    `reveal.ts:12` declared `teaser?: string` and `RevealView.tsx:299` rendered it, fed **only** by
+    the `PREVIEW_*` fixtures. And the block is dead twice over: `filterDepth` (`narrative.ts:273`) +
+    `worker-narrative`'s `depthLevel = 1` mean depth-2 sections are **never generated or stored**, so
+    `lockedSections()` returns `[]` against all real data.
+  - 🔑 **The decisive fact the audit missed: there is nothing to truncate.** Depth-2 prose is
+    generated **only ON UNLOCK** (§NOT YET BUILT C.12), so before purchase the locked prose **does
+    not exist**. "Code-derived truncation" — the ledger's own suggested preference — has no source
+    text to truncate from. Any field that could only ever be filled by premium prose is an
+    **invitation to ship the very leak the finding warns about**.
+  - **Decided (D-25): delete `teaser`; do NOT add it to the schema.** The locked card already
+    null-guarded it, so removal degrades gracefully — it still shows lock icon + **real title** +
+    "Unlock with Premium". And the title is the honest tease: it is code-derived from the
+    deterministic claim skeleton, so it says *"you have a Fate Line chapter"* without generating —
+    or leaking — a word of premium prose, and without a model call.
+  - 🔬 **Refines the audit's mechanism (worth knowing):** it says Ajv is what stops a teaser reaching
+    the client. Reading the code, the **first** line of defence is stronger: `graft`
+    (`narrative.ts:247-262`) **rebuilds every section from the deterministic skeleton** and takes only
+    `title`/`body` from the model — an **allowlist by construction**, so a model-invented field is
+    dropped before Ajv ever sees it. Ajv's `additionalProperties:false` guards the second case: **our
+    own code** adding a field. Both are now pinned by tests.
+  - Verify (observed — every leg, run literally, including the two NOT in CI):
+    `node kb/audit.mjs` → **`required=141 chunks=141` / `P5T4_OK`** · `node prompts/build-prompts.mjs
+    --check` → **`PROMPTS_OK`** · `cd eval && npm run p5t1` → **`P5T1_OK`** · `cd app && npm run
+    typecheck` → clean, `npm run lint` → clean, `npx jest --ci` → **39/39 (8 suites)** · full **Deno
+    154/154** (+2) · full **Node 130/130**.
+  - ⚠️ **App-green is NOT evidence here, exactly as the ledger warns** — all 39 app tests assert
+    against the `PREVIEW_*` fixtures, so the suite structurally cannot catch M12. What IS evidence:
+    (1) **`tsc --noEmit` passes with the field deleted**, which proves no code path still reads it and
+    no fixture still supplies it — a real check, since a leftover reference would fail the build;
+    (2) the two new **server-side** tests below, which verify the real payload shape rather than the
+    fixtures. (`@testing-library/react-native` is not installed, so no render test could be added
+    without a new dep — unchanged, and not worth one for a branch being deleted.)
+  - Regression tests added (2, Deno): **a model that emits `teaser` → the narrative still validates
+    but NO stored section carries the field** (proves graft's allowlist against the real pipeline);
+    and **the real schema file, compiled with Ajv, rejects a teaser-bearing section** while accepting
+    the legitimate shape — so re-adding it server-side **cannot be quiet**. That second test is the
+    one that stops M12a being "fixed" the wrong way later.
+  - **Scope note:** this touches the app, which SCOPE normally excludes — but M12a **is** a contract
+    finding, the ledger's Build says "across schema + narrative + app", and the change is the removal
+    of a **contract lie** (a declared field the server can never send), not a fix to a fixture-driven
+    screen.
   - Research: **the only finding whose right answer might be "delete the client field."** Verified:
     `reading_sections.v1.json:16` sets `additionalProperties:false` and `:39` requires `body`, and Ajv
     (`narrative.ts:239`, invoked `:296`) **REJECTS** a section carrying `teaser` ("must NOT have additional
@@ -1430,6 +1473,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B17 — **no migration, no schema change: the fix was DELETING the client field** (D-25). `reveal.ts` + `RevealView.tsx`: `teaser?: string` removed (it was fed only by `PREVIEW_*` fixtures and rendered by a branch that is dead twice over — `filterDepth` + `depthLevel=1` mean `lockedSections()` returns `[]` on real data). **The decisive fact the audit missed: there is nothing to truncate** — depth-2 prose is generated only ON UNLOCK (C.12), so filling a teaser would mean generating premium prose the user has not bought and shipping it behind a CSS blur, i.e. M12a's own suggestion produces M12a's leak. The title IS the tease (code-derived from the claim skeleton, zero tokens, zero leak). **Refines the audit:** Ajv is the *second* line of defence — `graft` (narrative.ts:247-262) rebuilds sections from the skeleton and is an allowlist by construction, so a model-invented field never reaches the validator. Evidence (all Verify legs, incl. the 2 NOT in CI): `kb/audit.mjs` → **required=141 chunks=141 / P5T4_OK**; `build-prompts --check` → **PROMPTS_OK**; `eval p5t1` → **P5T1_OK**; app typecheck+lint clean, `jest --ci` **39/39**; Deno `154 passed | 0 failed` (+2); Node `# pass 130 / # fail 0`. +2 tests (graft drops a model teaser; the real schema rejects one) — 2026-07-17
 - B16 — migration `20260717000028_m12c_image_paths_collect.sql` applied + new `supabase/functions/image-delete/index.ts` + `config.toml` (`verify_jwt = true`): M12c CONFIRMED (**zero callers** of `request_image_deletion` while every sibling was wired). The Edge fn **imports `purgeAccountStorageFirst`** rather than re-implementing B4's ordering. New read-only `image_paths_for_deletion` exists because `request_image_deletion` returns the paths AND nulls them in one call — using it to collect would destroy the reference before the blob is gone (the H7 bug); its predicate is identical to that function's, **pinned by a test**. Evidence: `deno check` clean; `data_lifecycle` 13/13; Deno `152 passed | 0 failed`; Node `# pass 130 / # fail 0` (274494.1ms). +3 tests, +1 widened. 🧑 **Deploy + live curl NOT doable — no SUPABASE_ACCESS_TOKEN; deploy.yml/CI owns it (H3/H4b-2). `list_edge_functions` confirms image-delete is undeployed (D-24)** — 2026-07-17
 - B15 — migration `20260717000027_h4_residue_notnull_transfer_ordering.sql` applied + `_shared/revenuecat.ts` + `revenuecat-webhook/index.ts`: **rc_event_id NOT NULL** (contract; live 0 rows/0 nulls, backfill verified no-op), **TRANSFER fixed — and the audit understates it: we granted NOBODY** (RC sends `transferred_from`/`transferred_to` arrays and **no app_user_id**, so `isUuid(app_user_id)` was null → logged, never applied), plus the source is now revoked because **RC never sends an event about it** ("the webhook is sent only for the destination user") — D-22. **Ordering guard BUILT, D-05 discharged:** B14 established RC sends `event_timestamp_ms`, which rides in `p_payload` → no signature change; `latest_event_at` is now the EVENT's time with `where latest_event_at <= excluded.latest_event_at`, so a delayed RENEWAL can't resurrect a lapsed sub. `expires_at:null` = **working as intended (D-23)** — RC documents null as legitimate for lifetime/non-subscription, and failing closed would 402 paying customers. Evidence: `deno check` clean; `revenuecat_webhook` 8/8; `revenuecat.test.ts` 11/11; Deno `152 passed | 0 failed`; Node `# pass 127 / # fail 0` (271576.3ms). +4 tests. Suites caught 2 of my own regressions (a fixture relying on the nullable id; a `$1` bound to both uuid and text) — 2026-07-17
 - B14 — **no code change: C3 is a FALSE POSITIVE.** RC's current docs (verified 2026-07-17, <https://www.revenuecat.com/docs/integrations/webhooks>) have a **"Webhook Signature Verification (HMAC)"** section documenting exactly `X-RevenueCat-Webhook-Signature: t=<unix_ts>,v1=<hmac_sha256_hex>` over `"<t>.<raw_json_body>"` + constant-time compare + ~5min replay window — line for line what `_shared/revenuecat.ts` already implements. The audit called this the **#1 risk in the codebase**; rewriting it would have replaced a correct control with a weaker one. Trap escaped by construction: the +3 tests use an **independent oracle** (`node:crypto` vector, hardcoded hex) so nothing under test signs its own homework; one pins that the reversed `"<body>.<t>"` concatenation is **rejected**. **Real residual re-filed as H8 config (D-21):** HMAC signing is opt-in and the secret is shown ONCE — if the toggle is off, RC gives up after 5 retries (~2.6h) and paying customers are permanently 402'd. Evidence: `revenuecat.test.ts` 10/10; Deno `151 passed | 0 failed` (+3); Node `# pass 124 / # fail 0` (264399.6ms). **`[~]` — live proof H8-gated** — 2026-07-17
@@ -1457,6 +1501,7 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-25 | 2026-07-17 | **M12(a): the `teaser` field is DELETED from the client, and deliberately NOT added to the schema. Decided by the loop (rule 16).** | The ledger guessed the answer might be "delete the client field", and it is — for a reason neither it nor the audit states. **There is nothing to truncate.** Depth-2 prose is generated **only on unlock** (§NOT YET BUILT C.12), so before purchase the locked prose does not exist; "code-derived truncation" has no source text. The only way to fill a `teaser` would be to generate premium prose for a section the user has **not paid for** and ship it to the device behind a CSS blur — which is precisely the leak M12a warns about, arrived at *by implementing M12a's own suggestion*. Adding it to the schema also contradicts that schema's own description ("only `headline`, `title`, `body` are model-authored") and would make a 4th generative field on the trust-critical pass. **What the tease should be instead:** the section `title`, which is already code-derived from the deterministic claim skeleton — it conveys *"you have a Fate Line chapter"* for zero tokens and zero leak, and the locked card already renders it. The card null-guarded `teaser`, so deleting it degrades gracefully rather than emptying the paywall. **When C.12 lands**, if a richer tease is wanted, it must be derived from the skeleton — never from prose the user has not bought. Two tests now hold this line: graft drops a model-emitted teaser, and the real schema rejects one. |
 | D-24 | 2026-07-17 | **No Edge Function in this ledger is deployed, and B16's "deploy + live posture curl" Verify leg is recorded as not-doable rather than skipped quietly.** | There is no `SUPABASE_ACCESS_TOKEN` on this machine or in `.env.staging`, so `supabase functions deploy` cannot authenticate; the Supabase MCP is **read-only by project policy** (CLAUDE.md: "an inspection window, not a way to change anything"); and the repo's actual deploy path is `.github/workflows/deploy.yml` on merge to main, gated by the `staging-deploy` environment whose secrets are the **H3/H4b-2 human gate** (§NOT YET BUILT F.18). Deploying one function ad-hoc would also be *wrong* even if possible: it would put `image-delete` live while its siblings (B7's card-render, B8's push-dispatch, B15's webhook) stayed on old code — an inconsistent surface no reviewer approved. **Why this is safe:** migrations ARE applied (the test harness requires it) and every one was additive or expand-first, so the currently-deployed OLD functions still work against the new schema — e.g. `request_compat`'s 2-arg overload still exists (D-17), the old webhook always supplies `event.id` so the NOT NULL cannot bite it, and `chat-send`'s old `created_at` ordering still resolves. That is precisely what expand-contract buys. **Consequence to state plainly:** these fixes are not live until a deploy runs, so the audit's findings are closed *in the repo*, not *in production*. |
 | D-22 | 2026-07-17 | **TRANSFER: the destination is resolved from `transferred_to`, and every `transferred_from` is REVOKED — decided by the loop (rule 16).** | RC's docs settle what the audit could only guess at: a TRANSFER carries `transferred_from`/`transferred_to` arrays and **no `app_user_id`**, and **"the webhook is sent only for the destination user"**. Two consequences the audit missed. **(a) We granted nobody**, not "the destination without revoking the source" — `isUuid(event.app_user_id)` was null for every TRANSFER, so the event was logged and never applied; a user who transferred their purchase got nothing. **(b) Revoking the source cannot be deferred to some later event, because there is no later event.** RC has already moved the entitlement server-side and will never tell us about the source again, so the TRANSFER webhook is the only moment we can act. Not revoking means one paid entitlement gates two accounts, forever, silently. Chose `status='expired'` + empty entitlements over deleting the row: `subscriptions` is the record of who held what, and `isPremiumRow` already treats `expired` as a hard stop. Both arrays are filtered through `isUuid` — they can contain RC's `$RCAnonymousID:…`, which is not a user we can gate; granting or revoking one would be a type-confusion bug. |
 | D-23 | 2026-07-17 | **The Low finding "entitlement.ts:18 treats `expires_at: null` as premium-forever" is closed as WORKING AS INTENDED — no code change.** | RC documents null expiry as **legitimate**: *"This can be `null` for non-subscription purchases or lifetime products"* — and `NON_RENEWING_PURCHASE` is already in our ACTIVATING set, so null must mean "no expiry", which is what the code does. The alternative — treat null as not-premium — would **402 a paying customer** on an RC data quirk, i.e. precisely the failure C3 exists to warn about and the one the monetization design says never to inflict. It is also not unbounded: EXPIRATION sets `status='expired'` and `isPremiumRow` stops there, so "forever" is really "until RC says otherwise". **The residual, stated rather than papered over:** a null expiry removes the *self-healing* time check — with a real `expires_at` we lapse on our own clock even if a webhook never arrives, whereas with null we depend entirely on delivery, and RC gives up after 5 retries (~2.6h, D-21). That tail is worth revisiting **only if Palmly ever ships a lifetime SKU**; today it sells monthly/annual only, so a null expiry should never legitimately occur, and inventing a stricter rule now would add a paying-customer-facing failure mode to guard against an event that cannot happen. |
