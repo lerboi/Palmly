@@ -36,22 +36,33 @@ finding has exactly one owning task below; no finding is dropped silently.
 
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
-- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114 → B10 117 → B11 119 → B13 124 → B15 127; Deno 133 → B4 137 → B6 138 → B8 140 → B10 141 → B11 143 → B12 147 → B13 148 → B14 151 → B15 152):**
-  **Node 127/127** (`# pass 127 / # fail 0`, 271.6s) · **Deno 152/152** (`152 passed | 0 failed`, 2s)
+- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114 → B10 117 → B11 119 → B13 124 → B15 127 → B16 130; Deno 133 → B4 137 → B6 138 → B8 140 → B10 141 → B11 143 → B12 147 → B13 148 → B14 151 → B15 152):**
+  **Node 130/130** (`# pass 130 / # fail 0`, 274.5s) · **Deno 152/152** (`152 passed | 0 failed`, 2s)
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
   quote it. The pre-B0 "Node 96/100" is now historical.
 - **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B15** (2026-07-17) — migration 0027 applied; H4 residue closed
-  (rc_event_id NOT NULL, TRANSFER grant+revoke, ordering guard — **D-05 discharged**; expires_at:null
-  = working as intended). Suites: **Node 127/127**, **Deno 152/152**.
-- **Next task:** **B16 — M12(c): callable image-deletion path**. ⚠️ **B16 MUST import
-  `purgeAccountStorageFirst` from `_shared/cleanup.ts`** (B4's collect→delete→purge→log-last
-  invariant) rather than re-implement the ordering. Note B4 already made
-  `request_image_deletion` log a REQUEST (`completed_at` NULL) — the new Edge fn is what stamps it
-  via `mark_deletion_complete(uuid,'images')`, and only after the blobs are actually gone.
+- **Last completed:** **B16** (2026-07-17) — migration 0028 applied; `image-delete` Edge fn built on
+  B4's imported invariant. Suites: **Node 130/130**, **Deno 152/152**.
+- **Next task:** **B17 — M12(a): decide the locked-section teaser contract**. ⚠️ **The teaser
+  contract is the loop's call** (rule 16). Its Verify has **mandatory manual legs** — `node
+  kb/audit.mjs` → `P5T4_OK`, `required=141 chunks=141`; `node prompts/build-prompts.mjs --check` →
+  `PROMPTS_OK`; `cd eval && npm run p5t1` → `P5T1_OK`; `cd app && npm run typecheck && npm run lint
+  && npx jest --ci` — and **`kb/audit.mjs` is NOT in CI**. ⚠️ **All 39 app tests assert against the
+  `PREVIEW_*` fixtures themselves, so a server-contract change leaves them 39/39 green — the app
+  suite structurally CANNOT catch M12.** Do not treat app-green as evidence. Prefer **code-derived
+  truncation** (see the task's own analysis: `reading_sections.v1.json:16` is
+  `additionalProperties:false` and Ajv REJECTS a `teaser`, so a 4th generative field is not the
+  contract-consistent option). **D-15 applies: additive-to-v1, never a `prompts/*/v2`** —
+  `build-prompts.mjs:29` hardcodes `'v1'` and a v2 would emit nothing while `--check` still prints
+  `PROMPTS_OK` (a false green in CI).
+- 🚩 **Standing, ledger-wide (D-24): nothing here is deployed.** Migrations ARE applied to staging;
+  Edge Functions are **not** — there is no `SUPABASE_ACCESS_TOKEN`, and `deploy.yml` (merge to main,
+  `staging-deploy` env) owns that, gated by **H3/H4b-2**. Every fix is closed *in the repo*, not *in
+  production*. Expand-contract is what keeps the old deployed functions working against the new
+  schema in the meantime.
 - 🚩 **HAND-OFF TO THE USER / BUILDPLAN (from B9/D-14 — reported, not written, per D-01):**
   1. **`Planning/Audits/Backend-audit.md` owes an H1 re-title** — H1 is not "faces lack a geometry
      signature", it is "**`deriveGeometry` reads the wrong source**: `line_geometry` is the model's
@@ -1261,7 +1272,46 @@ would edit nothing and wrongly report success.
     rows for TRANSFER + expires_at.
   - Note: **strictly after B14** — the right TRANSFER/ordering semantics depend on what RC actually sends.
 
-- [ ] **B16 — M12(c): callable image-deletion path** *(M12c)*
+- [x] **B16 — M12(c): callable image-deletion path** *(M12c)* — **2026-07-17**
+  - **DONE: M12c CONFIRMED.** Landed as `supabase/migrations/20260717000028_m12c_image_paths_collect.sql`
+    + `supabase/functions/image-delete/index.ts` + `config.toml` (counter re-read: max was 27).
+  - **CONFIRMED exactly as written:** `git grep request_image_deletion -- supabase/functions` → **ZERO
+    callers**, while every sibling IS wired (`account-delete` → `purge_account`; `cleanup` →
+    `crops_due_for_deletion`/`mark_crop_deleted`). The SQL author even anticipated the wrapper
+    (`0016:40-41` — "returns the paths for the Edge Function to purge from storage") and it was never
+    written, so PrivacyCenter's "Delete my scan photos now" targeted a function no client could reach.
+  - **Reused B4's invariant rather than re-implementing it**, as the ledger demanded: `image-delete`
+    **imports `purgeAccountStorageFirst`** — the four deps map exactly onto collect → delete objects →
+    purge rows → log completion last. That is why B4 built it injectable.
+  - 🔑 **Why the new read-only collect had to exist (the non-obvious part):**
+    `request_image_deletion` returns the paths **and nulls `storage_path` in the same call**, so using
+    it to discover what to delete would destroy the only reference to the blobs **before** the Storage
+    API is touched — the exact H7 ordering bug B4 fixed for account-delete. `image_paths_for_deletion`
+    is `stable`, mutates nothing, and carries a predicate **deliberately identical** to
+    `request_image_deletion`'s (`0021:84-87`): if the two ever drift, image-delete would remove one set
+    of blobs and null a different set of rows. **A test pins that they agree.**
+  - Scope: scans bucket only — a share card is content the user chose to publish, not a photo of them.
+    `verify_jwt = true` (user-mode: the JWT is what decides **whose** photos are deleted) — the ledger's
+    standing warning that `verify_jwt` is security-load-bearing applies directly here.
+  - Verify (observed): `deno check image-delete/index.ts` → clean; `data_lifecycle.test.mjs` **13/13**;
+    full **Deno 152/152**; full **Node 130/130** (`# pass 130 / # fail 0`, 274.5s).
+  - Regression tests added (3, +1 widened): the collect returns only live crops **and provably mutates
+    nothing** (3 paths still present, 0 deletion_log rows — the whole reason it exists); **collect and
+    purge see the same crops** (drift here deletes the wrong things); the D2 audit row stays
+    `completed_at` NULL until `mark_deletion_complete`, and the **reading survives while the photo
+    goes**. The service-role-only posture test now also covers `image_paths_for_deletion`,
+    `mark_deletion_complete` and `account_storage_paths`.
+  - 🧑 **The deploy + live-curl legs of Verify are NOT doable by this loop, and are not being faked
+    (D-24).** There is **no `SUPABASE_ACCESS_TOKEN`** on this machine or in `.env.staging`, and the
+    repo deploys via `.github/workflows/deploy.yml` on merge to main, gated by the `staging-deploy`
+    environment — whose secrets are the **H3/H4b-2 human gate** (audit §NOT YET BUILT F.18). Confirmed
+    live: `list_edge_functions` shows the 17 deployed functions and **not** `image-delete`. This is
+    true of **every** function change in this ledger (B4, B7, B8, B11, B12, B13, B15, B16) — they are
+    code-complete, typechecked and committed; deployment is CI's step, and the posture curl belongs
+    there. **Until then M12c's button still has no live path** — the code exists, the deploy does not.
+  - Note: the **app-side** half (`PrivacyCenter.tsx:25-27` is an empty stub) is **P6 wiring scope**, as
+    the ledger says — this task delivers the callable server path only. The client calls
+    `POST /functions/v1/image-delete` with the user's JWT and no body.
   - Research: `request_image_deletion` (`0016:43-57`) is revoked from anon/authenticated (`0016:131`) and
     granted only to service_role (`:137`), and **a grep across all 20 function dirs finds ZERO callers** —
     while its siblings *are* wired (`account-delete`→`purge_account`, `cleanup`→`crops_due_for_deletion`/
@@ -1380,6 +1430,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B16 — migration `20260717000028_m12c_image_paths_collect.sql` applied + new `supabase/functions/image-delete/index.ts` + `config.toml` (`verify_jwt = true`): M12c CONFIRMED (**zero callers** of `request_image_deletion` while every sibling was wired). The Edge fn **imports `purgeAccountStorageFirst`** rather than re-implementing B4's ordering. New read-only `image_paths_for_deletion` exists because `request_image_deletion` returns the paths AND nulls them in one call — using it to collect would destroy the reference before the blob is gone (the H7 bug); its predicate is identical to that function's, **pinned by a test**. Evidence: `deno check` clean; `data_lifecycle` 13/13; Deno `152 passed | 0 failed`; Node `# pass 130 / # fail 0` (274494.1ms). +3 tests, +1 widened. 🧑 **Deploy + live curl NOT doable — no SUPABASE_ACCESS_TOKEN; deploy.yml/CI owns it (H3/H4b-2). `list_edge_functions` confirms image-delete is undeployed (D-24)** — 2026-07-17
 - B15 — migration `20260717000027_h4_residue_notnull_transfer_ordering.sql` applied + `_shared/revenuecat.ts` + `revenuecat-webhook/index.ts`: **rc_event_id NOT NULL** (contract; live 0 rows/0 nulls, backfill verified no-op), **TRANSFER fixed — and the audit understates it: we granted NOBODY** (RC sends `transferred_from`/`transferred_to` arrays and **no app_user_id**, so `isUuid(app_user_id)` was null → logged, never applied), plus the source is now revoked because **RC never sends an event about it** ("the webhook is sent only for the destination user") — D-22. **Ordering guard BUILT, D-05 discharged:** B14 established RC sends `event_timestamp_ms`, which rides in `p_payload` → no signature change; `latest_event_at` is now the EVENT's time with `where latest_event_at <= excluded.latest_event_at`, so a delayed RENEWAL can't resurrect a lapsed sub. `expires_at:null` = **working as intended (D-23)** — RC documents null as legitimate for lifetime/non-subscription, and failing closed would 402 paying customers. Evidence: `deno check` clean; `revenuecat_webhook` 8/8; `revenuecat.test.ts` 11/11; Deno `152 passed | 0 failed`; Node `# pass 127 / # fail 0` (271576.3ms). +4 tests. Suites caught 2 of my own regressions (a fixture relying on the nullable id; a `$1` bound to both uuid and text) — 2026-07-17
 - B14 — **no code change: C3 is a FALSE POSITIVE.** RC's current docs (verified 2026-07-17, <https://www.revenuecat.com/docs/integrations/webhooks>) have a **"Webhook Signature Verification (HMAC)"** section documenting exactly `X-RevenueCat-Webhook-Signature: t=<unix_ts>,v1=<hmac_sha256_hex>` over `"<t>.<raw_json_body>"` + constant-time compare + ~5min replay window — line for line what `_shared/revenuecat.ts` already implements. The audit called this the **#1 risk in the codebase**; rewriting it would have replaced a correct control with a weaker one. Trap escaped by construction: the +3 tests use an **independent oracle** (`node:crypto` vector, hardcoded hex) so nothing under test signs its own homework; one pins that the reversed `"<body>.<t>"` concatenation is **rejected**. **Real residual re-filed as H8 config (D-21):** HMAC signing is opt-in and the secret is shown ONCE — if the toggle is off, RC gives up after 5 retries (~2.6h) and paying customers are permanently 402'd. Evidence: `revenuecat.test.ts` 10/10; Deno `151 passed | 0 failed` (+3); Node `# pass 124 / # fail 0` (264399.6ms). **`[~]` — live proof H8-gated** — 2026-07-17
 - B13 — migration `20260717000026_h9_short_code_and_rate_limits.sql` applied + `_shared/ratelimit.ts` + `_shared/invite.ts` + invite-claim/invite-create/chat-send/compat-request/cleanup: H9's resolver (`resolve_invite_code` — normalizes typed input, claimable-only, **refuses ambiguity rather than guessing**, `text_pattern_ops` index) + spec §13 rate limiting (Postgres counters — Edge fns are stateless; **increment+compare in ONE atomic statement**; limits tuned to the threat: code 5/h vs token 30/h; **fails open + logs**; swept by `cleanup`). **The short code is widened 6->10 hex (24->40 bits) — D-20, the load-bearing half:** a prefix match hits ANY live invite, so at 24 bits with 100k invites a guesser wins in **~1 in 167** and *burns* the invite; rate limiting cannot rescue that, entropy can. Free — the code is derived, never stored. Evidence: `git grep` shows a real resolver at `invite-claim:48`; **50 guesses/hour -> exactly 5 allowed**; `deno check` clean x6; `rate_limit.test.mjs` 5/5; Deno `148 passed | 0 failed`; Node `# pass 124 / # fail 0` (262768.3ms). +7 tests. The suite caught 2 of my own regressions (a test pinning the OLD 6-hex length; the 20->21 table census) — 2026-07-17
@@ -1406,6 +1457,7 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-24 | 2026-07-17 | **No Edge Function in this ledger is deployed, and B16's "deploy + live posture curl" Verify leg is recorded as not-doable rather than skipped quietly.** | There is no `SUPABASE_ACCESS_TOKEN` on this machine or in `.env.staging`, so `supabase functions deploy` cannot authenticate; the Supabase MCP is **read-only by project policy** (CLAUDE.md: "an inspection window, not a way to change anything"); and the repo's actual deploy path is `.github/workflows/deploy.yml` on merge to main, gated by the `staging-deploy` environment whose secrets are the **H3/H4b-2 human gate** (§NOT YET BUILT F.18). Deploying one function ad-hoc would also be *wrong* even if possible: it would put `image-delete` live while its siblings (B7's card-render, B8's push-dispatch, B15's webhook) stayed on old code — an inconsistent surface no reviewer approved. **Why this is safe:** migrations ARE applied (the test harness requires it) and every one was additive or expand-first, so the currently-deployed OLD functions still work against the new schema — e.g. `request_compat`'s 2-arg overload still exists (D-17), the old webhook always supplies `event.id` so the NOT NULL cannot bite it, and `chat-send`'s old `created_at` ordering still resolves. That is precisely what expand-contract buys. **Consequence to state plainly:** these fixes are not live until a deploy runs, so the audit's findings are closed *in the repo*, not *in production*. |
 | D-22 | 2026-07-17 | **TRANSFER: the destination is resolved from `transferred_to`, and every `transferred_from` is REVOKED — decided by the loop (rule 16).** | RC's docs settle what the audit could only guess at: a TRANSFER carries `transferred_from`/`transferred_to` arrays and **no `app_user_id`**, and **"the webhook is sent only for the destination user"**. Two consequences the audit missed. **(a) We granted nobody**, not "the destination without revoking the source" — `isUuid(event.app_user_id)` was null for every TRANSFER, so the event was logged and never applied; a user who transferred their purchase got nothing. **(b) Revoking the source cannot be deferred to some later event, because there is no later event.** RC has already moved the entitlement server-side and will never tell us about the source again, so the TRANSFER webhook is the only moment we can act. Not revoking means one paid entitlement gates two accounts, forever, silently. Chose `status='expired'` + empty entitlements over deleting the row: `subscriptions` is the record of who held what, and `isPremiumRow` already treats `expired` as a hard stop. Both arrays are filtered through `isUuid` — they can contain RC's `$RCAnonymousID:…`, which is not a user we can gate; granting or revoking one would be a type-confusion bug. |
 | D-23 | 2026-07-17 | **The Low finding "entitlement.ts:18 treats `expires_at: null` as premium-forever" is closed as WORKING AS INTENDED — no code change.** | RC documents null expiry as **legitimate**: *"This can be `null` for non-subscription purchases or lifetime products"* — and `NON_RENEWING_PURCHASE` is already in our ACTIVATING set, so null must mean "no expiry", which is what the code does. The alternative — treat null as not-premium — would **402 a paying customer** on an RC data quirk, i.e. precisely the failure C3 exists to warn about and the one the monetization design says never to inflict. It is also not unbounded: EXPIRATION sets `status='expired'` and `isPremiumRow` stops there, so "forever" is really "until RC says otherwise". **The residual, stated rather than papered over:** a null expiry removes the *self-healing* time check — with a real `expires_at` we lapse on our own clock even if a webhook never arrives, whereas with null we depend entirely on delivery, and RC gives up after 5 retries (~2.6h, D-21). That tail is worth revisiting **only if Palmly ever ships a lifetime SKU**; today it sells monthly/annual only, so a null expiry should never legitimately occur, and inventing a stricter rule now would add a paying-customer-facing failure mode to guard against an event that cannot happen. |
 | D-21 | 2026-07-17 | **C3 is closed as a FALSE POSITIVE — the RevenueCat signature scheme is correct — and the real risk is re-filed as an H8 CONFIGURATION step.** | The audit calls C3 the **#1 risk in the codebase** on the claim that RC ships "a static `Authorization` header value … not a t/v1 HMAC scheme". RC's current docs (verified 2026-07-17, <https://www.revenuecat.com/docs/integrations/webhooks>) contain a section **"Webhook Signature Verification (HMAC)"** documenting exactly `X-RevenueCat-Webhook-Signature: t=<unix_timestamp>,v1=<hmac_sha256_hex>` over `"<t>.<raw_json_body>"`, with constant-time comparison and an optional ~5-minute replay window — which is, line for line, what `_shared/revenuecat.ts` already does. RC offers **both** an optional Authorization header **and** optional HMAC signing; the audit saw the first and concluded the second did not exist. **Rewriting this to chase the audit would have replaced a correct, stronger control with a weaker one — the single most expensive possible outcome here.** **But the audit's instinct was not worthless:** the feared lockout IS reachable, because HMAC signing is **opt-in per integration** and the secret is **shown once, unrecoverable**. If the toggle is off or the secret is wrong, our handler 401s/500s every delivery and RC gives up after 5 retries (~2.6h) — permanently 402'ing paying customers. That is a **dashboard** failure, not a code one, so it is filed as an explicit H8 checklist rather than 'fixed'. **Not** adding support for the Authorization header: accepting either mechanism would make two independent controls an OR and weaken the surface. |

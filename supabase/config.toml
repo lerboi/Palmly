@@ -472,6 +472,12 @@ import_map = "./functions/deno.json"
 verify_jwt = true
 import_map = "./functions/deno.json"
 
+# M12c — "Delete my scan photos now" (PrivacyCenter). User-mode: it acts on the caller's OWN crops,
+# so verify_jwt is what identifies whose photos are deleted. This one is security-load-bearing.
+[functions.image-delete]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
 [functions.compat-request]
 verify_jwt = true
 import_map = "./functions/deno.json"

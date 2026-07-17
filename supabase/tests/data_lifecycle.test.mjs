@@ -237,10 +237,63 @@ test('H7: deletion_log records a REQUEST, and completion is stamped only when it
   });
 });
 
+test('M12c: image_paths_for_deletion collects the crops WITHOUT touching anything', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, U);
+    await c.query(`insert into public.scans (user_id, kind, status, storage_path) values ($1,'palm','complete',$2),($1,'face','complete',$3)`, [U, `${U}/a.jpg`, `${U}/b.jpg`]);
+    // already-deleted and path-less scans are not candidates
+    await c.query(`insert into public.scans (user_id, kind, status, storage_path, image_deleted_at) values ($1,'palm','complete',$2, now())`, [U, `${U}/gone.jpg`]);
+    await c.query(`insert into public.scans (user_id, kind, status) values ($1,'palm','failed')`, [U]);
+
+    const rows = (await c.query(`select bucket, path from public.image_paths_for_deletion($1) order by path`, [U])).rows;
+    assert.deepEqual(rows.map((r) => `${r.bucket}:${r.path}`), [`scans:${U}/a.jpg`, `scans:${U}/b.jpg`], 'only live crops, scans bucket only');
+
+    // THE POINT of this function existing: request_image_deletion returns the paths AND nulls them,
+    // so using it to find what to delete would destroy the only reference to the blobs before the
+    // Storage API is touched (the H7 bug B4 fixed for account-delete). This must mutate nothing.
+    assert.equal(await n(c, `select count(*)::int n from public.scans where user_id=$1 and storage_path is not null`, [U]), 3, 'collect deleted nothing');
+    assert.equal(await n(c, `select count(*)::int n from public.deletion_log where user_id=$1`, [U]), 0, 'collect logged nothing');
+  });
+});
+
+test('M12c: the predicate matches request_image_deletion exactly (drift here deletes the wrong things)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, U);
+    await c.query(`insert into public.scans (user_id, kind, status, storage_path) values ($1,'palm','complete',$2),($1,'face','uploaded',$3)`, [U, `${U}/x.jpg`, `${U}/y.jpg`]);
+    await c.query(`insert into public.scans (user_id, kind, status, storage_path, image_deleted_at) values ($1,'palm','complete',$2, now())`, [U, `${U}/old.jpg`]);
+
+    // If these two ever disagree, image-delete removes one set of blobs and nulls a different set of
+    // rows — orphaning a crop or nulling a row whose object still exists.
+    const collected = (await c.query(`select path from public.image_paths_for_deletion($1) order by path`, [U])).rows.map((r) => r.path);
+    const purged = (await c.query(`select path from public.request_image_deletion($1) order by path`, [U])).rows.map((r) => r.path);
+    assert.deepEqual(collected, purged, 'collect and purge see the same crops');
+  });
+});
+
+test('M12c: the D2 audit row claims completion only after the caller confirms the blobs are gone', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, U);
+    await c.query(`insert into public.scans (user_id, kind, status, storage_path) values ($1,'palm','complete',$2)`, [U, `${U}/a.jpg`]);
+
+    await c.query(`select * from public.request_image_deletion($1)`, [U]);
+    const req = (await c.query(`select requested_at, completed_at from public.deletion_log where user_id=$1 and scope='images'`, [U])).rows[0];
+    assert.ok(req.requested_at, 'requested_at stamped');
+    assert.equal(req.completed_at, null, 'NOT completed — image-delete stamps that only after storage succeeds');
+
+    await c.query(`select public.mark_deletion_complete($1,'images')`, [U]);
+    assert.ok((await c.query(`select completed_at from public.deletion_log where user_id=$1 and scope='images'`, [U])).rows[0].completed_at);
+    // the reading survives — the whole point is that the PHOTO goes and the reading stays
+    assert.equal(await n(c, `select count(*)::int n from public.scans where user_id=$1 and image_deleted_at is not null and storage_path is null`, [U]), 1);
+  });
+});
+
 test('lifecycle RPCs are service-role only (no client access)', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);
-    for (const fn of ['purge_account(uuid)', 'request_image_deletion(uuid)', 'crops_due_for_deletion(int)', 'sweep_stale_anon(int)', 'sweep_expired_invites()']) {
+    for (const fn of ['purge_account(uuid)', 'request_image_deletion(uuid)', 'crops_due_for_deletion(int)', 'sweep_stale_anon(int)', 'sweep_expired_invites()', 'image_paths_for_deletion(uuid)', 'mark_deletion_complete(uuid,text)', 'account_storage_paths(uuid)']) {
       const anon = (await c.query(`select has_function_privilege('authenticated', 'public.${fn}', 'execute') as can`)).rows[0].can;
       assert.equal(anon, false, `authenticated cannot execute ${fn}`);
       const svc = (await c.query(`select has_function_privilege('service_role', 'public.${fn}', 'execute') as can`)).rows[0].can;
