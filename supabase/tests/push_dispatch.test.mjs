@@ -1,7 +1,7 @@
 /**
  * P9.T4 (push backend) — the DB effects the push-dispatch worker relies on (Backend §10).
  * Transactional / rolled back. The Expo send + preference/quiet-hours gating + DeviceNotRegistered
- * classification are unit-tested in Deno (_shared/push.test.ts); here we prove enqueue_push writes
+ * classification are unit-tested in Deno (_shared/push.test.ts); here we prove the enqueue path writes
  * a well-formed push_jobs message, device resolution, and token pruning. The live "lands on a
  * device" verify needs real Expo tokens (device H1).
  */
@@ -13,11 +13,14 @@ const U = 'f9000000-0000-0000-0000-0000000000f9';
 const one = async (c, sql, p = []) => (await c.query(sql, p)).rows[0];
 const n = async (c, sql, p = []) => (await c.query(sql, p)).rows[0].n;
 
-test('enqueue_push writes a well-formed push_jobs message', async () => {
+test('enqueue_push_deduped writes a well-formed push_jobs message', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);
     await seedUser(c, U);
-    await one(c, `select public.enqueue_push($1,'compat_complete','The thread is tied','You scored 82','palmly://compat/x','{"pair_id":"x"}'::jsonb) as id`, [U]);
+    // M10/B18: the raw `enqueue_push` is GONE (migration 0029) — it bypassed the §10 dedupe + cap
+    // gate entirely, and this test was its last caller anywhere in the repo; the only real enqueuer
+    // (worker-compat:110) already used the deduped path.
+    await one(c, `select public.enqueue_push_deduped($1,'compat_complete','The thread is tied','You scored 82','palmly://compat/x','{"pair_id":"x"}'::jsonb,'compat:x','exempt') as id`, [U]);
     const msg = await one(c, `select message from public.queue_read('push_jobs', 30, 1)`);
     assert.equal(msg.message.user_id, U);
     assert.equal(msg.message.type, 'compat_complete');
