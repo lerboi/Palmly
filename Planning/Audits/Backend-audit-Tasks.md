@@ -44,15 +44,32 @@ finding has exactly one owning task below; no finding is dropped silently.
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B8** (2026-07-17, `[~]`) — push-dispatch archive-on-success + N+1 +
-  loop-until-empty; receipts deferred to the cron (D-13). Suites: **Node 114/114**, **Deno 140/140**.
-- **Next task:** **B9 — H1: face repeat-scan consistency (face geometry signature)**. Note B6 already
-  shipped its **live detector**: worker-scan now emits telemetry `subject_profile:'exists_unmatched'`
-  exactly when a "new" subject collides with `unique(user_id,kind)` — i.e. when a face fails to match
-  itself. ⚠️ B9's Verify has **mandatory manual legs** (`node kb/audit.mjs` → `P5T4_OK`,
-  `required=141 chunks=141`; `node prompts/build-prompts.mjs --check` → `PROMPTS_OK`; `cd eval && npm
-  run p5t1` → `P5T1_OK`) — `kb/audit.mjs` is **NOT in CI**. Prefer **numeric landmark ratios over new
-  enums** (a new enum throws `unmapped schema enum path(s)` at `audit.mjs:141-143`).
+- **Last completed:** **B9** (2026-07-17, `[x]` **closed as DECISION** D-14) — H1 confirmed, both
+  proposed fixes rejected as wrong, finding re-scoped. **No code**, so suites are unchanged from B8:
+  **Node 114/114**, **Deno 140/140**.
+- **Next task:** **B10 — Chat: history ordering + persisted citations** *(H5, M12b)*. Remember the
+  ERRATA: `chat.ts:149`'s `slice(-8)` is a **no-op**; the bug is purely the order clause at
+  `chat-send/index.ts:96`.
+- 🚩 **HAND-OFF TO THE USER / BUILDPLAN (from B9/D-14 — reported, not written, per D-01):**
+  1. **`Planning/Audits/Backend-audit.md` owes an H1 re-title** — H1 is not "faces lack a geometry
+     signature", it is "**`deriveGeometry` reads the wrong source**: `line_geometry` is the model's
+     rendering polyline; identity belongs in `feature_sets.geometry` = on-device capture-time
+     landmark ratios (§6.6.3)". Re-gate H1 to the two tasks below — **not** to H4c, which is
+     causally unrelated. Mark option A **dropped, not deferred**, so nobody rebuilds it with less
+     scrutiny the day the paid Gemini key lands.
+  2. **`Planning/MVP_Buildplan.md` is missing the only tasks that can actually fix H1** — the
+     on-device face path is **not on the roadmap** (P4.T3 is hands-only; P4.T5's face variant reuses
+     T2/T4's verify, not T3's; `capture_meta` carries landmark *quality*, not ratios; there is no
+     transport). Needs: **(a)** face contours → scale-invariant ratios on device; **(b)** transport
+     those ratios via `scan-create` → `worker-scan` writes them to the **existing**
+     `feature_sets.geometry` column, with a determinism verify (same face ×5, pairwise distance under
+     threshold) — that test is also what finally calibrates `MATCH_THRESHOLD`, still self-annotated
+     "chosen conservatively".
+  3. **The face extraction prompt does not exist** (`prompts/extraction/v1` is palm-only and teaches
+     that a face is the *reject* case, while `extraction.ts` fails the scan on `is_face === false`).
+     **Faces cannot work at all today**, under any H1 option. That is §NOT YET BUILT scope, not this
+     ledger's, but nothing about faces is real until it is written.
+  4. **The constraint D-14 rests on: no face scan may reach a user before (2) lands.**
 - **App-side follow-up B7 creates (NOT this ledger's scope — P6 wiring):** the share button must now
   call `card-render` with `{action:'publish', card_id}` before handing the URL to the share sheet.
   Until then a pre-rendered card exists but is never published — which is the *correct*, private
@@ -754,7 +771,7 @@ would edit nothing and wrongly report success.
   - Verify: `deno test --allow-read --allow-env _shared/push.test.ts` (extend: a 5xx batch must **not**
     archive) + full 133+; `node --test --test-concurrency=1 push_dispatch.test.mjs` + full 100/100.
 
-- [~] **B9 — H1: face repeat-scan consistency (face geometry signature)** *(H1 — schema/geometry half)* — **2026-07-17** — **researched; blocked on a design decision (see D-14). No code written.**
+- [x] **B9 — H1: face repeat-scan consistency (face geometry signature)** *(H1 — schema/geometry half)* — **2026-07-17** — **closed as DECISION (D-14): confirmed, deliberately not fixed here, re-scoped. No code written — by design.**
   - **H1 CONFIRMED by executing the real modules** (not by reading them):
     ```
     deriveGeometry(faceA)                    = {"heart":null,"head":null,"life":null,"fate":null}
@@ -784,9 +801,73 @@ would edit nothing and wrongly report success.
     `prompts/build-prompts.mjs:29` hardcodes `'v1'`, so a `prompts/*/v2` would emit no
     `.generated.ts` while `--check` still prints `PROMPTS_OK` — **a false green in CI** (`ci.yml:70`),
     with no v2 precedent anywhere in the repo or git history. **→ additive-to-v1, decided (D-15).**
-  - ⛔ **BLOCKED on D-14 — the design fork is a product call (loop rule 16), and the audit's own
-    suggestion is unbuildable.** See the Decision Log. Resume by implementing whichever option the
-    user picks; the research above is complete and need not be redone.
+  - ✅ **RESOLVED — DECISION (D-14, revised): H1 is CONFIRMED but is deliberately NOT fixed on the
+    matching path. Both proposed fixes are wrong, and the bug is unreachable today.** Decided from an
+    11-agent adversarial investigation (4 ground-truth readers → 3 independent design lenses → 3
+    skeptics → synthesis); the panel was **unanimous 3/3**, and every load-bearing claim below was
+    **re-verified by hand afterwards** rather than taken on the panel's word.
+  - **Option A (teach the model to emit face landmarks) is not merely unverifiable — it is
+    actively harmful, and the codebase has ALREADY RULED on it, twice:**
+    - `features.ts:2-3` — *"feature_hash is the consistency key: the same enum buckets → the same
+      hash (**line_geometry excluded, since exact pixel paths vary** while the semantic reading does
+      not)"*. The authors state outright that model-emitted coordinates are **unstable**.
+    - `consistency.ts:51-52` — `if (Array.isArray(vals[0]) || k === 'line_geometry') out[k] = vals[0]`
+      — across votes of the **SAME image**, geometry is not voted on at all; it takes vote #1,
+      because the authors knew the votes would not agree.
+    So A would anchor **identity** in the one field the code documents as varying. Worse:
+    - 🧨 **The strip-list landmine (verified):** `features.ts:26` and `consistency.ts:68` both
+      hardcode **`line_geometry` only**. A sibling `landmark_geometry` would leak into `featureHash`
+      (destroying the determinism of the consistency key) **and** into `sameFeatures` → the 3rd
+      tie-break vote would fire on **every** new-subject face scan → **+50% extraction cost,
+      permanently — the exact cost H1 exists to remove.**
+    - 🔓 **It flips the failure posture from CLOSED to OPEN.** Today a face never matches: expensive,
+      never wrong. Under A, template-regressed coordinates give distance ≈ 0 *always* → hand your
+      phone to a friend and `worker-scan` short-circuits to `matched` and serves them **your**
+      reading — on the surface P2's growth loop is built on. **Expensive becomes wrong.**
+  - **Option B (enum signature) is dead — my own argument for it was refuted.** I argued "the
+    narrative is a pure function of the features, so matching enums ⇒ the same reading anyway". That
+    holds only for **exact** equality, and B is by definition a **tolerant** distance. One differing
+    enum of twelve = **0.0833**. Any threshold ≥ that serves a reading the face never earned (while
+    the reveal UI says "your palm is unchanged — your reading stands"); any threshold below it demands
+    exact equality — which **reinvents `feature_hash`** (already computed at `worker-scan:166`,
+    already stored, **never read**) and would essentially never fire, since `twoVoteExtract` exists
+    *precisely because* the extractor disagrees with itself on identical bytes. **No threshold is both
+    sound and useful.** C inherits B's corpse and pays twice → **C is the over-engineering on this
+    ballot.**
+  - **The decisive fact: the face path cannot execute.** `scan-create`/`scan-ingest` **do not exist**
+    (verified: 0 matches in `supabase/functions/`), `scans`/`feature_sets`/`readings`/
+    `subject_profiles` are **all 0 rows**, and the extraction prompt is **palm-only** (verified: it
+    emits `is_hand:false` for a non-hand and carries **zero 面相 taxonomy**, yet is passed as the
+    system instruction for `kind:'face'`). H1's cost is a real per-scan cost **multiplied by zero
+    scans**. Paying in trust-critical surface to fix a leak in a pipe with no water is the definition
+    of over-engineering — which is exactly what the user asked to avoid.
+  - 🔴 **H1 is MIS-STATED by the audit, and the correction is the real deliverable.** It is not
+    "faces lack a geometry signature". It is: **`deriveGeometry` reads the wrong source.**
+    `features.line_geometry` is the model's **rendering** polyline; the identity signature belongs in
+    **`feature_sets.geometry`**, which the spec describes as **on-device capture-time landmark
+    ratios matched BEFORE any model call (§6.6.3)** — the audit's own **M1** already calls the
+    current vote-A-derived approach a known deferral needing "P4 capture geometry". **So A builds more
+    of an architecture the spec has already superseded.**
+  - ⚠️ **The honest caveat that makes D correct rather than lazy** (the skeptics refuted the
+    comfortable version): **"defer to H4c" is defer-to-nothing** — H4c unblocks paid Gemini, which has
+    no causal relationship to `deriveGeometry` reading the wrong column. And **P4 as currently scoped
+    does not save faces either**: P4.T3 (the only task producing landmark geometry) is scoped to
+    hands, P4.T5's face variant reuses T2/T4's verify rather than T3's, and there is **no transport**
+    (`capture_meta` carries landmark *quality*, not ratios). **The on-device face path is not on the
+    roadmap at all.** Two tasks must be filed for D to be honest — see the STATE hand-off. **D-01
+    forbids this ledger from editing `MVP_Buildplan.md`, so they are reported, not written.**
+  - 🚧 **THE CONSTRAINT THIS DECISION RESTS ON: no face scan may reach a user before the on-device
+    face-landmark path lands.** If that constraint is ever broken, revisit — but the answer still is
+    not B; it is re-sequencing the device work.
+  - ❌ **One panel recommendation REJECTED after checking it myself:** the synthesis called
+    `worker-scan`'s `exists_unmatched` path a separate bug ("the canonical stays pinned to the user's
+    first-ever scan forever") and wanted the canonical updated. **That is wrong — pinning is what
+    "canonical" MEANS.** §6.6.4 reuses the canonical feature-set precisely so repeat scans do not
+    drift; updating it per scan would *cause* the drift P1 forbids. The incoherence it describes (two
+    readings for one face while the profile points at scan #1) is a **symptom of H1**, downstream of
+    it, and disappears when matching works. No code change.
+  - Verify: no code was written, so the suites are untouched — **Node 114/114, Deno 140/140** still
+    stand from B8. The bug remains provable on demand via the execution snippet above.
   - Research: **verified by executing the real modules — `distance(faceA, faceA) = Infinity` and
     `matchSubject = null`: a face cannot match ITSELF.** `schemas/face_features.v1.json` has no
     `line_geometry`; `deriveGeometry` reads only palm lines (**`_shared/features.ts:69`/`:80` — NOT
@@ -1015,6 +1096,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B9 — **no code, by design.** H1 CONFIRMED by executing the real modules (`distance(faceA,faceA)=Infinity`, `matchSubject`→`null`, palm control `=0`) and closed as **DECISION D-14** after an 11-agent adversarial investigation (unanimous 3/3), every claim re-verified by hand. **The audit's fix is unbuildable** (face schema is 100% enums — no landmarks to make ratios from) and **both alternatives are wrong**: option A would anchor identity in the one field the code documents as unstable (`features.ts:2-3` "exact pixel paths vary"; `consistency.ts:51-52` won't even merge it across votes of the *same image*), would leak past the hardcoded strip-lists (`features.ts:26`, `consistency.ts:68`) into `featureHash`+`sameFeatures` → **a 3rd vote on every face scan, +50% cost forever**, and would flip the posture **closed→open** (a friend's face → `matched` → your reading). Option B is unsound at every threshold (1 enum of 12 = 0.0833). **Decisive**: `scan-create`/`scan-ingest` don't exist, all four tables are 0 rows, and the extraction prompt is palm-only → the cost is real × **zero scans**. Real finding: **`deriveGeometry` reads the wrong source**; identity belongs in `feature_sets.geometry` (on-device ratios, §6.6.3 — M1's known deferral). Hand-off filed in STATE — 2026-07-17
 - B8 — `push-dispatch/index.ts` + `_shared/push.ts` (no migration): archive **only** jobs with no retryable ticket (per-job attribution), N+1 devices query → one `.in()` per chunk, loop-until-empty under a 20s budget (inside the 60s vt). **🔴 The ERRATA's own H6 row was WRONG and is struck (D-12)** — `sendExpoPush` **never throws** (`push.ts:80` docstring, `:84-95`), and `:47` only appends to a local array while the real archive is at `:63` *after* the send; the **audit's plainer claim is the right one** and is CONFIRMED. Retry policy taken from Expo's live docs (retryable: MessageRateExceeded/TOO_MANY_REQUESTS/transport; permanent: DeviceNotRegistered/MessageTooBig/MismatchSenderId/InvalidCredentials). **Receipts deferred → cron (D-13); `[~]`.** Evidence: `deno check` clean; Deno `140 passed | 0 failed` (+2); `push_dispatch` 4/4; Node `# pass 114 / # fail 0` (247158.8ms) — 2026-07-17
 - B7 — migration `20260717000023_h8_cards_private_by_default.sql` applied + `card-render/{render,index}.ts` + **15MB vendored assets** (3 Noto fonts + OFL LICENSE + `index_bg.wasm`, each verified by **magic bytes** — the first SC URL 404'd and curl wrote a 311KB GitHub error page into a plausible `.otf`). H8: new private `card-drafts` bucket, `publishCard` is the only CDN path, `cards_public_read` dropped (**advisors no longer flag `public_bucket_allows_listing`**), `share_cards.published_at` + unique(user_id,source_id,variant). M4: wasm vendored, `loadFonts` throws instead of `catch {}`. **M4 proven visually**: same card rendered twice — no fonts **35,852 B, headline/chips/domain/attribution ALL MISSING**; with fonts **54,460 B, all present incl. CJK 美玲** (which vindicates D-10). Evidence: `git grep unpkg.com` → **0 hits**; `deno check` clean; Deno `138 passed | 0 failed`; Node `# pass 114 / # fail 0` (247766.4ms). +2 tests, 1 rewritten (the old "cards publicly readable" test encoded the bug) — 2026-07-17
 - B6 — `worker-scan/index.ts` + `_shared/retry.ts` (no migration): status guard via new `alreadyProcessed()` (policy extracted to `_shared` so it is unit-testable), `vt` 60→**300**, `subject_profiles` insert error surfaced as telemetry instead of swallowed. Live answer to the ledger's question: **`subject_profiles_user_id_kind_key UNIQUE (user_id,kind)` EXISTS** → H1's insert half is a **silent no-op**, not row growth. H2-scan is self-reinforcing: the subject_profile insert precedes `archive`, so a redelivery matches the subject the scan itself just created → regresses narrating→matched. vt arithmetic: 3 votes × ~107s ≈ **320s > 60s**. `exists_unmatched` telemetry is now B9's live H1 detector. Evidence: `deno check` clean; Deno `138 passed | 0 failed` (+1); `worker_scan+worker_retry` 6/6; Node `# pass 113 / # fail 0` (242881.4ms). +2 regression tests. **M2-scan deferred → B22 w/ M1** (feature_hash is computed *from* the extraction, so it cannot gate the extraction) — 2026-07-17
@@ -1035,7 +1117,7 @@ would edit nothing and wrongly report success.
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
 | D-15 | 2026-07-17 | **B9's schema change is additive-to-v1, not a new v2.** (The B9 Note demanded this be decided explicitly.) | A real `v2` is a trap, not an option: `prompts/build-prompts.mjs:29` **hardcodes `'v1'`** and skips any family lacking that exact path, so a `prompts/*/v2` would emit **no** `.generated.ts` while `--check` still prints `PROMPTS_OK` — **a false green in CI** (`ci.yml:70`). There is no v2 precedent in the repo or its history, so a v2 means fixing the compiler first — a separate, larger job. Additive-to-v1 is also **safe here specifically**: `feature_sets` and `readings` are **empty on staging (0 rows, verified)** and no face scan has ever run, so there is no v1 data a new required field could invalidate. If face data ever exists, this reasoning expires. |
-| D-14 | 2026-07-17 | 🛑 **B9 BLOCKED pending the user's call: the audit's fix for H1 is unbuildable as written, and the two real options differ in kind.** | **The premise is false.** Audit + ledger both say "landmark ratios from the face schema's existing landmark data" — `face_features.v1.json` has **no landmark data at all**; every leaf is an enum. So this is not "derive a signature from what's there", it is a **change to the trust-critical extraction contract**, and the options are: **(A) Teach the model to emit face landmarks** — add a required numeric `landmark_geometry` to the face schema + teach `prompts/extraction/v1`, exactly mirroring palm (whose `line_geometry` is required and prompt-taught with few-shot examples). Spec-consistent and identity-bearing. **Cost:** it changes what the model must output on the trust-critical pass, and **cannot be validated until H4c** — image extraction returns `429 FreeTier limit=0` today, so we would ship an unverified extraction contract. (Constrained decoding guarantees the *shape*, so face scans would not fail Ajv; the risk is landmark *accuracy*, and a noisy landmark just fails to match — i.e. it degrades to today's behaviour, failing closed.) **(B) Signature from the existing enums** — a tolerant distance over the 13 enum fields already extracted. **No schema or prompt change; testable today.** The design argument is real: the narrative is a **pure function of the features** (the audit praises exactly this), so "the enums match" ⇒ "the reading would be identical anyway" — which is precisely what subject-matching exists to exploit (§6.6.4 reuse). **Cost:** enums are weaker identity evidence than geometry. Blast radius is bounded — matching is **within-account and 1:1** (`subject_profiles` is `unique(user_id, kind)`, so there is exactly one face subject per user), and a mismatch fails closed. **Not decidable from the specs**: §6.6.3 describes capture-time landmark matching (M1's deferral), not this. **Asked rather than guessed.** |
+| D-14 | 2026-07-17 | **H1 is CONFIRMED but deliberately NOT fixed on the matching path (option D). Both proposed fixes are wrong; the finding itself is mis-stated; the bug is unreachable today.** Decided by the loop on the user's instruction to choose, after an 11-agent adversarial investigation (unanimous 3/3) whose every load-bearing claim was then re-verified by hand. | **1. The face path cannot execute.** `scan-create`/`scan-ingest` **do not exist** (verified), `scans`/`feature_sets`/`readings`/`subject_profiles` are **all 0 rows**, and `prompts/extraction/v1` is **palm-only** — it emits `is_hand:false` for a non-hand, carries zero 面相 taxonomy, and is still passed as the system instruction for `kind:'face'`. H1's cost is real per scan, **× zero scans**. **2. Option A is actively harmful, and the code already ruled on it:** `features.ts:2-3` excludes geometry from the consistency key **"since exact pixel paths vary"**, and `consistency.ts:51-52` refuses to merge geometry across votes of the *same image* (takes vote #1) — the authors knew coordinates don't agree. A would anchor **identity** in exactly that. Plus the verified **strip-list landmine**: `features.ts:26` / `consistency.ts:68` hardcode `line_geometry` **only**, so a sibling `landmark_geometry` leaks into `featureHash` (killing determinism) and `sameFeatures` → a 3rd tie-break vote on **every** face scan = **+50% extraction cost forever**, the very cost H1 exists to remove. And it flips the posture **closed → open**: template-regressed coords give distance ≈ 0 always → a friend's face short-circuits to `matched` and is served **your** reading. **3. Option B is dead** — my own "narrative is a pure function ⇒ matching enums is sound" argument holds only for **exact** equality, but B is a **tolerant** distance: 1 differing enum of 12 = 0.0833, so any usable threshold serves a reading the face never earned, and any sound threshold reinvents `feature_hash` (already computed at `worker-scan:166`, stored, **never read**) and would never fire — `twoVoteExtract` exists *because* the extractor disagrees with itself. **No threshold is both sound and useful.** C = A+B, so **C is the over-engineering.** **4. The finding is mis-stated:** it is not "faces lack a signature", it is **`deriveGeometry` reads the wrong source** — `line_geometry` is the model's *rendering* polyline; identity belongs in `feature_sets.geometry`, spec'd as **on-device capture-time landmark ratios matched BEFORE any model call (§6.6.3)**, which the audit's own **M1** already flags as a known deferral. So A builds more of an architecture the spec superseded. **Honest caveats (the skeptics killed the comfortable version):** "defer to H4c" is defer-to-**nothing** (H4c is causally unrelated to reading the wrong column), and **P4 as scoped does not save faces** — P4.T3 is hands-only, P4.T5 reuses T2/T4's verify, and `capture_meta` carries landmark *quality*, not ratios. **The on-device face path is not on the roadmap at all**, so two tasks must be filed (reported, not written — D-01). **This decision rests on one constraint: no face scan reaches a user before that path lands.** |
 | D-12 | 2026-07-17 | **The ⚠️ ERRATA table's own H6 row is struck as WRONG.** The audit's plainer original claim stands; D-03's "trust the ERRATA over the audit" does **not** hold here. | The row claimed jobs die "even when the Expo POST *throws*" — a state this code cannot reach. `:47` only appends to a **local array**; the real `queue_archive` RPC is at `:63`, **after** the send, so a throw there would *prevent* archiving, not cause it. And `sendExpoPush` **never throws** — its own docstring says so (`_shared/push.ts:80`) and `:84-95` proves it (5xx → error tickets; network throw → caught). The bug is real but is exactly what the audit said plainly: control **always** reaches the unconditional archive, so a failed batch is silently deleted. **Lesson worth keeping: the ERRATA is recon, not scripture** — it was verified against the tree, but this row reasoned from line numbers without reading the callee, reached for a scarier framing, and landed on a fiction. Verify each row against the code the way D-03 says to verify the audit. |
 | D-13 | 2026-07-17 | **H6's receipt-polling limb is deferred to the buildplan's cron work; B8 closes `[~]`.** | Expo's docs are explicit — *"check push receipts 15 minutes after sending"* — which makes receipt polling **inherently a separately scheduled job**: it needs ticket-id persistence **plus a cron to poll later**. The cron→worker wiring is precisely what this ledger's SCOPE excludes (§NOT YET BUILT A.3), and the audit itself files "Expo receipt polling" under §NOT YET BUILT C.10. Shipping a poller with no schedule would be **dead code** — the exact defect M3 raises against `buildFortuneBatch` ("genuinely dead in production; its only consumer is a test"). Same boundary and same `[~]` treatment as C2/B2: the limb that loses data **today** (archiving failed batches) is fixed now; the limb that needs a scheduler goes with the scheduler. **Recorded consequence:** `DeviceNotRegistered` pruning stays largely ineffective until then, since Expo returns it predominantly at receipt time — which is the audit's own point, and remains true. |
 | D-10 | 2026-07-17 | **USER DECISION — B7 commits all three Noto binaries + the resvg wasm to git (~20MB, `.git` 41MB → ~60MB).** Licence verified first: **SIL OFL 1.1** permits bundling/redistribution with software (no standalone sale; ship the OFL file). | Asked per loop rule 16 rather than guessed. Precedent supports it: `.gitattributes` **already declares `*.ttf`/`*.otf binary`**, so the repo's convention anticipated fonts, and PNG assets are already committed; there is no LFS to complicate it. **Subsetting was evaluated and rejected as impossible, not merely inconvenient:** the card's `attribution` is the user's **display_name** — arbitrary input — and you cannot subset for unpredictable glyphs. That is also what justifies the ~17MB `NotoSerifSC-Regular.otf` despite an EN launch: `card-svg.ts` emits only `font-family="Noto Sans"` and contains no CJK, but a CJK display_name would render as tofu **on the share card**, i.e. the viral asset, for precisely this product's target audience. Alternatives declined: Latin-only (ships that tofu bug), deploy-time fetch (makes deploys non-hermetic — the same class of external dependency M4 dings the unpkg fetch for). |
