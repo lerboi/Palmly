@@ -6,25 +6,35 @@ import { initWasm, Resvg } from '@resvg/resvg-wasm';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildCardSvg, deriveCardContent, type CardVariant, type Point } from '../_shared/card-svg.ts';
 
-// The resvg wasm binary is fetched once per instance (Supabase's OG-image pattern). Fonts must be
-// supplied for text — Noto TTFs ship as function assets at deploy (a CDN/@vercel/og bundles resvg
-// the same way). Without fonts resvg still renders the diagram/shapes.
+// The resvg wasm binary is vendored next to this file and read from disk (M4): fetching it from a
+// third-party npm CDN at cold start made every card render depend on that CDN being up, and
+// silently wedged the function when it was not. It ships as a function asset at deploy, like the
+// fonts. (Keep this file free of that CDN's hostname — `git grep` for it is the regression check.)
 let wasmReady: Promise<void> | null = null;
 function ensureWasm(): Promise<void> {
-  if (!wasmReady) wasmReady = initWasm(fetch('https://unpkg.com/@resvg/resvg-wasm@2/index_bg.wasm'));
+  if (!wasmReady) wasmReady = initWasm(Deno.readFile(new URL('./index_bg.wasm', import.meta.url)));
   return wasmReady;
 }
 
+// Noto (SIL OFL 1.1 — bundling with software is permitted; see fonts/LICENSE) ships as function
+// assets. `loadSystemFonts: false` means these buffers are the ONLY fonts resvg has, so a missing
+// file is not a degraded card — it is a card with NO TEXT AT ALL. That is exactly what shipped: the
+// fonts/ dir did not exist and the old `catch {}` swallowed every miss, so resvg received an empty
+// array and dropped every string (M4). Failing loudly is the point.
+const FONT_FILES = ['NotoSerif-SemiBold.ttf', 'NotoSans-Regular.ttf', 'NotoSerifSC-Regular.otf'];
+
+let fontsCache: Uint8Array[] | null = null;
 async function loadFonts(): Promise<Uint8Array[]> {
-  const files = ['NotoSerif-SemiBold.ttf', 'NotoSans-Regular.ttf', 'NotoSerifSC-Regular.otf'];
+  if (fontsCache) return fontsCache;
   const out: Uint8Array[] = [];
-  for (const f of files) {
+  for (const f of FONT_FILES) {
     try {
       out.push(await Deno.readFile(new URL(`./fonts/${f}`, import.meta.url)));
-    } catch {
-      // font asset not bundled yet (deploy step) — resvg falls back / omits text
+    } catch (e) {
+      throw new Error(`card-render: font asset ${f} is missing — cards would render with no text (${e instanceof Error ? e.message : e})`);
     }
   }
+  fontsCache = out;
   return out;
 }
 
@@ -48,8 +58,49 @@ export interface RenderCardOpts {
   locale?: string;
 }
 
-/** Build → rasterize → upload (immutable) → record a share_cards row. Returns the public URL. */
-export async function renderAndStoreCard(admin: SupabaseClient, o: RenderCardOpts): Promise<{ path: string; publicUrl: string }> {
+/** Private staging for pre-rendered cards; `PUBLIC_BUCKET` holds only what a user chose to share. */
+export const DRAFT_BUCKET = 'card-drafts';
+export const PUBLIC_BUCKET = 'cards';
+
+/**
+ * Publish a pre-rendered card on share intent (H8): copy the draft into the public bucket and stamp
+ * `published_at`. Idempotent — re-sharing the same card is a no-op that returns the same URL.
+ *
+ * This is the ONLY thing that puts a card on the CDN. Until it runs, the card exists solely in the
+ * private bucket, so a reading being generated never publishes the user's palm + display name.
+ */
+export async function publishCard(admin: SupabaseClient, cardId: string): Promise<{ path: string; publicUrl: string }> {
+  const { data: card, error } = await admin
+    .from('share_cards')
+    .select('id, user_id, storage_path, published_at')
+    .eq('id', cardId)
+    .single();
+  if (error || !card) throw new Error(`publishCard: share_card ${cardId} not found`);
+
+  const publicUrl = admin.storage.from(PUBLIC_BUCKET).getPublicUrl(card.storage_path).data.publicUrl;
+  if (card.published_at) return { path: card.storage_path, publicUrl }; // already shared → no-op
+
+  // Copy draft → public. The draft is deliberately left in place: it is the render cache that keeps
+  // a re-share instant, and it costs nothing beyond storage the user already implicitly holds.
+  const { error: cpErr } = await admin.storage.from(DRAFT_BUCKET).copy(card.storage_path, card.storage_path, {
+    destinationBucket: PUBLIC_BUCKET,
+  });
+  if (cpErr) throw cpErr;
+
+  // Stamp only after the object is actually public — same ordering discipline as B4/H7: never claim
+  // a state the storage layer has not reached.
+  const { error: upErr } = await admin.from('share_cards').update({ published_at: new Date().toISOString() }).eq('id', cardId);
+  if (upErr) throw upErr;
+
+  return { path: card.storage_path, publicUrl };
+}
+
+/**
+ * Build → rasterize → upload to the PRIVATE draft bucket → record a share_cards row (unpublished).
+ * Returns the card id + path; there is deliberately no public URL yet — `publishCard` mints that on
+ * share intent (H8).
+ */
+export async function renderAndStoreCard(admin: SupabaseClient, o: RenderCardOpts): Promise<{ cardId: string; path: string; published: boolean }> {
   const content = deriveCardContent(o.features);
   const svg = buildCardSvg({
     variant: o.variant,
@@ -61,19 +112,40 @@ export async function renderAndStoreCard(admin: SupabaseClient, o: RenderCardOpt
   });
   const png = await renderCardPng(svg);
   const path = `${o.userId}/${o.sourceId}_${o.variant}.png`;
-  const { error: upErr } = await admin.storage.from('cards').upload(path, png, {
+  // Private by default (H8). The immutable cache header rides along to the public copy, so a
+  // published card is still CDN-cacheable forever.
+  const { error: upErr } = await admin.storage.from(DRAFT_BUCKET).upload(path, png, {
     contentType: 'image/png',
     cacheControl: 'public, max-age=31536000, immutable',
     upsert: true,
   });
   if (upErr) throw upErr;
-  await admin.from('share_cards').insert({
-    user_id: o.userId,
-    source_type: o.sourceType,
-    source_id: o.sourceId,
-    variant: o.variant,
-    locale: o.locale ?? 'en',
-    storage_path: path,
-  });
-  return { path, publicUrl: admin.storage.from('cards').getPublicUrl(path).data.publicUrl };
+
+  // upsert: a re-render of the same (source, variant) must not accumulate duplicate rows, and must
+  // not silently un-publish a card the user has already shared.
+  const { data: card, error: insErr } = await admin
+    .from('share_cards')
+    .upsert(
+      {
+        user_id: o.userId,
+        source_type: o.sourceType,
+        source_id: o.sourceId,
+        variant: o.variant,
+        locale: o.locale ?? 'en',
+        storage_path: path,
+      },
+      { onConflict: 'user_id,source_id,variant', ignoreDuplicates: false },
+    )
+    .select('id, published_at')
+    .single();
+  if (insErr || !card) throw insErr ?? new Error('card-render: share_cards upsert returned no row');
+
+  // If the user had already shared this card, a re-render must refresh the public copy too —
+  // otherwise the CDN keeps serving the stale PNG.
+  if (card.published_at) {
+    const { error: cpErr } = await admin.storage.from(DRAFT_BUCKET).copy(path, path, { destinationBucket: PUBLIC_BUCKET });
+    if (cpErr) throw cpErr;
+  }
+
+  return { cardId: card.id, path, published: Boolean(card.published_at) };
 }

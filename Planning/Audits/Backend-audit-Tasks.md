@@ -36,20 +36,24 @@ finding has exactly one owning task below; no finding is dropped silently.
 
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
-- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113; Deno 133 → B4 137 → B6 138):**
-  **Node 113/113** (`# pass 113 / # fail 0`, 242.9s) · **Deno 138/138** (`138 passed | 0 failed`, 2s)
+- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114; Deno 133 → B4 137 → B6 138):**
+  **Node 114/114** (`# pass 114 / # fail 0`, 247.8s) · **Deno 138/138** (`138 passed | 0 failed`, 4s)
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
   quote it. The pre-B0 "Node 96/100" is now historical.
 - **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B6** (2026-07-17) — worker-scan status guard + vt 300 + subject_profiles
-  error surfaced. Suites: **Node 113/113**, **Deno 138/138**.
-- **Next task:** **B7 — card-render** *(H8, M4)*. **Both product decisions are ANSWERED** (D-10 fonts
-  → commit all 3 + wasm; D-11 → pre-render private, publish on share) and the triage + plan are
-  banked under B7. **Start at the build; do not re-ask.** B5's precede-B7 dependency is discharged;
-  `preRenderCard` now sits at **`worker-narrative:171`** (not the audit's `:148`).
+- **Last completed:** **B7** (2026-07-17) — migration 0023 applied; cards private-by-default,
+  publish-on-share, fonts + wasm vendored (15MB). Suites: **Node 114/114**, **Deno 138/138**.
+- **Next task:** **B8 — push-dispatch: archive-after-send · receipts · N+1 · loop-until-empty** *(H6)*.
+  Read the **ERRATA row on H6 first** — it is worse than the audit states (`:47` archives *before*
+  `sendExpoPush` is even called at `:53`). Expo's current push-receipt docs are required reading
+  (`_shared/push.ts` has no `getReceipt` — receipt polling is genuinely net-new surface).
+- **App-side follow-up B7 creates (NOT this ledger's scope — P6 wiring):** the share button must now
+  call `card-render` with `{action:'publish', card_id}` before handing the URL to the share sheet.
+  Until then a pre-rendered card exists but is never published — which is the *correct*, private
+  default, not a regression.
 - **Carried to B22:** **M2-scan** — a `feature_hash` short-circuit is impossible by construction
   (the hash is computed *from* the extraction output, so it cannot gate the extraction); it needs
   P4 capture-time landmarks, which is **M1's** existing deferral. Record the two together.
@@ -572,9 +576,55 @@ would edit nothing and wrongly report success.
   - Note: **this is only H1's *second* half.** The schema/geometry half is B9 — a different risk profile.
     Do not mark H1 done here.
 
-- [ ] **B7 — card-render: private-by-default · share-intent publication · fonts · self-hosted wasm** *(H8, M4)*
-  - 📋 **RESEARCH BANKED + THE TWO PRODUCT DECISIONS ARE ANSWERED (2026-07-17). No code written yet.
-    Start at the build; do not re-ask the user.**
+- [x] **B7 — card-render: private-by-default · share-intent publication · fonts · self-hosted wasm** *(H8, M4)* — **2026-07-17**
+  - **DONE: H8 CONFIRMED · M4 CONFIRMED (visually — and it is worse than prose conveys).** Landed as
+    `supabase/migrations/20260717000023_h8_cards_private_by_default.sql` + `card-render/render.ts` +
+    `card-render/index.ts` + 15MB of vendored assets (counter re-read: max was 22).
+  - **M4 proven by LOOKING at the PNG, as the Verify demands — not by inference.** Rendered the same
+    card twice through real resvg (`scratchpad/render-proof.ts`), with and without the bundled fonts:
+    - **without fonts (what ships today): 35,852 B — headline, both chips, `palmly.app` and the
+      attribution are ALL MISSING.** The chips render as empty pink pills. The viral asset with every
+      string gone.
+    - **with fonts: 54,460 B — headline, chips, domain, and the CJK attribution 美玲 all present.**
+    +18,608 B of rasterized text. This also **empirically vindicates D-10's CJK call**: 美玲 renders
+    only because `NotoSerifSC-Regular.otf` is bundled; without it that is tofu **on the share card**.
+  - **Assets vendored + verified by magic bytes, not filename** (a real trap: the first
+    `NotoSerifSC` URL 404'd and curl wrote the **311KB GitHub error page** into a plausible-looking
+    `.otf`): `NotoSans-Regular.ttf` 621,572 B `00010000` · `NotoSerif-SemiBold.ttf` 739,428 B
+    `00010000` · `NotoSerifSC-Regular.otf` 11,625,800 B `4f54544f` ("OTTO", the static SC-subset
+    Regular from `noto-cjk/Serif/SubsetOTF/SC` — **not** the 24MB pan-CJK or the 25MB variable) ·
+    `index_bg.wasm` 2,478,606 B `0061736d` (`\0asm`) · `fonts/LICENSE` (OFL). **Total 15MB — under
+    the ~20MB D-10 approved.**
+  - **H8 CONFIRMED + FIXED.** New **private `card-drafts` bucket** (owner-read only, mirroring the
+    `scans` idiom); `renderAndStoreCard` writes there and returns **no public URL**; the new
+    `publishCard` (`action:'publish'`) is the **only** path that copies onto the CDN, stamping
+    `published_at` **after** the copy succeeds (the same never-claim-a-state-storage-hasn't-reached
+    discipline as B4/H7). `cards_public_read` **dropped** — it let any client enumerate every
+    published card of every user; the bucket stays `public=true` so CDN URL fetches (share sheet,
+    invite-page OG image) are untouched, because those never consult RLS.
+  - **`loadFonts` now throws instead of `catch {}`.** The silent swallow is *why* M4 shipped: with
+    `loadSystemFonts:false` a missing file is not a degraded card, it is a card with no text, and
+    the catch turned that into a no-op. Also added `share_cards` unique `(user_id, source_id, variant)`
+    so a re-render upserts rather than duplicating — and cannot silently un-publish a shared card;
+    a re-render of an already-published card refreshes the public copy so the CDN cannot serve a
+    stale PNG. (`share_cards` verified empty — 0 rows, 0 duplicate groups — before adding it.)
+  - Verify (observed, every item literally): `git grep -n "unpkg.com" -- supabase/functions` → **0
+    hits** ✅ (first pass returned 1 — my own explanatory comment; reworded, since a comment
+    containing the string would permanently defeat the check for anyone re-running it) ·
+    `ls card-render/fonts` → the 3 files + LICENSE ✅ · **looked at the PNG, text present** ✅ ·
+    public bucket holds no un-shared card ✅ (pinned by test) · **advisors no longer flag
+    `public_bucket_allows_listing`** ✅ (it was present in B1's run) · `deno check card-render/*` →
+    clean · Deno **138/138** · full Node **114/114** (`# pass 114 / # fail 0`, 247.8s).
+  - Regression tests (+2, and one rewritten): `storage.test.mjs` — the old *"cards bucket: publicly
+    readable by the anonymous role"* **encoded the bug** and was rewritten: the bucket is still
+    `public=true`, but **neither `anon` nor a signed-in stranger can list it**. New: `card-drafts` is
+    private, owner-readable, invisible to B and to anon.
+  - ⚠️ **Honest limits:** (1) the publish/copy path is exercised only through `deno check` + the SQL
+    pins — a live Storage-API round-trip is **B21**'s (D-09). (2) The published path stays
+    `${userId}/${sourceId}_${variant}.png`; H8 called it "guessable, **enumerable**" — enumeration is
+    what the dropped policy fixes, and both segments are UUIDs, which the audit's own Low finding
+    accepts as "UUID-entropy-protected". Path randomization was not asked for and was not added.
+  - 📋 Original research note + the answered decisions (kept for provenance):
   - **M4 CONFIRMED, exactly as the audit states.** `card-render/` contains **only `index.ts` +
     `render.ts` — there is no `fonts/` dir at all**. `loadFonts()` (`render.ts:18-28`) swallows every
     miss in a `catch`, and `render.ts:36` passes `loadSystemFonts: false`, so resvg gets
@@ -874,6 +924,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B7 — migration `20260717000023_h8_cards_private_by_default.sql` applied + `card-render/{render,index}.ts` + **15MB vendored assets** (3 Noto fonts + OFL LICENSE + `index_bg.wasm`, each verified by **magic bytes** — the first SC URL 404'd and curl wrote a 311KB GitHub error page into a plausible `.otf`). H8: new private `card-drafts` bucket, `publishCard` is the only CDN path, `cards_public_read` dropped (**advisors no longer flag `public_bucket_allows_listing`**), `share_cards.published_at` + unique(user_id,source_id,variant). M4: wasm vendored, `loadFonts` throws instead of `catch {}`. **M4 proven visually**: same card rendered twice — no fonts **35,852 B, headline/chips/domain/attribution ALL MISSING**; with fonts **54,460 B, all present incl. CJK 美玲** (which vindicates D-10). Evidence: `git grep unpkg.com` → **0 hits**; `deno check` clean; Deno `138 passed | 0 failed`; Node `# pass 114 / # fail 0` (247766.4ms). +2 tests, 1 rewritten (the old "cards publicly readable" test encoded the bug) — 2026-07-17
 - B6 — `worker-scan/index.ts` + `_shared/retry.ts` (no migration): status guard via new `alreadyProcessed()` (policy extracted to `_shared` so it is unit-testable), `vt` 60→**300**, `subject_profiles` insert error surfaced as telemetry instead of swallowed. Live answer to the ledger's question: **`subject_profiles_user_id_kind_key UNIQUE (user_id,kind)` EXISTS** → H1's insert half is a **silent no-op**, not row growth. H2-scan is self-reinforcing: the subject_profile insert precedes `archive`, so a redelivery matches the subject the scan itself just created → regresses narrating→matched. vt arithmetic: 3 votes × ~107s ≈ **320s > 60s**. `exists_unmatched` telemetry is now B9's live H1 detector. Evidence: `deno check` clean; Deno `138 passed | 0 failed` (+1); `worker_scan+worker_retry` 6/6; Node `# pass 113 / # fail 0` (242881.4ms). +2 regression tests. **M2-scan deferred → B22 w/ M1** (feature_hash is computed *from* the extraction, so it cannot gate the extraction) — 2026-07-17
 - B5 — migration `20260717000022_h2_readings_unique.sql` applied + `worker-narrative/index.ts`: guard before the paid model call (redelivery settles instead of regenerating), `23505` handled as success-by-someone-else, `vt` 60→**180**. vt proven too short by arithmetic: withRetry = 5 attempts × 5-20s (§11.2) + ~7s backoff ≈ **107s > 60s**, so a *healthy slow* call was redelivered — no crash needed. Live pre-state: `readings` had only pkey + (user_id,created_at) — no uniqueness. Evidence: `deno check` clean; `worker_narrative` 4/4; Node `# pass 112 / # fail 0` (242257.6ms); Deno `137 passed | 0 failed`. +1 regression test (duplicate depth-1 rejected; depth 1+2 coexist). **"No second model call" not unit-testable until B21** — 2026-07-17
 - B4 — migration `20260717000021_h7_storage_ordering.sql` applied + `_shared/cleanup.ts` (`purgeAccountStorageFirst`, `mergedStoragePath`) + `account-delete`/`account-merge` rewired: H7's collect→delete→purge→log-last invariant now lives in ONE reusable function (**B16 must import it**). Precedent: `cleanup/index.ts` already did it right; account-delete was the outlier. `deletion_log` now records a request (`completed_at` NULL) + new `mark_deletion_complete`. merge re-parents AND rewrites the owner path prefix in one statement, returns `storage_moves`; the Edge fn moves blobs first. Evidence: Deno `137 passed | 0 failed` (was 133); `deno check` clean on all 3; `account_merge+data_lifecycle` 14/14; Node `1..111 / # pass 111 / # fail 0` (240969.9ms). +6 regression tests. **Storage round-trip NOT closed → B21 (D-09)** — 2026-07-17

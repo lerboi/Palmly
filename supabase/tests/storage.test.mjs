@@ -82,15 +82,45 @@ test('scans bucket: owner reads/writes own path; stranger cannot read or write i
   });
 });
 
-test('cards bucket: publicly readable by the anonymous role', async () => {
+test('cards bucket: public for CDN URL fetches, but NOT listable by clients (H8)', async () => {
   await withRollback(async (c) => {
     await setup(c);
     const card = 'reading-abc.png';
     await c.query(`insert into storage.objects (bucket_id, name) values ('cards', $1)`, [card]);
 
-    // the truly-unauthenticated `anon` role (public CDN request path) can read
+    // The bucket stays public: the CDN endpoint serves object URLs WITHOUT consulting RLS, which is
+    // what the share sheet and invite-page's OG image rely on.
+    assert.equal((await c.query(`select public from storage.buckets where id='cards'`)).rows[0].public, true, 'cards bucket is public');
+
+    // ...but the broad `cards_public_read` SELECT policy (0003:31) let any client enumerate EVERY
+    // published card of EVERY user. Advisors flagged it; migration 0023 drops it. Public buckets do
+    // not need it for URL access, so this costs nothing and kills the enumeration.
     await asRole(c, { role: 'anon' });
-    assert.equal(await countObjects(c, 'cards', card), 1, 'anonymous can read a public card');
+    assert.equal(await countObjects(c, 'cards', card), 0, 'anon cannot list objects in the public bucket');
+    await resetRole(c);
+    await asRole(c, { uid: A });
+    assert.equal(await countObjects(c, 'cards', card), 0, 'a signed-in stranger cannot list them either');
+    await resetRole(c);
+  });
+});
+
+test('card-drafts bucket: private, owner-readable only (H8)', async () => {
+  await withRollback(async (c) => {
+    await setup(c);
+    // Pre-rendered cards land here and reach the CDN only on share intent, so a reading being
+    // generated never publishes the user's palm + display name.
+    assert.equal((await c.query(`select public from storage.buckets where id='card-drafts'`)).rows[0].public, false, 'card-drafts is private');
+
+    await c.query(`insert into storage.objects (bucket_id, name) values ('card-drafts', $1)`, [`${A}/draft.png`]);
+
+    await asRole(c, { uid: A });
+    assert.equal(await countObjects(c, 'card-drafts', `${A}/draft.png`), 1, 'owner can preview their own draft');
+    await resetRole(c);
+    await asRole(c, { uid: B });
+    assert.equal(await countObjects(c, 'card-drafts', `${A}/draft.png`), 0, "B cannot see A's unshared card");
+    await resetRole(c);
+    await asRole(c, { role: 'anon' });
+    assert.equal(await countObjects(c, 'card-drafts', `${A}/draft.png`), 0, 'anon cannot see an unshared card');
     await resetRole(c);
   });
 });
