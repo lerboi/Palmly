@@ -86,3 +86,62 @@ test('chat RLS: owner reads own thread + messages; a stranger sees neither', asy
     assert.equal((await c.query(`select count(*)::int n from public.chat_messages`)).rows[0].n, 0, 'stranger sees no messages');
   });
 });
+
+test('H5: chat history is the MOST RECENT 8 turns, not the eight oldest', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, U);
+    const tid = (await c.query(`insert into public.chat_threads (user_id) values ($1) returning id`, [U])).rows[0].id;
+    // 10 turns; each row inserted separately so the thread has a real history
+    for (let i = 1; i <= 10; i++) {
+      await c.query(`insert into public.chat_messages (thread_id, role, content) values ($1,'user',$2)`, [tid, `m${i}`]);
+    }
+
+    // What chat-send does NOW: most recent 8 by seq, then reversed into chronological order.
+    const recent = (
+      await c.query(`select content from public.chat_messages where thread_id=$1 order by seq desc limit 8`, [tid])
+    ).rows.map((r) => r.content).reverse();
+    assert.deepEqual(recent, ['m3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10'], 'the model sees the latest 8, in chronological order');
+
+    // What it did BEFORE (order created_at ascending, limit 8) — the bug: a thread longer than 8
+    // messages conversed against its first 8 forever, never seeing anything the user just said.
+    const oldest = (
+      await c.query(`select content from public.chat_messages where thread_id=$1 order by created_at asc limit 8`, [tid])
+    ).rows.map((r) => r.content);
+    assert.ok(!oldest.includes('m10'), 'the OLD query genuinely could not see the newest turn (this is H5)');
+  });
+});
+
+test('H5: seq orders a turn deterministically where created_at cannot', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, U);
+    const tid = (await c.query(`insert into public.chat_threads (user_id) values ($1) returning id`, [U])).rows[0].id;
+    // chat-send inserts BOTH rows of a turn in ONE statement. now() is transaction_timestamp(), so
+    // they share a created_at and the uuid pk is random — ordering by created_at cannot tell the
+    // question from the answer. seq can.
+    await c.query(`insert into public.chat_messages (thread_id, role, content) values ($1,'user','q'),($1,'assistant','a')`, [tid]);
+    const rows = (await c.query(`select role, content, created_at, seq from public.chat_messages where thread_id=$1 order by seq asc`, [tid])).rows;
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].created_at.getTime(), rows[1].created_at.getTime(), 'both rows of a turn DO share created_at (why seq exists)');
+    assert.ok(rows[0].seq < rows[1].seq, 'seq is monotonic and distinct');
+    assert.deepEqual(rows.map((r) => r.role), ['user', 'assistant'], 'seq recovers question-then-answer unambiguously');
+  });
+});
+
+test('M12b: an assistant turn keeps its citations at rest', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, U);
+    const tid = (await c.query(`insert into public.chat_threads (user_id) values ($1) returning id`, [U])).rows[0].id;
+    const cites = [{ feature_key: 'heart_line.depth.deep', label: 'your heart line' }];
+    await c.query(`insert into public.chat_messages (thread_id, role, content, citations) values ($1,'assistant',$2,$3)`, [tid, 'Your heart line is deep.', JSON.stringify(cites)]);
+
+    // Reloading the thread must still carry the "cites your…" trust line — before this, citations
+    // lived only in the HTTP response and a reloaded thread looked ungrounded.
+    await asRole(c, { uid: U, role: 'authenticated' });
+    const row = (await c.query(`select citations from public.chat_messages where thread_id=$1`, [tid])).rows[0];
+    assert.deepEqual(row.citations, cites, 'citations survive a reload, readable by the owner');
+    await resetRole(c);
+  });
+});

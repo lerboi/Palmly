@@ -92,17 +92,33 @@ Deno.serve(
     }
     const grounding = mergeGrounding(keyedGrounding(refs, kb), await fuzzyGrounding(ctx.admin, message, tradition));
 
-    // Recent history for continuity.
-    const { data: hist } = await ctx.supabase.from('chat_messages').select('role, content').eq('thread_id', threadId).order('created_at', { ascending: true }).limit(8);
-    const history = ((hist ?? []) as Array<{ role: string; content: string }>).map((m) => ({ role: m.role as ChatTurn['role'], content: m.content }));
+    // Recent history for continuity (H5). This read used to be `order('created_at', ascending: true)
+    // .limit(8)`, i.e. the eight OLDEST turns — so any thread past 8 messages conversed against its
+    // first 8 forever. Take the most recent 8, then reverse back into chronological order for the
+    // model. Ordered by `seq`, not created_at: now() is constant per transaction and both rows of a
+    // turn are inserted in one statement, so their created_at ties and their order is undefined.
+    const { data: hist } = await ctx.supabase.from('chat_messages').select('role, content').eq('thread_id', threadId).order('seq', { ascending: false }).limit(8);
+    const history = ((hist ?? []) as Array<{ role: string; content: string }>)
+      .reverse()
+      .map((m) => ({ role: m.role as ChatTurn['role'], content: m.content }));
 
     const result = await generateChatReply({ question: message, grounding, history, systemInstruction: SYSTEM_INSTRUCTION, geminiCall: realGeminiCall() });
     if (!result.ok) throw new AppError('chat_failed', result.failureReason, 502, result.detail);
 
-    // Persist both turns (service-role: chat_messages has no client insert policy).
+    // Persist both turns (service-role: chat_messages has no client insert policy). M12b: the
+    // assistant turn keeps its citations at rest — they used to live only in the response body, so a
+    // reloaded thread silently lost the "cites your…" trust line and a grounded answer became
+    // indistinguishable from an ungrounded one.
     await ctx.admin.from('chat_messages').insert([
       { thread_id: threadId, role: 'user', content: message },
-      { thread_id: threadId, role: 'assistant', content: result.reply, tokens_in: result.usage?.promptTokenCount, tokens_out: result.usage?.candidatesTokenCount },
+      {
+        thread_id: threadId,
+        role: 'assistant',
+        content: result.reply,
+        citations: result.citations ?? null,
+        tokens_in: result.usage?.promptTokenCount,
+        tokens_out: result.usage?.candidatesTokenCount,
+      },
     ]);
 
     return jsonResponse({ thread_id: threadId, reply: result.reply, deflected: result.deflected, category: result.deflected ? result.category : undefined, citations: result.citations, chips: suggestionChips(refs), prompt_version: CHAT_PROMPT_VERSION });

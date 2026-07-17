@@ -119,3 +119,16 @@ Deno.test('generateChatReply: empty model output fails cleanly', async () => {
   const r = await generateChatReply({ question: 'what does my heart line say?', grounding: [], history: [], systemInstruction: 'S', geminiCall: () => Promise.resolve(okGemini('')) });
   assert(!r.ok && r.failureReason === 'empty_reply');
 });
+
+Deno.test('buildChatRequest: keeps the MOST RECENT 8 turns when handed more (H5 safety net)', () => {
+  // chat.ts's `slice(-8)` is a no-op against the real caller (which already limits to 8), so it did
+  // NOT save us from H5 — that bug was the caller fetching the eight OLDEST turns. This pins the
+  // shared module's half of the contract: given a long history, keep the tail, not the head.
+  const long = Array.from({ length: 12 }, (_, i) => ({ role: (i % 2 ? 'assistant' : 'user') as 'assistant' | 'user', content: `m${i + 1}` }));
+  const req = buildChatRequest('SYS', [], long, 'the question') as { contents: Array<{ role: string; parts: Array<{ text: string }> }> };
+  const texts = req.contents.map((c) => c.parts[0].text);
+  assertEquals(texts.length, 9, '8 history turns + the grounded question');
+  assertEquals(texts[0], 'm5', 'oldest kept turn is m5 — m1..m4 dropped');
+  assertEquals(texts[7], 'm12', 'the newest turn IS present (H5 was its absence)');
+  assert(!texts.includes('m1'), 'the first-ever turn must not crowd out recent context');
+});
