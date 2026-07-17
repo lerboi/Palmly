@@ -126,3 +126,54 @@ test('compat completion broadcast: RLS lets pair members receive compat:{pair_id
     assert.equal(await canReceive(S), false, 'stranger denied');
   });
 });
+
+test('M8: the free-tier gate lives in the same transaction as the act (atomic count→act)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, A);
+    await seedUser(c, B);
+    const C = 'c0000000-0000-0000-0000-0000000000c1';
+    await seedUser(c, C);
+    await seedPalm(c, A);
+    await seedPalm(c, B);
+    await seedPalm(c, C);
+
+    // A's FIRST comparison is free (§4.6 — never paywall the growth loop).
+    const pairAB = await pairOf(c);
+    const first = (await one(c, `select public.request_compat($1,$2,false) as r`, [pairAB, A])).r;
+    assert.equal(first.status, 'computing', 'first comparison granted free');
+
+    // A's SECOND, on a different pair, must be refused for a free user...
+    const [x, y] = [A, C].sort();
+    const pairAC = (await one(c, `insert into public.compatibility_pairs (user_a,user_b) values ($1,$2) returning id`, [x, y])).id;
+    await c.query('savepoint sp');
+    await assert.rejects(
+      c.query(`select public.request_compat($1,$2,false) as r`, [pairAC, A]),
+      /payment_required/,
+      'a free user gets exactly one comparison',
+    );
+    await c.query('rollback to savepoint sp');
+
+    // ...but re-requesting the pair they ALREADY own must never be charged for again.
+    const again = (await one(c, `select public.request_compat($1,$2,false) as r`, [pairAB, A])).r;
+    assert.equal(again.result_id, first.result_id, 'idempotent: the owned pair is returned as-is, not gated');
+
+    // ...and premium is unlimited.
+    const premium = (await one(c, `select public.request_compat($1,$2,true) as r`, [pairAC, A])).r;
+    assert.equal(premium.status, 'computing', 'premium bypasses the gate');
+  });
+});
+
+test('M8: the gate takes a row lock, so concurrent first requests cannot both pass', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    // Structural pin. The count and the act now run in ONE transaction under `for update` on the
+    // requester's profile row — previously the count was an Edge round-trip and the act another, so
+    // two parallel first requests both read zero and both went free. A true two-session race is not
+    // expressible here (the fixture lives in an uncommitted, rolled-back transaction), so this
+    // asserts the lock that closes it is present and fails if a later edit drops it.
+    const { def } = await one(c, `select pg_get_functiondef('public.request_compat(uuid,uuid,boolean)'::regprocedure) as def`);
+    assert.match(def, /from public\.profiles where id = p_requester\s+for update/i, 'the requester row must be locked before counting');
+    assert.match(def, /payment_required/, 'the gate itself must live inside the function');
+  });
+});

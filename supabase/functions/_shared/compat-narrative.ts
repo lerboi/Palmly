@@ -44,8 +44,37 @@ const LLM_SCHEMA = {
   required: ['headline', 'sections'],
 };
 
+export const NAME_MAX = 40;
+
+/**
+ * Neutralize a user-supplied display_name before it reaches the model (M9).
+ *
+ * `worker-compat` reads `profiles.display_name` and hands it straight to the prompt, and the prose
+ * that comes back is shown to **the other person in the pair** — so a hostile name is an injection
+ * channel into someone else's reading. Nothing else validates it: the name is whatever its owner
+ * typed.
+ *
+ * Unicode-aware by necessity, not politeness: this product's users are largely CJK-named, so a
+ * naive ASCII allowlist would mangle legitimate names. Instead strip only what carries no meaning
+ * in a name but does carry meaning in a prompt — control/format characters (newlines, which let an
+ * attacker open a fresh instruction line, and bidi overrides) and the brackets/backticks/pipes used
+ * to frame instructions or markup — then collapse whitespace and cap the length.
+ */
+export function sanitizeName(raw: string | null | undefined): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const cleaned = raw
+    .replace(/[\p{Cc}\p{Cf}]/gu, ' ') // control + format: \n, \r, RTL overrides, zero-width joiners
+    .replace(/[<>{}[\]`|\\]/g, '') // instruction/markup framing
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, NAME_MAX);
+  return cleaned.length ? cleaned : undefined;
+}
+
 export function buildCompatRequest(input: CompatNarrativeInput): Record<string, unknown> {
-  const payload = { composite: input.composite, sub_scores: input.subScores, hand_a: input.handA, hand_b: input.handB, name_a: input.nameA ?? null, name_b: input.nameB ?? null };
+  // Sanitize at the boundary, not at the call site: every caller of this function is handing the
+  // payload to the model, so this is the one place it cannot be forgotten.
+  const payload = { composite: input.composite, sub_scores: input.subScores, hand_a: input.handA, hand_b: input.handB, name_a: sanitizeName(input.nameA) ?? null, name_b: sanitizeName(input.nameB) ?? null };
   return {
     systemInstruction: { parts: [{ text: input.systemInstruction }] },
     contents: [{ role: 'user', parts: [{ text: `Write the compatibility reading for:\n${JSON.stringify(payload)}` }] }],
