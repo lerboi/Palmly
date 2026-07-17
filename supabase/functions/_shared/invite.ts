@@ -30,11 +30,21 @@ export async function generateInviteToken(): Promise<{ token: string; tokenHash:
 export const INVITE_BASE_URL = 'https://palmly.app/i';
 export const inviteUrl = (token: string): string => `${INVITE_BASE_URL}/${token}`;
 
-/** Short, human-typable fallback code shown on the teaser (§8.2). Derived from the token_hash
- *  (hex → no ambiguous letters); manual claim matches invites where token_hash starts with it. */
+/**
+ * Short, human-typable fallback code shown on the teaser (§8.2). Derived from the token_hash
+ * (hex → no ambiguous letters like O/0 or I/1); `resolve_invite_code` matches invites whose
+ * token_hash starts with it.
+ *
+ * TEN hex chars = 40 bits, widened from six (audit H9, Decision Log D-20). Six is 24 bits = 16.7M
+ * codes, and because a prefix match hits ANY live invite the attacker's odds are N/16.7M — at 100k
+ * live invites that is ~1 in 167 guesses to hijack a stranger's invite, which also BURNS it (claims
+ * are single-use, so the real recipient is locked out). No rate limit rescues that. At 40 bits it is
+ * ~1 in 1.1M with a million live invites. The code is derived, never stored, so this cost nothing.
+ */
+export const SHORT_CODE_HEX = 10;
 export const deriveShortCode = (tokenHash: string): string => {
-  const s = tokenHash.slice(0, 6).toUpperCase();
-  return `${s.slice(0, 3)}-${s.slice(3, 6)}`;
+  const s = tokenHash.slice(0, SHORT_CODE_HEX).toUpperCase();
+  return `${s.slice(0, 5)}-${s.slice(5, 10)}`;
 };
 
 

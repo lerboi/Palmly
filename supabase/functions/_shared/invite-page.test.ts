@@ -90,9 +90,12 @@ Deno.test('buildInviteGonePage: expired/not-found shell has no compatibility CTA
   assert(byteLen(html) < 50 * 1024);
 });
 
-Deno.test('deriveShortCode: 6 hex chars → XXX-XXX, uppercase, no ambiguous letters', () => {
-  assertEquals(deriveShortCode('a1b2c3deadbeef'), 'A1B-2C3');
-  assert(/^[0-9A-F]{3}-[0-9A-F]{3}$/.test(deriveShortCode('ffffffffff')));
+Deno.test('deriveShortCode: 10 hex chars → XXXXX-XXXXX, uppercase, no ambiguous letters', () => {
+  // Widened from 6 hex by B13/H9 (D-20). This assertion previously pinned the 24-bit version — the
+  // one an attacker could hit in ~167 guesses once the resolver existed. Entropy is the parameter
+  // here, so the length is deliberately asserted, not incidental.
+  assertEquals(deriveShortCode('a1b2c3deadbeef'), 'A1B2C-3DEAD');
+  assert(/^[0-9A-F]{5}-[0-9A-F]{5}$/.test(deriveShortCode('ffffffffff')));
 });
 
 // ── M7: the first hit on nearly every invite is a crawler, not a person ──────────────────────────

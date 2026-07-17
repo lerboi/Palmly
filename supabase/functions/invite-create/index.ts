@@ -6,6 +6,7 @@
 import { createContext, requireMode } from '../_shared/context.ts';
 import { AppError, jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 import { generateInviteToken, inviteUrl, sanitizeInviteContext } from '../_shared/invite.ts';
+import { enforceRateLimit } from '../_shared/ratelimit.ts';
 
 /** Origins an invite's OG image may come from: our own site, and our own storage (the `cards`
  *  bucket's public URL). Derived from SUPABASE_URL so it follows staging/prod without a code edit. */
@@ -33,6 +34,8 @@ Deno.serve(
     const ctx = createContext(req);
     requireMode(ctx, 'user');
     if (!ctx.userId) throw new AppError('unauthorized', 'no authenticated user', 401);
+
+    await enforceRateLimit(ctx.admin, 'invite_create', ctx.userId); // spec §13
 
     const body = (await req.json().catch(() => ({}))) as Body;
     const { token, tokenHash } = await generateInviteToken();

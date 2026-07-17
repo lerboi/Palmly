@@ -29,11 +29,13 @@ Deno.serve(
       }
     }
 
-    // 2) expired invites, 3) stale anonymous users.
+    // 2) expired invites, 3) stale anonymous users, 4) spent rate-limit windows (0026 — a counter
+    //    is worthless once its window has passed, and nothing else would ever delete it).
     const { data: invitesExpired } = await db.rpc('sweep_expired_invites');
     const { data: staleAnon } = await db.rpc('sweep_stale_anon', { p_days: 30 });
+    const { data: rateLimits } = await db.rpc('sweep_rate_limits', { p_keep: '1 day' });
 
-    const summary = { crops_deleted: cropsDeleted, crops_seen: (crops ?? []).length, invites_expired: invitesExpired ?? 0, stale_anon_deleted: staleAnon ?? 0 };
+    const summary = { crops_deleted: cropsDeleted, crops_seen: (crops ?? []).length, invites_expired: invitesExpired ?? 0, stale_anon_deleted: staleAnon ?? 0, rate_limits_swept: rateLimits ?? 0 };
     await writeTelemetry(db, { worker: 'cleanup', queue: 'cleanup_jobs', status: 'ok', detail: summary });
     return jsonResponse(summary);
   }),

@@ -1,5 +1,5 @@
 import { assert, assertEquals } from '@std/assert';
-import { generateInviteToken, hashToken, INVITE_NAME_MAX, inviteUrl, isAllowedCardUrl, sanitizeInviteContext } from './invite.ts';
+import { deriveShortCode, generateInviteToken, hashToken, INVITE_NAME_MAX, inviteUrl, isAllowedCardUrl, sanitizeInviteContext, SHORT_CODE_HEX } from './invite.ts';
 
 Deno.test('hashToken: deterministic SHA-256 hex (64 chars)', async () => {
   const a = await hashToken('abc');
@@ -84,4 +84,20 @@ Deno.test('sanitizeInviteContext: keeps the allowlist, drops everything else', (
   // A format char becomes a SPACE rather than vanishing — deleting it would let a zero-width joiner
   // silently fuse two tokens into one, which is the trick it would be used for.
   assertEquals(sanitizeInviteContext({ inviter_name: 'A‮B' }, HOSTS).inviter_name, 'A B', 'bidi override neutralized, not silently closed up');
+});
+
+// ── H9: the short code is a claim credential, so its entropy is a security parameter ────────────
+
+Deno.test('deriveShortCode: 10 hex = 40 bits, formatted for a human to read off a teaser', async () => {
+  const { tokenHash } = await generateInviteToken();
+  const code = deriveShortCode(tokenHash);
+  assertEquals(code, `${tokenHash.slice(0, 5).toUpperCase()}-${tokenHash.slice(5, 10).toUpperCase()}`);
+  assertEquals(code.replace('-', '').length, SHORT_CODE_HEX);
+  assert(/^[0-9A-F]{5}-[0-9A-F]{5}$/.test(code), 'hex only — no O/0 or I/1 ambiguity for a typed code');
+
+  // Why 10 and not the original 6 (D-20): a prefix match hits ANY live invite, so the guesser's
+  // odds are N/2^bits. At 6 hex (24 bits = 16.7M) and 100k live invites that is ~1 in 167 — and a
+  // successful guess BURNS the invite (single-use), locking out the real recipient. Rate limiting
+  // cannot rescue that; entropy has to.
+  assertEquals(SHORT_CODE_HEX * 4, 40, 'shrinking this is a security regression, not a UX tweak');
 });

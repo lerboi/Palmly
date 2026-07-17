@@ -36,21 +36,23 @@ finding has exactly one owning task below; no finding is dropped silently.
 
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
-- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114 → B10 117 → B11 119; Deno 133 → B4 137 → B6 138 → B8 140 → B10 141 → B11 143 → B12 147):**
-  **Node 119/119** (`# pass 119 / # fail 0`, 266.6s) · **Deno 147/147** (`147 passed | 0 failed`, 2s)
+- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114 → B10 117 → B11 119 → B13 124; Deno 133 → B4 137 → B6 138 → B8 140 → B10 141 → B11 143 → B12 147 → B13 148):**
+  **Node 124/124** (`# pass 124 / # fail 0`, 262.8s) · **Deno 148/148** (`148 passed | 0 failed`, 2s)
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
   quote it. The pre-B0 "Node 96/100" is now historical.
 - **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B12** (2026-07-17) — invite context validated at the write; link-preview
-  crawlers no longer credited with clicks. Suites: **Node 119/119**, **Deno 147/147**.
-- **Next task:** **B13 — H9: manual short-code claim path + rate limiting**. ⚠️ Its posture
-  (short-code collision / brute-force) was a flagged product decision — **the user has delegated it
-  to the loop**; decide it, record a Decision Log row, and carry on. Keep it minimal: do **not**
-  build the whole teaser story (H6-gated). Spec §13 explicitly requires rate-limiting on
-  `invite-claim`, and on invite-create/chat-send/compat-request generally.
+- **Last completed:** **B13** (2026-07-17) — migration 0026 applied; H9's short-code resolver +
+  §13 rate limiting, and the code widened to 40 bits (D-20). Suites: **Node 124/124**, **Deno 148/148**.
+- **Next task:** **B14 — C3: verify the RevenueCat webhook signature scheme against current RC docs.**
+  ⚠️ **The highest-blast-radius item in the codebase**, and the one the RESEARCH step exists for.
+  **WebFetch RC's CURRENT webhook docs — do not decide from memory or from the audit's assertion.**
+  🪤 **The trap:** `rcSignature` (`_shared/revenuecat.ts:35`) makes a test that signs with our own
+  helper and verifies with our own verifier **trivially green regardless of whether the scheme is
+  right**. C3 closes `[~]` (docs-verified decision + code), **never `[x]`** — the live proof is
+  H8-gated.
 - 🚩 **HAND-OFF TO THE USER / BUILDPLAN (from B9/D-14 — reported, not written, per D-01):**
   1. **`Planning/Audits/Backend-audit.md` owes an H1 re-title** — H1 is not "faces lack a geometry
      signature", it is "**`deriveGeometry` reads the wrong source**: `line_geometry` is the model's
@@ -1058,7 +1060,64 @@ would edit nothing and wrongly report success.
     --test-concurrency=1 invite_create.test.mjs invite_page.test.mjs` + both suites green.
   - Note: **excludes H9** (B13) — that is net-new surface + a product decision, a different risk profile.
 
-- [ ] **B13 — H9: manual short-code claim path + rate limiting** *(H9)*
+- [x] **B13 — H9: manual short-code claim path + rate limiting** *(H9)* — **2026-07-17**
+  - **DONE: H9 CONFIRMED (both limbs).** Landed as
+    `supabase/migrations/20260717000026_h9_short_code_and_rate_limits.sql` + `_shared/ratelimit.ts` +
+    `_shared/invite.ts` + `invite-claim` + `invite-create` + `chat-send` + `compat-request` +
+    `cleanup` (counter re-read: max was 25).
+  - **H9 CONFIRMED** — `deriveShortCode` was printed on the teaser (`invite-page/index.ts:81`) and its
+    own docstring said *"manual claim matches invites where token_hash starts with it"*, but
+    **nothing resolved it**: `invite-claim:33` only hashed the full 43-char token. The spec's "always
+    present, guarantees the loop closes" fallback terminated in UI text, exactly as the audit says.
+    Spec §13's required rate limiting did not exist anywhere (`rate%` tables live: **0**).
+  - 🔐 **THE POSTURE DECISION (D-20, delegated to the loop) — the short code is WIDENED 6 → 10 hex,
+    and that is the load-bearing half of the fix.** The audit frames H9's risk as "collision +
+    brute-force implications … that is exactly why the spec pairs it with rate limiting". **Rate
+    limiting alone is not enough, and the arithmetic is why:** a prefix match hits **ANY** live
+    invite, so a guesser's odds are `N / 2^bits`, *not* 1-in-the-code-space. At the original 6 hex
+    (**24 bits = 16.7M**) with 100k live invites that is **~1 in 167 guesses** to hijack a stranger's
+    invite — and a hit **burns** it (claims are single-use), locking the real recipient out. No
+    per-user limit survives that: an attacker just makes more accounts. **10 hex = 40 bits = 1.1e12**
+    → ~1 in 1.1M at a *million* live invites. **Free to change:** the code is **derived, never
+    stored** (recomputed from `token_hash` on every render), and `invites` has **1 row**.
+  - Build: `resolve_invite_code(text)` — normalizes what a human types (any case, with/without the
+    separator or spaces), resolves **only claimable** invites (`created|clicked|installed`, unexpired
+    — correct *and* it shrinks the live target pool), and **refuses an ambiguous prefix rather than
+    guessing** between two people's invites. Backed by an `invites (token_hash text_pattern_ops)`
+    index — the default opclass is collation-aware and **cannot** serve a prefix `LIKE`.
+  - Rate limiting: counters live in **Postgres, not in the process** — Edge Functions are stateless
+    and horizontally scaled, so an in-memory counter counts one instance and nothing else.
+    `check_rate_limit` **increments and compares in a single atomic statement** (the M8 lesson: a
+    count in one round-trip and a decision in another is not a limit). Limits are tuned to the
+    **threat, not a uniform number**: `invite_claim_code` **5/h** (the brute-force surface),
+    `invite_claim_token` 30/h (a 256-bit token is unguessable — the limit is anti-abuse only),
+    `invite_create` 30/h, `chat_send` 60/h, `compat_request` 30/h. **Fails OPEN and logs** if the
+    counter errors: this is a mitigation layered over real controls (the token, the code's entropy,
+    the entitlement gate), never the thing that makes them safe. `sweep_rate_limits()` is wired into
+    the existing `cleanup` sweep so spent windows cannot accumulate forever.
+  - Verify (observed): `git grep -n "deriveShortCode\|resolve_invite_code" -- supabase/functions` →
+    shows a **resolver** (`invite-claim/index.ts:48`), not just invite.ts/invite-page.ts ✅;
+    **a brute-force attempt IS throttled** — 50 guesses in one hour yield exactly **5** attempts (the
+    other 45 refused); `deno check` clean on all 6 changed functions; `rate_limit.test.mjs` **5/5**;
+    full **Deno 148/148**; full **Node 124/124** (`# pass 124 / # fail 0`, 262.8s).
+  - Regression tests added (7): the limit allows exactly `limit` then refuses, and is **per (scope,
+    subject)** so one abuser cannot throttle everyone; a structural pin that the counter is the
+    `returning` of the upsert itself (no read-then-write race); the brute-force throttle; the resolver
+    accepts all four shapes a human might type; **the OLD 6-hex code is now explicitly `code_too_short`**;
+    unclaimable/expired invites do not resolve; an **ambiguous prefix is refused**; and the entropy
+    itself is asserted (`SHORT_CODE_HEX * 4 === 40`) so shrinking it reads as the security regression
+    it would be.
+  - 🐛 **The suite caught my own change, twice — both were the tests doing their job.**
+    (1) `invite-page.test.ts:93` pinned the **old 6-hex contract** (`'A1B-2C3'`) — i.e. it was
+    asserting the insecure length; updated to `'A1B2C-3DEAD'`. (2) `schema.test.mjs`'s table census
+    ("nothing extra") went 20 → 21 when `rate_limits` landed; added to the list.
+  - **Scope held:** H9's fix overlaps §NOT YET BUILT (B.6 + B.7), and only the **finding** was built —
+    the resolver + the four §13 limits. No teaser story (H6-gated), no CAPTCHA, no per-IP limiting.
+  - ⚠️ **Residual, stated plainly:** limiting is **per-user**, and anonymous sign-in is cheap
+    (30/h/IP), so a determined attacker with many accounts still gets more attempts than one. That is
+    survivable **only because the entropy carries the real weight** (D-20) — which is precisely why
+    the code was widened rather than merely throttled. Per-IP limiting and Turnstile are §NOT YET
+    BUILT B.8's, not this ledger's.
   - Research: confirmed — `deriveShortCode` (`_shared/invite.ts:35`) is derived and printed at
     `_shared/invite-page.ts:139`, but **no endpoint resolves it**: `invite-claim/index.ts:33` hashes the
     full 43-char token and matches the complete `token_hash`. The spec's "always present, guarantees the
@@ -1222,6 +1281,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B13 — migration `20260717000026_h9_short_code_and_rate_limits.sql` applied + `_shared/ratelimit.ts` + `_shared/invite.ts` + invite-claim/invite-create/chat-send/compat-request/cleanup: H9's resolver (`resolve_invite_code` — normalizes typed input, claimable-only, **refuses ambiguity rather than guessing**, `text_pattern_ops` index) + spec §13 rate limiting (Postgres counters — Edge fns are stateless; **increment+compare in ONE atomic statement**; limits tuned to the threat: code 5/h vs token 30/h; **fails open + logs**; swept by `cleanup`). **The short code is widened 6->10 hex (24->40 bits) — D-20, the load-bearing half:** a prefix match hits ANY live invite, so at 24 bits with 100k invites a guesser wins in **~1 in 167** and *burns* the invite; rate limiting cannot rescue that, entropy can. Free — the code is derived, never stored. Evidence: `git grep` shows a real resolver at `invite-claim:48`; **50 guesses/hour -> exactly 5 allowed**; `deno check` clean x6; `rate_limit.test.mjs` 5/5; Deno `148 passed | 0 failed`; Node `# pass 124 / # fail 0` (262768.3ms). +7 tests. The suite caught 2 of my own regressions (a test pinning the OLD 6-hex length; the 20->21 table census) — 2026-07-17
 - B12 — `_shared/invite.ts` (`sanitizeInviteContext`, `isAllowedCardUrl`) + `_shared/invite-page.ts` (`isLinkPreviewBot`) + `invite-create` + `invite-page` (no migration): M6 validated at the **write** — allowlist {inviter_name, reading_id, card_variant, card_image_url}, name capped 40, OG image must be **https on our own origins** (env-derived, follows staging/prod). M7: the compare-and-set was **already correct** (ledger right) — the fix is the UA gate, since the first hit on nearly every invite is a crawler, making `clicked` measure "was this shared into a chat app". **M7's caching limb is a FALSE POSITIVE** (a one-way transition can't undercount repeat clicks) **but caching still had to change (D-19)**: the bot filter would let a crawler prime the cache and swallow the real click, and the page is UA-routed with **no `Vary`** (a cached iOS page → Android user gets the wrong store) → `no-store` + `Vary: User-Agent`. Evidence: `deno check` clean; `invite.test.ts+invite-page.test.ts` 17/17; Node `invite_create+invite_page` 7/7; Deno `147 passed | 0 failed` (+4); Node `# pass 119 / # fail 0` (266595.2ms). +4 tests (incl. WeChat MicroMessenger must still count) — 2026-07-17
 - B11 — migration `20260717000025_m8_compat_free_gate_atomic.sql` applied + `compat-request/index.ts` + `_shared/compat-narrative.ts`: M8's count→act moved **inside** `request_compat` (3-arg overload, `for update` on the requester's profile row) — it was unclosable from the Edge fn, since the count and the act were separate PostgREST transactions. **The interpolated `.or()` limb was fixed by deletion** (the filter no longer exists); `isUuid` asserted anyway. Premium passed, not recomputed, so **B15's `expires_at` change stays single-source** (D-17). M9: `sanitizeName` at the model boundary in `buildCompatRequest` — Unicode-aware (CJK names intact; an ASCII allowlist would itself be a bug), strips control/format + framing chars, caps at 40. Evidence: `deno check` clean; `compat_lifecycle+worker_compat` 8/8; `compat-narrative.test.ts` 5/5; Deno `143 passed | 0 failed` (+2); Node `# pass 119 / # fail 0` (287052.6ms). +4 tests incl. the injection fixture — 2026-07-17
 - B10 — migration `20260717000024_h5_chat_ordering_m12b_citations.sql` applied + `chat-send/index.ts`: H5 order fix (most-recent-8, reversed) + additive `citations jsonb` (M12b) + monotonic `seq` identity column & `(thread_id, seq desc)` index. **The audit's literal fix was insufficient (D-16)**: `created_at` is `now()` = transaction_timestamp (**proven: `select now()=now()` → true**) and chat-send inserts both rows of a turn in ONE statement → identical timestamps, random uuid pk → a turn's order is **undefined**, so "descending + reverse" could feed the model **[assistant, user]**. ERRATA confirmed: `chat.ts:149` `slice(-8)` is a no-op. Evidence: `deno check` clean; `chat.test.mjs` 6/6; `_shared/chat.test.ts` 13/13; Deno `141 passed | 0 failed`; Node `# pass 117 / # fail 0` (267825.0ms). +4 regression tests (the Node one **demonstrates** the old query cannot see the newest turn) — 2026-07-17
@@ -1245,6 +1305,7 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-20 | 2026-07-17 | **B13's short code is WIDENED from 6 to 10 hex (24 -> 40 bits), and that — not the rate limiting — is the load-bearing half of H9's fix.** Delegated to the loop by the user; decided on arithmetic. | The audit treats H9's risk as "collision + brute-force implications … that is exactly why the spec pairs it with rate limiting". **Rate limiting alone cannot save a 24-bit code, because a prefix match hits ANY live invite:** the guesser's odds are `N / 2^bits`, not one-in-the-code-space. At 6 hex (16.7M) with 100k live invites that is **~1 in 167 guesses** to hijack a stranger's invite — and a hit **burns** it (claims are single-use), so the real recipient is locked out too: hijack *and* denial of service on the growth loop. Per-user throttling does not fix a per-*account* attack when anonymous sign-up is cheap. At 10 hex (1.1e12) it is ~1 in 1.1M at a **million** live invites, which no realistic throttle budget searches. **The change is free**: the code is *derived from token_hash, never stored*, so there is no data to migrate (`invites` holds 1 row); the cost is typing `XXXXX-XXXXX` instead of `XXX-XXX` on the rare fallback path — ordinary redemption-code UX. Collisions fall out too: at 24 bits they are near-certain at scale, at 40 bits rare — and an ambiguous prefix is **refused, never guessed**, because handing a claimant somebody else's invite is the one failure this code must not have. |
 | D-19 | 2026-07-17 | **M7's "5-min CDN caching undercounts real repeat clicks" is a FALSE POSITIVE as written — yet B12 still changed the caching, to `no-store` + `Vary: User-Agent`, for two different reasons.** | **Why the audit's claim is wrong:** `created→clicked` is a **one-way transition**, so repeat clicks are never counted whether or not the page is cached. Caching cannot undercount a number nobody records. **Why the caching had to change anyway:** (1) **The bot filter and `max-age=300` are incompatible.** Today a crawler's request flips the status, so caching is harmless. Once bots stop flipping it, the crawler's fetch **primes the cache** and the real person's click seconds later is served from it — never reaching the function, never counted. The fix for M7's real limb would have created a worse version of the bug the audit imagined. (2) **The response is UA-routed with no `Vary`** — the CTA is an App Store, Play, or web URL chosen from the user-agent, so a shared cache could hand an Android user the iOS store link. That is an unreported bug, found only because M7 sent me to look at this header. Crawlers fetch a given invite once, so nothing here was worth caching; `no-store` costs one cheap SSR render per click. |
 | D-18 | 2026-07-17 | **`sanitizeInviteContext` DROPS invalid values instead of rejecting the request.** | The invite context is **cosmetic** (headline name, OG image, routing hints). Throwing would mean a legitimate client bug — a stale `card_variant`, a mis-built URL — **fails invite-create outright and breaks the P2 growth loop**, which is the one thing the audit says never to paywall or block. Dropping degrades gracefully: the page falls back to `profiles.display_name` and `OG_DEFAULT`, both of which it already handles. An attacker gains nothing either way — their value never reaches the page — so the only party a throw would punish is a real user with a buggy client. Validation lives at the **write** rather than the read for the same reason B4 collects before deleting: the trusted-domain render is the last place you want to be deciding whether data is safe. |
 | D-17 | 2026-07-17 | **M8's atomic gate is a 3-arg `request_compat` OVERLOAD that takes `p_has_premium` as a parameter, rather than recomputing entitlement in SQL or adding a partial unique index.** | **Why it had to move into SQL at all:** the count and the act were separate PostgREST round-trips, and no lock survives between two HTTP transactions — so the window was unclosable from the Edge Function. **Why an overload, not a default arg:** adding a 3rd parameter *with a default* makes the existing 2-arg call ambiguous ("function is not unique") and would **break** it; differing arity is unambiguous, leaves the old function intact (expand), and lets B18 contract it later. **Why not a partial unique index** (the ledger's guess at the shape): `compatibility_results` has no `requester_id`, so no index on it can express "at most one free result per *user*" — the user lives on `compatibility_pairs`. Adding a requester column + an `is_free` flag would still need the function to know premium-ness, so it lands back here anyway, plus two new columns. **Why premium is passed rather than recomputed:** `isPremiumRow` (`entitlement.ts:13`) is the single definition of that rule and **B15 is chartered to change its `expires_at: null` semantics** — a SQL copy would create a second place to update and hand B15 a silent drift bug. The flag cannot be forged: the only caller is an Edge Function running with the service key that reads `subscriptions` itself, and `request_compat` is revoked from anon/authenticated. **Bonus:** moving the gate deleted the string-interpolated `.or()` filter, so M8's second limb was fixed by subtraction. |

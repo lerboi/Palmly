@@ -6,6 +6,7 @@ import { createContext, requireMode } from '../_shared/context.ts';
 import { AppError, jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 import { hasPremium } from '../_shared/entitlement.ts';
 import { isUuid } from '../_shared/revenuecat.ts';
+import { enforceRateLimit } from '../_shared/ratelimit.ts';
 
 interface Body {
   pair_id?: string;
@@ -19,6 +20,8 @@ Deno.serve(
     // M8: the sub reaches SQL as a typed uuid parameter, so it is not an injection vector — but the
     // gate should not rest on `verify_jwt` alone for the shape of its subject. Cheap, explicit.
     if (!isUuid(ctx.userId)) throw new AppError('unauthorized', 'subject is not a uuid', 401);
+
+    await enforceRateLimit(ctx.admin, 'compat_request', ctx.userId); // spec §13
 
     const body = (await req.json().catch(() => ({}))) as Body;
     if (!body.pair_id) throw new AppError('bad_request', 'pair_id is required', 400);

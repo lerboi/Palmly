@@ -5,6 +5,7 @@
 // transport + the thread UI are device-gated (H1); this ships the non-streaming grounded core.
 import { createContext, requireMode } from '../_shared/context.ts';
 import { AppError, jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
+import { enforceRateLimit } from '../_shared/ratelimit.ts';
 import { hasPremium } from '../_shared/entitlement.ts';
 import { KB_VERSION, traditionFor, type GeminiCall, type GeminiResponse } from '../_shared/narrative.ts';
 import { withRetry } from '../_shared/gemini.ts';
@@ -50,6 +51,8 @@ Deno.serve(
     const ctx = createContext(req);
     requireMode(ctx, 'user');
     if (!ctx.userId) throw new AppError('unauthorized', 'no authenticated user', 401);
+
+    await enforceRateLimit(ctx.admin, 'chat_send', ctx.userId); // spec §13 — gates a paid model call
 
     const body = (await req.json().catch(() => ({}))) as Body;
     const message = (body.message ?? '').trim();
