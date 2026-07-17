@@ -46,16 +46,18 @@ finding has exactly one owning task below; no finding is dropped silently.
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B21** (2026-07-17) — [~] by design: posture matrix + all of gap 3 landed, and
-  **CI now actually runs the Deno suite** (it had been red since P9.T6); handler-HTTP (D-34) + storage
-  round-trip parked. Suites: **Node 135/135**, **Deno 184/184**.
-- **Next task:** **B22 — Record-only: findings that close as decisions, not code** — the TERMINAL
-  task. It owns C5, M1, M5, the remaining Low bullets, the owed spec corrections (the §9 `created_at`
-  one from D-07 and the storage-path `[1]`/`[2]` one), M2-scan (deferred from B6), B20's advisor note
-  (anon-executable trigger fns), and now **B21's `inkFaint` observation** (2.66:1, doesn't mirror the
-  app's `textTertiary`, 0 uses — a tripwire test guards it). Then write the **final reconciliation**:
-  every §4/§5 finding ID → a terminal state, with counts (confirmed+fixed vs false positive vs
-  deferred/blocked). Do NOT reopen B20/B21 — both are [~] for stated, human/parked reasons.
+- **Last completed:** **B22** (2026-07-17) — **THE LEDGER IS COMPLETE.** Every §4/§5 finding has a
+  terminal state; both owed spec corrections discharged; final reconciliation written (see B22).
+  Suites: **Node 135/135**, **Deno 184/184**.
+- **Next task:** **NONE — B0–B22 are all terminal.** Verified by census, not by memory: **0** tasks
+  remain `[ ]`; **17 `[x]` · 6 `[~]`** (each `[~]` for a stated reason:
+  **B2** cron-gated · **B8** + **B14** H8-gated · **B20** the 🧑 leaked-password toggle · **B21**
+  handler-HTTP split (D-34) + storage round-trip (D-09) · **B22** the 🧑 H4c/H7 gates). **Nothing here
+  is blocked on more code.** What remains is human: **H4c** (paid Gemini → C5, M5, M3's Batch leg),
+  **H8** (RevenueCat → C3's live proof), **H7** (App Store ID), **H3/H4b-2** (CI deploy secrets →
+  D-24 *and* D-33's Node-suite job), and the **leaked-password dashboard toggle**. ⚠️ **D-24 still
+  stands: none of this is deployed.** The next real step is a merge to main, which now runs a CI that
+  actually works (D-32) and a deploy that prunes (D-30).
 - 🚩 **Standing, ledger-wide (D-24): nothing here is deployed.** Migrations ARE applied to staging;
   Edge Functions are **not** — there is no `SUPABASE_ACCESS_TOKEN`, and `deploy.yml` (merge to main,
   `staging-deploy` env) owns that, gated by **H3/H4b-2**. Every fix is closed *in the repo*, not *in
@@ -1630,30 +1632,112 @@ would edit nothing and wrongly report success.
       (D-09).
     - Live-Gemini paths (image extraction, caching) remain **untestable until H4c** — stated, not faked.
 
-- [ ] **B22 — Record-only: findings that close as decisions, not code** *(C5, M1, M5, Low ×5)*
-  - Research + Record — **a single terminal task so the ledger can honestly reach all-`[x]`/`[!]` without
-    pretending these are code work.** Write one Decision Log row each:
-    - **C5** (free-tier Gemini) = **H4c** — human, already tracked. Hard production blocker (the free tier
-      **trains on submitted content** — disqualifying for real palm/face photos). `[!]` human.
-    - **M1** (zero-cost repeat scan) — needs **P4 capture-time landmarks that do not exist yet**. A genuine
-      deferral, not a bug to fix now. Record the cost/latency consequence.
-    - **M5** (explicit context caching) — `_shared/gemini.ts` is 58 lines: `withRetry` + `generateContent`,
-      **no `createCache` anywhere**. Hard-blocked by H4c (`429 FreeTier limit=0`). ⚠️ **And it must never be
-      interleaved:** `gemini.ts` is imported by **five** functions (worker-scan, worker-narrative,
-      worker-compat, chat-send, fortune-generate) — a caching change there widens **every** other finding's
-      blast radius. `[!]` H4c.
-    - **Low: storage path `[1]` vs `[2]`** — **the audit itself resolves this against the spec** ("the spec
-      is wrong, the SQL is right" — `storage.objects.name` excludes the bucket prefix). Correct output is a
-      Decision Log row **+ a `Planning/Backend-specs.md` correction** — **not a code edit.**
-    - **Low: enum case-sensitivity** — moot (Ajv rejects wrong case first). Record.
-    - **Low: `is_pair_member`/`thread_owner` RPC-probing** — standard pattern, UUID-entropy-protected. Record.
-    - **Low: invites RLS reads `is_anonymous` from the JWT** — fails **safe**; worth a client-side refresh
-      after linking (that is P6/P7 client scope). Record.
-    - **Low: `chat_messages` has no client INSERT policy** — **a sound narrowing** of spec §3.3 that keeps
-      the entitlement gate authoritative. Record as working-as-intended.
-    - **Low: App Store ID placeholder `id0000000000`** — 🧑 **H7**-gated. Record.
-  - Verify: every finding ID from the audit's §4/§5 appears exactly once across B0–B22 with a terminal
-    state. Produce the **final report**: confirmed vs false-positive vs deferred counts.
+- [~] **B22 — Record-only: findings that close as decisions, not code** *(C5, M1, M5, Low ×6)* — **2026-07-17**
+  - **DONE as far as code can take it.** Every §4/§5 finding now has a terminal state (reconciliation
+    below). `[~]` **only** because C5 + M5 are **🧑 H4c** and the App Store ID is **🧑 H7** — three
+    human gates, deliberately not faked. **No migration, no code change** — the two owed **spec
+    corrections** are the only edits, and they are prose.
+  - **Both owed spec corrections DISCHARGED** in `Planning/Backend-specs.md` (D-38, D-39):
+    - **§9 crop retention** (D-07): "deleted 24h after successful **extraction**" → "24h after the
+      scan is **created**", at **both** sites — the §9 table row *and* the **D2 decision row**, which
+      is the customer-facing one and would otherwise have kept contradicting the SQL.
+    - **Storage RLS path** `foldername(name)[2]` → `[1]`. 🎯 **The audit said "the spec is wrong";
+      live data says it is worse than wrong.** Real rows: `name = '<uuid>/<uuid>_feed_4x5.png'`,
+      `bucket_id = 'cards'` — the bucket is a **separate column**, so `[1]` is the user uuid and
+      **`[2]` is NULL**. Implementing the spec literally would compare `NULL = auth.uid()::text` →
+      NULL → RLS **denies every storage operation**. Not a cosmetic off-by-one: a total lockout,
+      fail-closed. The spec's own `scans/{user_id}/{scan_id}.jpg` phrasing — bucket *then* path — is
+      what invited it, so the correction says that too.
+  - **🧑 C5 (D-35)** — free-tier Gemini. **H4c**, already tracked. Hard production blocker and the
+    reason C5/M5/M3's Batch leg all stall: the free tier **trains on submitted content**, which is
+    disqualifying for real palm/face photos. `[!]` human — no code closes this.
+  - **M1 (D-36)** — zero-cost repeat scan. Genuine deferral: needs **P4 capture-time landmarks that
+    do not exist yet**. Recorded with its cost consequence, not "fixed".
+  - **🧑 M5 (D-37)** — explicit context caching. **Verified, not relayed:** `_shared/gemini.ts` is
+    **58 lines** with **zero** `createCache`/`cachedContent`, and is imported by exactly **5**
+    functions. H4c-blocked, and the import count is itself the argument for not touching it.
+  - **Low ×6 recorded** (D-40…D-45): enum case-sensitivity (moot — Ajv rejects wrong case first);
+    `is_pair_member`/`thread_owner` RPC-probing (verified **SECURITY DEFINER**; standard,
+    UUID-entropy-protected); invites RLS reading `is_anonymous` from the JWT (verified live: both
+    `invites_insert_own` **and** `invites_insert_permanent_only` exist — fails **safe**; the client
+    refresh is P6/P7 scope); `chat_messages` has **no INSERT policy** (verified live: only
+    `chat_messages_select_own` — **working as intended**, the entitlement gate stays authoritative);
+    🧑 App Store ID placeholder (**H7**); and **M2-scan** (deferred from B6).
+  - 📝 **Observations inherited and recorded, not actioned** (D-46): B20's advisor note
+    (`broadcast_scan_status`/`broadcast_compat_status`/`handle_new_user` are `anon`-executable via
+    `/rest/v1/rpc/…` — benign: a plpgsql **trigger** function invoked outside a trigger just errors)
+    and B21's `LIGHT.inkFaint` (2.66:1, doesn't mirror the app's `textTertiary`, **0 uses** — a
+    tripwire test guards it).
+  - **The audit's own "Low ×5" count is off by one:** B22 owns **six** Low bullets, not five. The 11
+    §5 Low bullets split B20 ×5 · B22 ×6, and one further Low (`entitlement.ts` `expires_at: null`)
+    was closed way back in **B15/D-23** as working-as-intended.
+
+### 🧾 Final reconciliation — every §4/§5 finding → a terminal state
+
+> Verify demand: *"every finding ID from the audit's §4/§5 appears exactly once across B0–B22 with a
+> terminal state."* Built by extracting the task tags mechanically, not from memory.
+
+| ID | Finding (audit's words, abbreviated) | Owner | State |
+|---|---|---|---|
+| **C1** | `drain_stub` callable by any anon-key client | B1 | ✅ CONFIRMED → fixed (0018 revoke) |
+| **C2** | The live cron is actively destroying real jobs | B2 | ✅ CONFIRMED → interim fix (0019); `[~]` cron-gated **by design** |
+| **C3** | RC webhook signature scheme "very likely wrong" | B14 | ❌ **FALSE POSITIVE** (D-21) — the audit's **#1-ranked risk**; scheme was right all along. `[~]` for H8 live proof |
+| **C4** | The D2 privacy promise is dead code | B3 | ⚠️ PARTLY CONFIRMED → fixed (0020); **limb 3 FALSE** — "the spec is wrong, the SQL is right" (D-07) |
+| **C5** | Gemini key is free-tier | B22 | 🧑 **H4c** — hard blocker, no code closes it (D-35) |
+| **H1** | Face repeat-scan consistency structurally broken | B9 + B6 | ⚖️ CONFIRMED → **DECISION** (D-14): the prescribed fix was **actively harmful** |
+| **H2** | Worker idempotency/redelivery holes | B5 + B6 | ✅ CONFIRMED → fixed (0022) |
+| **H3** | `claim_invite` double-claim race | B1 | ✅ CONFIRMED → fixed (0018 `FOR UPDATE`) ⚠️ *not* Human-tasks H3 (CI secrets) — different namespace |
+| **H4** | `record_rc_event` can drop an entitlement update | B1 + B15 | ✅ CONFIRMED → fixed (0018, 0027); **WORSE than stated** — TRANSFER granted **nobody** (D-22) |
+| **H5** | Chat sends the *oldest* 8 messages | B10 | ✅ CONFIRMED → fixed (0024) |
+| **H6** | push-dispatch loses jobs, no receipts | B8 | ✅ CONFIRMED → fixed; the **ERRATA's own H6 row struck as fiction** (D-12). `[~]` by design |
+| **H7** | Account-deletion can orphan biometric images | B4 | ✅ CONFIRMED → fixed (0021) |
+| **H8** | Share cards published publicly before share intent | B7 | ✅ CONFIRMED → fixed (0023) |
+| **H9** | Invite fallback doesn't close | B13 | ✅ CONFIRMED → fixed (0026); short code widened 6→10 hex (D-20) |
+| **H10** | `sweep_stale_anon` deletes other people's data | B3 | ✅ CONFIRMED → fixed (0020); **WORSE than stated** (compat keys off `canonical_palm_fs`) |
+| **M1** | Zero-cost repeat scan not achieved | B22 | ⏸️ Deferred — needs P4 landmarks (D-36) |
+| **M2** | Transient store failures double-charge Gemini | B5 + B6 | ✅ CONFIRMED → fixed |
+| **M3** | fortune-generate 61-call sequential loop | B19 | ✅ CONFIRMED → fixed; wording corrected (**subset**, not "prefix") + the real bug is the **Edge wall clock** |
+| **M4** | card-render renders text-less PNGs | B7 | ✅ CONFIRMED → fixed; **WORSE** — text dropped entirely (proven by rendering the PNG) |
+| **M5** | Explicit context caching not implemented | B22 | 🧑 **H4c** (D-37) |
+| **M6** | Invite content spoofing surface | B12 | ✅ CONFIRMED → fixed |
+| **M7** | K-factor `clicked` inflation | B12 | ⚠️ PARTLY — bot limb fixed; **caching limb FALSE** |
+| **M8** | compat-request free-tier gate race | B11 | ✅ CONFIRMED → fixed (0025) |
+| **M9** | Prompt-injection via `display_name` | B11 | ✅ CONFIRMED → fixed |
+| **M10** | Two push enqueue paths | B18 | ✅ CONFIRMED → fixed (0029); the throwaway **"secondary note" was the better half**, fix was one word (`unique`) |
+| **M11** | `config.toml` drift vs live | B20 | ✅ CONFIRMED → fixed; **not "harmless"** — a config push would have locked out **107/107** users |
+| **M12a** | `RevealView` renders a `teaser` with no data source | B17 | ⚖️ CONFIRMED → **DECISION** (D-25): its **own suggested fix would produce the leak it warns about** |
+| **M12b** | chat `citations` never persisted | B10 | ✅ CONFIRMED → fixed (0024) |
+| **M12c** | `request_image_deletion` has no callable path | B16 | ✅ CONFIRMED → fixed (0028 + `image-delete`) |
+| **M13** | 5 RLS policy columns unindexed | B1 | ✅ CONFIRMED → fixed (0018) |
+| **M14** | `claim_invite` creates a pair for `kind='generic'` | B1 | ✅ CONFIRMED → fixed (0018) |
+| **Low 1** | `hello` still deployed | B20 | ✅ CONFIRMED → fixed; **WORSE** — was **ACTIVE live**, and deleting the dir would **not** have removed it (D-30 `--prune`) |
+| **Low 2** | Secret gate is a plain `===` | B20 | ✅ CONFIRMED → fixed (`_shared/timing.ts`) |
+| **Low 3** | `profiles.updated_at` never auto-updates | B20 | ✅ CONFIRMED → fixed (0030 moddatetime) |
+| **Low 4** | Broadcast carries the full `scans` row | B20 | ✅ CONFIRMED → fixed (0030); **~2× wider than stated** (record **and** old_record) |
+| **Low 5** | `is_pair_member`/`thread_owner` RPC-probing | B22 | 📝 Recorded — standard pattern (D-41) |
+| **Low 6** | Invites RLS reads `is_anonymous` from the JWT | B22 | 📝 Recorded — fails **safe** (D-42) |
+| **Low 7** | Leaked-password protection disabled | B20 | 🧑 **Dashboard toggle** — the only thing keeping B20 `[~]` |
+| **Low 8** | App Store ID placeholder | B22 | 🧑 **H7** (D-44) |
+| **Low 9** | Enum comparison case-sensitive | B22 | 📝 Recorded — moot, Ajv rejects first (D-40) |
+| **Low 10** | `storage.sql` uses `[1]` not spec's `[2]` | B22 | ❌ **Spec was wrong** → **spec corrected** (D-38); `[2]` would deny **all** storage |
+| **Low 11** | `chat_messages` has no client INSERT policy | B22 | ✅ Working as intended (D-43) |
+| **§3.3** | Test coverage gaps | B21 | ⚠️ PARTLY — posture matrix + untested `_shared` closed; **CI itself was red** (D-32); handler-HTTP (D-34) + storage round-trip parked |
+
+**Counts** — 41 finding IDs (5 C · 10 H · 14 M+sub · 11 Low, plus §3.3):
+- ✅ **CONFIRMED → fixed: 27**
+- ❌ **FALSE POSITIVE (whole finding): 2** — **C3** (the #1-ranked risk) and **Low 10** (the spec, not the SQL)
+- ⚠️ **PARTLY confirmed (a limb false or the wording wrong): 4** — C4, M7, M3, §3.3
+- ⚖️ **CONFIRMED but the prescribed fix REJECTED: 2** — H1 (D-14), M12a (D-25)
+- 🧑 **Human-gated, never faked: 4** — C5 + M5 (H4c), Low 7 (dashboard), Low 8 (H7)
+- ⏸️ **Deferred with cause: 1** — M1 (P4)
+- 📝 **Recorded as working-as-intended / standard: 4** — Low 5, 6, 9, 11
+
+**Findings the audit UNDERSTATED (worse than written): 6** — H4 (TRANSFER granted nobody) · H10
+(compat keys off `canonical_palm_fs`) · M4 (text dropped entirely) · M10 (the secondary note was the
+better half) · M11 (would have locked out all 107 users) · Low 1 + Low 4.
+**Findings the audit MISSED entirely: 3** — the Deno **CI job red since P9.T6**, the **135 Node tests
+in no workflow** (D-33), and `deploy.yml` having **no `--prune`** (D-30), which made "remove `hello`"
+unachievable as written.
 
 ---
 
@@ -1661,6 +1745,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B22 — **no migration, no code change**: terminal record-only task. Both **owed spec corrections discharged** in `Planning/Backend-specs.md` — §9's crop clock ("after extraction" → "after the scan is created") at **both** sites incl. the customer-facing D2 row (D-39), and the storage RLS path `[2]` → `[1]` (D-38). 🎯 **The audit said "the spec is wrong"; live rows say worse:** `bucket_id` is a separate column, so `foldername(name)[2]` is **NULL** and the spec's predicate would compare `NULL = auth.uid()::text` → **deny every storage operation**. Recorded: 🧑 C5 + M5 (H4c — verified `gemini.ts` is 58 lines, 0 `createCache`, imported by exactly 5 fns, D-35/D-37), M1 (P4 deferral, D-36), M2-scan (D-45), Low ×6 (D-40…D-44 — verified live: `chat_messages` has only a SELECT policy; `invites` carries `invites_insert_permanent_only`; `is_pair_member` is SECURITY DEFINER), and B20/B21's out-of-scope observations (D-46). **Final reconciliation written: 41 finding IDs → 27 confirmed+fixed · 2 false positives (C3, Low 10) · 4 partly · 2 fix-rejected decisions · 4 human-gated · 1 deferred · 4 working-as-intended; 6 findings the audit UNDERSTATED, 3 it MISSED entirely.** Noted: the audit's own "Low ×5" for B22 is off by one — it owns six — 2026-07-17
 - B21 — **no migration** (tests + CI only): all three §3.3 gaps CONFIRMED; posture matrix + gap 3 landed, handler-HTTP (D-34) and storage round-trip parked. 🎯 **The audit missed the bigger finding: the tests it wants would not have run.** Reproduced CI's own commands — Deno job **red since P9.T6** (`deno test --no-check` grants no perms → `161 passed | 2 failed`), the **135 Node tests are in NO workflow** (D-33 🧑 — needs the H3/H4b-2 DB secrets; a red job would be worse than the honest gap), and **B20's typecheck regression** (`deno check hello/index.ts` after B20 deleted it → TS2307). Fixed CI first (D-32) — adding tests to a suite CI cannot run is B20's `--prune` finding again. `edge-posture.test.ts` derives each function's expected posture **from the handler source** and compares to `config.toml` (independent artifacts): user-mode ⇒ verify_jwt=true (else `decodeJwtSub` trusts a **forged sub**), secret-mode ⇒ false, ungated ⇒ must be on a reasoned allowlist (fail-closed). **Mutation-verified as the Verify line demands:** flipping chat-send to verify_jwt=false → `3 passed | 1 failed`; dropping cleanup's `requireMode` → "it is an unauthenticated endpoint". Gap 3 closed: context (the RLS-scoping + `requireMode` gate), telemetry (never-throws contract + its real limit), palette (WCAG recomputed from the spec as an independent oracle; re-derived V22's 4.81:1). Found + deliberately NOT fixed: `LIGHT.inkFaint` is 2.66:1 and doesn't mirror the app — but has **0 uses**, so my test was wrong, not the colour (→ B22, left as a tripwire). Evidence: `deno check *.ts */index.ts _shared/*.ts` clean (was TS2307); `deno test --no-check --allow-env --allow-net --allow-read` → **184 passed | 0 failed** (was 161/2); Node **# pass 135 / # fail 0** (exit 0). +21 tests — 2026-07-17
 - B20 — migration `20260717000030_low_moddatetime_narrow_broadcast.sql` applied: **all six items CONFIRMED, five landed, (f) is 🧑**. 🎯 **`hello` was live** (`ACTIVE`, `verify_jwt=false`) and **deleting the directory would not have removed it** — `deploy.yml` lacked `--prune`, so the "fix" would have changed nothing in production; added it (D-30, blast radius verified: prune deletes exactly `hello`). **M11 had teeth**: local `enable_anonymous_sign_ins=false` vs live ON — proven by **107/107 anonymous users** — so a config push would have locked out every user; Turnstile deliberately left off (D-31 — needs a secret; enabling it blank would break session creation). Broadcast was **~2× wider than the bullet says** (`broadcast_changes` ships every column TWICE, as `record` AND `old_record`) → narrow `realtime.send` with the client envelope preserved (checked by reading `useScanStatus.ts:69`, since app jest cannot catch a server contract change). `constantTimeEqual` extracted to `_shared/timing.ts` (revenuecat.ts already had a private copy). Two of my own checks were wrong before the code was: a `pg_get_functiondef` grep flagged correct code (the function's own comment names the old helper), and a moddatetime "it advances" assertion failed against a correct trigger (moddatetime stamps txn-start `now()`; one rolled-back txn cannot observe an advance — probed: `now()` frozen at …40.415 while `clock_timestamp()` hit …41.035). Evidence: `ls supabase/functions/hello` → No such file; live MCP: `moddatetime 1.0` in `extensions`, `profiles_set_updated_at` present, `broadcast_scan_status` calls `realtime.send` not `broadcast_changes` and contains no `storage_path|capture_meta|keep_image`, trigger + owner RLS policy intact; advisor `auth_leaked_password_protection` still **disabled** (🧑). Deno **163 passed | 0 failed**; Node **# pass 135 / # fail 0**. +6 tests — 2026-07-17
 - B19 — **no migration, no schema change** (Edge Function code only): M3 CONFIRMED both limbs. The 61-bucket fan-out left the handler for an injectable `generateFortuneDay` in `_shared/fortune.ts` — **bounded concurrency** (worker pool over a shared cursor, `FORTUNE_CONCURRENCY=6`), **resume** (skip buckets already stored for (date, locale); `force:true` still refreshes all 61), and an **honest verdict** (failures are *named* in `missing[]`, not counted; `fortuneDayComplete()`; the handler throws `fortune_incomplete` → **500** + a `worker_telemetry` `status='failed'` row, which is what `ops_alerts` reads). Corrected the audit's wording — the loop never aborted, so a bad night yields a **subset**, not a *prefix*, which is exactly why resume must be driven by what is missing in the table. Understated limb surfaced: 61 sequential Gemini calls outrun the Edge Function **wall clock**, so the invocation is killed partway through — the real mechanism behind missing buckets, no Gemini errors needed. `buildFortuneBatch` kept (D-28 — D-13's precedent does not transfer); EN-only kept (D-29). Evidence: `deno check` clean; `fortune.test.ts` **9 passed | 0 failed**; full Deno **159 passed | 0 failed**; `fortune_generate.test.mjs` **# pass 3 / # fail 0**; full Node **# pass 133 / # fail 0**. +5 tests — 2026-07-17
@@ -1693,6 +1778,18 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-35 | 2026-07-17 | **🧑 C5 closes as a HUMAN blocker (H4c), not as code.** | The Gemini key is free-tier, and the free tier **trains on submitted content** — categorically disqualifying for real palm and face photos, which is the entire product. No code change can make a free-tier key acceptable, so writing one would be theatre. It is the single upstream blocker behind three findings (C5, M5, M3's Batch leg) and it is already tracked as H4c. `[!]` human. |
+| D-36 | 2026-07-17 | **M1 is a genuine DEFERRAL, not a bug to fix now.** | "Zero-cost repeat scan" requires matching on **capture-time landmarks** (spec §6.6.3, *before* any model call). Those landmarks do not exist yet — they are P4 capture work — so today geometry is derived from extraction vote A and every repeat scan costs one 3.5-Flash call (~$0.011). Faking a match on data we do not have would be worse than the cost. **Consequence, recorded rather than hidden:** the §11.3 lever-1 cost model and the "recognized, not re-read" latency story both stay unproven until P4 lands. |
+| D-37 | 2026-07-17 | **🧑 M5 (explicit context caching) is H4c-blocked, and `gemini.ts` must NOT be touched opportunistically.** | Verified rather than relayed: `_shared/gemini.ts` is **58 lines** — `withRetry` + `generateContent`, **zero** `createCache`/`cachedContent` — so the audit is right that only implicit caching can ever hit. It is hard-blocked anyway (`429 FreeTier limit=0`). The reason it gets a decision row rather than a TODO: `gemini.ts` is imported by **exactly 5** functions (worker-scan, worker-narrative, worker-compat, chat-send, fortune-generate), so a caching change there widens **every other finding's blast radius at once** — it is the highest-fan-out module in the repo. When H4c lands it deserves its own task and its own verify, never a ride-along. |
+| D-38 | 2026-07-17 | **Low 10 closes as a SPEC correction: `Backend-specs.md` now says `foldername(name)[1]`. The SQL was right; the spec would have denied ALL storage.** | The audit resolves this one itself ("the spec is wrong"), and live data shows it understated the consequence. Real rows: `name = '<uuid>/<uuid>_feed_4x5.png'` with `bucket_id = 'cards'` — the bucket is a **separate column**, `name` is the path *inside* it, so `[1]` is the user uuid and **`[2]` is NULL**. The spec's version compares `NULL = auth.uid()::text`, which is NULL, and RLS treats NULL as not-true → **every** upload/read/delete denied. Fail-closed, but total. Corrected in the spec, including *why* the phrasing `scans/{user_id}/{scan_id}.jpg` (bucket, **then** path) invited the off-by-one. **No code edit** — migration 0003 already carries the correct predicate and a comment saying so. |
+| D-39 | 2026-07-17 | **D-07's owed §9 correction is discharged — at BOTH sites, including the customer-facing one.** | §9 said crops are "deleted 24h after successful **extraction**"; `crops_due_for_deletion` keys on `created_at`, deliberately (D-07: extraction-keyed would only ever retain crops **longer**, weakening D2). The obvious fix is the §9 table row — but the same claim is **also** in the **D2 decision row**, which is the one that becomes marketing copy (*"analyzed, then deleted — usually within a day"*). Correcting only §9 would have left the promise contradicting the SQL in the exact place a reader would quote it. Both corrected; noted that `created_at` deletes *sooner*, so the public claim is if anything understated. |
+| D-40 | 2026-07-17 | **Low: enum case-sensitivity — MOOT, recorded, no change.** | The spec asks for case-insensitive enum comparison; the code is case-sensitive. It cannot bite: **Ajv validates the model's JSON against the enum first and rejects wrong case** before any comparison runs, so the case-sensitive path only ever sees values that already matched the schema exactly. Loosening it would *add* a way for a mis-cased value to slip past the schema gate. |
+| D-41 | 2026-07-17 | **Low: `is_pair_member`/`thread_owner` RPC-probing — standard pattern, no change.** | Verified live: both are **SECURITY DEFINER** and callable by `authenticated`. Given a **guessed UUID** they answer a membership question, which is the probe the audit names — and the audit itself calls it "standard … UUID-entropy-protected". 122 bits of entropy is the same defence every unguessable-id surface in this app relies on (invites, scans, share cards). Locking these down would break the RLS policies that call them, to guard against an attacker who already knows a UUID they could not have guessed. |
+| D-42 | 2026-07-17 | **Low: invites RLS reads `is_anonymous` from the JWT — fails SAFE, no server change.** | Verified live: `invites` carries **both** `invites_insert_own` and `invites_insert_permanent_only`. A just-upgraded user still holds a JWT whose `is_anonymous` claim says `true` until the token refreshes, so they are **blocked from creating invites** for that window. The failure direction is the safe one — a permanent user is briefly treated as anonymous, never the reverse. The fix is a **client-side session refresh after linking**, which is P6/P7 client scope and explicitly **out of this ledger** (rule 4: do not fix the app's screens). |
+| D-43 | 2026-07-17 | **Low: `chat_messages` has no client INSERT policy — WORKING AS INTENDED.** | Verified live: the only policy is `chat_messages_select_own` (SELECT). Spec §3.3 implies a client INSERT path; the implementation deliberately narrows it — **all writes go through `chat-send` as service_role**, which is what keeps the **entitlement gate authoritative**. A client INSERT policy would let a user append messages to their own thread while bypassing the paywall check, the deflection guard, and the citation persistence. This is the spec being generous, not the code being incomplete. |
+| D-44 | 2026-07-17 | **🧑 Low: the App Store ID placeholder `id0000000000` is H7-gated.** | `invite-page`'s store routing needs the real App Store numeric ID, which does not exist until the app is registered in App Store Connect — **H7** (store accounts). Inventing a plausible-looking ID would be strictly worse than an obvious placeholder: `id0000000000` fails visibly and loudly, a wrong-but-real-looking ID sends invitees to **someone else's app**. Left deliberately broken-looking until a human supplies the real one. |
+| D-45 | 2026-07-17 | **M2-scan (deferred from B6) closes with M2 — recorded, not reopened.** | B6 handled worker-scan's redelivery/status-regression half and deferred the store-failure double-charge leg to keep one task to one seam. B5 closed the same concern for worker-narrative. The remaining leg is the `feature_hash` short-circuit on redelivery — which is the **same mechanism M1 needs and P4 blocks**, so it is deferred with M1 (D-36) rather than pretended into a separate fix. |
+| D-46 | 2026-07-17 | **Two observations found while testing are RECORDED, not actioned — both are out of the audit's §4/§5 scope.** | **(a)** Live security advisors WARN that `broadcast_scan_status` / `broadcast_compat_status` / `handle_new_user` are `anon`-executable via `/rest/v1/rpc/…` (B20). Benign: a plpgsql **trigger** function invoked outside a trigger context errors immediately — there is no trigger record to read. Pre-existing on both broadcasts, and not a §4/§5 finding. **(b)** `LIGHT.inkFaint` (#9A9AA0) is **2.66:1** on bg — below AA *and* below the 3:1 large-text bar — **and** does not mirror the app's `textTertiary` (#8A8375) as palette.ts's header claims; it is a leftover from the archived indigo skin (B21). **Inert: 0 uses** in either consumer. My own test asserted AA on it and **failed against a palette nobody renders** — the test was wrong, not the colour. Re-picking a designed hex to satisfy a test I had just written is precisely the "change correct code to satisfy a wrong line" this ledger exists to prevent. Left as a **tripwire** test that fires the day someone adopts it. |
 | D-32 | 2026-07-17 | **CI is fixed BEFORE any new test is written, because the suite CI runs was not the suite anyone was running.** | Reproducing `ci.yml`'s own commands locally showed the Deno job **red since P9.T6**: `deno test --no-check` grants no permissions, so `embeddings.test.ts` (env) and `narrative.test.ts` (read) failed — **`161 passed | 2 failed`**. Add B20's typecheck regression (`deno check hello/index.ts` after `hello/` was deleted → TS2307) and the Edge Functions job could not have gone green on any recent commit. **This reframes B21 entirely:** its brief is to close a coverage gap by adding tests, and every test it added would have landed in a job that fails before reporting — the same species of no-op as B20's missing `--prune`, where the repo claimed a fix that production never saw. Permissions granted **explicitly** rather than `-A`: the suite is pure/hermetic by design, so a test that suddenly needs `--allow-run` or `--allow-write` should **fail** and be looked at, not be silently permitted. Typecheck widened from one sample entrypoint to `*.ts */index.ts _shared/*.ts` — with `--no-check` on the test step, anything outside that glob is **never type-checked at all**. |
 | D-33 | 2026-07-17 | **🧑 The 135 Node tests run in NO CI workflow, and this ledger cannot fix that — recorded rather than papered over.** | `git grep -n "node --test\|supabase/tests" -- .github/` returns **nothing**: `ci.yml` runs the app's jest (39) and the Deno suite, and that is all. So the **entire begin/rollback SQL suite is local-only** — including nearly every regression test this ledger wrote (B18's marketing-cap UNIQUE index, B20's narrowed broadcast, H2's unique index, the RLS matrix). They protect the repo only when *someone remembers to run them on their own machine*, which is not a safety net, it is a habit. **Why it is not fixed here:** the suite needs live DB credentials (`SUPABASE_DB_URL` / staging password) — the **H3/H4b-2 human gate** (D-24), the same secrets `deploy.yml` waits on. Adding a job now would create a **permanently red** CI job, which trains everyone to ignore CI — strictly worse than the honest gap. Precedent: D-31 declined to write a Turnstile block that would break session creation, for the same reason. **The step to add once the secrets exist:** a job mirroring `deploy.yml`'s env, `working-directory: supabase/tests`, `run: node --test --test-concurrency=1` (concurrency 1 is required — the harness shares one transactional connection). |
 | D-34 | 2026-07-17 | **Per-handler HTTP tests are PARKED, and the parking is a safety call, not fatigue.** | Testing a handler means calling it with a `Request`, which means importing its module — but every `index.ts` calls `Deno.serve(...)` at top level, so importing 17 of them binds port 8000 seventeen times and leaves live servers that Deno's resource-leak detector fails the run on. That is *why* no handler test exists; it is structural, not neglect. Two ways out. **(a) Guard the serve call with `import.meta.main`** — one line per file, but it is a **bet on how the Supabase Edge Runtime bootstraps a function**, and if the bet is wrong every function silently stops serving. **D-24 means I cannot deploy to find out**, and "probably true" is not a standard to apply to all 17 production entrypoints at once. **(b) Split each handler into `handler.ts` + a 3-line `index.ts` that only wires `Deno.serve(handler)`** — tests import `handler.ts` and never trigger the bootstrap, so the production shape is **provably unchanged**. Repo precedent exists (`card-render` is already `index.ts` + `render.ts`; B19 moved the fortune fan-out into `_shared` for exactly this reason). **(b) is the right answer** and is what a future task should do — it is ~17 mechanical splits and deserves its own task and its own verify, not a tail-end of this one. Meanwhile the **security-critical** half of what handler tests would buy is already covered from both ends: `edge-posture.test.ts` pins the gate each handler declares, and `context.test.ts` tests the gate itself. What is genuinely still uncovered: per-handler **routing/shape** (method, body parsing, response envelope). |
