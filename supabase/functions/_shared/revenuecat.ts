@@ -67,6 +67,33 @@ export interface RcEvent {
   expiration_at_ms?: number | null;
   store?: string;
   entitlement_ids?: string[];
+  event_timestamp_ms?: number; // RC's own clock — the ordering key (record_rc_event reads it)
+  // TRANSFER carries these ARRAYS and NO app_user_id (docs verified 2026-07-17):
+  // "A transfer of transactions and entitlements was initiated between App User ID(s)" and
+  // "The webhook is sent only for the destination user, although the event appears in both
+  //  customer histories."
+  transferred_from?: string[];
+  transferred_to?: string[];
+}
+
+export interface TransferParties {
+  to: string[]; // gains the entitlement
+  from: string[]; // loses it — RC has already moved it away, and will never tell us again
+}
+
+/**
+ * Resolve a TRANSFER's parties (H4).
+ *
+ * A TRANSFER has no `app_user_id`, so the webhook's usual `isUuid(event.app_user_id)` yields null and
+ * the event is logged-but-never-applied: today we grant NOBODY and revoke nobody — worse than the
+ * audit's "grants the destination without revoking the source".
+ *
+ * Both fields are arrays and may contain RC's own anonymous ids (`$RCAnonymousID:…`) rather than our
+ * UUIDs, so every entry is filtered through isUuid — an anonymous id is not a user we can gate.
+ */
+export function transferParties(e: RcEvent): TransferParties {
+  const pick = (xs: unknown): string[] => (Array.isArray(xs) ? xs.filter(isUuid) : []);
+  return { to: pick(e.transferred_to), from: pick(e.transferred_from) };
 }
 
 export interface SubscriptionState {

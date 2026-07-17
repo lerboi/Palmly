@@ -25,7 +25,10 @@ async function populate(c, uid) {
   const reading = (await c.query(`insert into public.readings (user_id, feature_set_id, kind, narrative, model_id, prompt_version, kb_version) values ($1,$2,'palm','{}'::jsonb,'m','p','v1') returning id`, [uid, fs])).rows[0].id;
   await c.query(`insert into public.subject_profiles (user_id, kind, canonical_feature_set_id) values ($1,'palm_left',$2)`, [uid, fs]);
   await c.query(`insert into public.subscriptions (user_id, rc_app_user_id) values ($1,$2)`, [uid, uid]);
-  await c.query(`insert into public.subscription_events (user_id, type, payload) values ($1,'INITIAL','{}'::jsonb)`, [uid]);
+  // rc_event_id is NOT NULL as of migration 0027 (H4): a nullable idempotency key is not one, since
+  // NULLs never conflict. Real writers always supply it — record_rc_event coalesces to an `md5:`
+  // surrogate — so the fixture must too.
+  await c.query(`insert into public.subscription_events (rc_event_id, user_id, type, payload) values ($2,$1,'INITIAL','{}'::jsonb)`, [uid, `evt-fixture-${uid.slice(0, 8)}`]);
   await c.query(`insert into public.devices (user_id, expo_push_token, platform) values ($1,$2,'ios')`, [uid, `tok-${uid.slice(0, 8)}`]);
   const thread = (await c.query(`insert into public.chat_threads (user_id, reading_id) values ($1,$2) returning id`, [uid, reading])).rows[0].id;
   await c.query(`insert into public.chat_messages (thread_id, role, content) values ($1,'user','hi'),($1,'assistant','hello')`, [thread]);

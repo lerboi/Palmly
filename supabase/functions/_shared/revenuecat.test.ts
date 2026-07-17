@@ -1,5 +1,5 @@
 import { assert, assertEquals } from '@std/assert';
-import { deriveEntitlement, isUuid, rcSignature, verifyWebhookSignature } from './revenuecat.ts';
+import { deriveEntitlement, isUuid, rcSignature, transferParties, verifyWebhookSignature } from './revenuecat.ts';
 
 const SECRET = 'whsec_test_secret';
 const NOW = 1_760_000_000_000; // fixed ms
@@ -98,4 +98,30 @@ Deno.test('C3: the wire format is order-sensitive — "<body>.<t>" must NOT veri
   const reversed = await verifyWebhookSignature(body, `t=${t},v1=a533ac89dfd3caa1${'0'.repeat(48)}`, secret, Number(t) * 1000);
   assertEquals(reversed.valid, false, 'a signature over body.t (the reversed order) must be rejected');
   assertEquals(reversed.reason, 'signature_mismatch');
+});
+// ── H4/TRANSFER: the event carries no app_user_id at all ────────────────────────────────────────
+
+Deno.test('transferParties: a TRANSFER resolves its destination and source from the arrays', () => {
+  // Docs verified 2026-07-17: a TRANSFER has transferred_from/transferred_to (App User ID ARRAYS)
+  // and NO app_user_id — "the webhook is sent only for the destination user". The webhook's usual
+  // isUuid(event.app_user_id) therefore yielded null, and the event was logged but never applied:
+  // we granted NOBODY and revoked nobody.
+  const from = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+  const to = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+  const p = transferParties({ type: 'TRANSFER', transferred_from: [from], transferred_to: [to] });
+  assertEquals(p.to, [to]);
+  assertEquals(p.from, [from]);
+
+  // RC anonymous ids are not users we can gate — they must never be treated as a Supabase uuid.
+  const mixed = transferParties({
+    type: 'TRANSFER',
+    transferred_from: ['$RCAnonymousID:9f8e7d6c', from],
+    transferred_to: ['$RCAnonymousID:1a2b3c4d'],
+  });
+  assertEquals(mixed.from, [from], 'anonymous source filtered out, real uuid kept');
+  assertEquals(mixed.to, [], 'an anonymous destination is nobody we can grant to');
+
+  // a non-TRANSFER event has neither
+  assertEquals(transferParties({ type: 'RENEWAL', app_user_id: to }), { to: [], from: [] });
+  assertEquals(transferParties({ type: 'TRANSFER', transferred_from: 'not-an-array' as unknown as string[] }), { to: [], from: [] });
 });

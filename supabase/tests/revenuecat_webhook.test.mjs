@@ -101,3 +101,69 @@ test('record_rc_event: an event logged before its user existed still applies on 
     );
   });
 });
+// ── H4 residue (B15) ────────────────────────────────────────────────────────────────────────────
+
+test('H4: rc_event_id is NOT NULL — a null idempotency key can never be inserted again', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    // NULLs never conflict in Postgres, so a nullable idempotency key is not one: a null-id event
+    // would re-insert and re-upsert forever. B1 stopped record_rc_event writing null; this is the
+    // contraction that stops ANY writer.
+    await c.query('savepoint sp');
+    await assert.rejects(
+      c.query(`insert into public.subscription_events (rc_event_id, user_id, type, payload) values (null, $1, 'X', '{}'::jsonb)`, [U]),
+      /not-null constraint|null value in column/i,
+      'a null rc_event_id is rejected by the database itself',
+    );
+    await c.query('rollback to savepoint sp');
+  });
+});
+
+test('H4: a stale event cannot overwrite newer state (ordering guard, D-05)', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, U);
+    // event_timestamp_ms values computed independently (Date.UTC), not by the code under test.
+    const OLDER = 1767225600000; // 2026-01-01T00:00:00Z
+    const NEWER = 1780272000000; // 2026-06-01T00:00:00Z
+    const send = (id, type, status, ts, ent) =>
+      one(c, `select public.record_rc_event($1,$2,$3,$4,$5,$6,$7) as applied`, [
+        id, U, type, JSON.stringify({ id, type, event_timestamp_ms: ts }), U, status, JSON.stringify(ent),
+      ]);
+
+    // the NEWER event lands first (RC retries out of order — it retries for up to ~2.6h)
+    await send('evt_expire', 'EXPIRATION', 'expired', NEWER, {});
+    assert.equal((await one(c, `select status from public.subscriptions where user_id=$1`, [U])).status, 'expired');
+
+    // ...then a DELAYED RENEWAL from BEFORE it arrives. It must NOT resurrect the subscription.
+    await send('evt_renew_late', 'RENEWAL', 'active', OLDER, { premium: { expires_at: '2099-01-01T00:00:00Z' } });
+    const after = await one(c, `select status, latest_event_at from public.subscriptions where user_id=$1`, [U]);
+    assert.equal(after.status, 'expired', 'a stale RENEWAL must not overwrite a newer EXPIRATION');
+    assert.equal(after.latest_event_at.getTime(), NEWER, 'latest_event_at holds the EVENT time, not the processing time');
+
+    // and a genuinely newer event still applies
+    await send('evt_repurchase', 'INITIAL_PURCHASE', 'active', NEWER + 1000, { premium: { expires_at: '2099-01-01T00:00:00Z' } });
+    assert.equal((await one(c, `select status from public.subscriptions where user_id=$1`, [U])).status, 'active', 'a newer event still moves the state forward');
+  });
+});
+
+test('H4/TRANSFER: revoke_rc_entitlement expires the source that RC moved purchases away from', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    await seedUser(c, U);
+    // $1 is cast per column: user_id is uuid, rc_app_user_id is text — Postgres cannot deduce one
+    // type for a parameter used as both.
+    await c.query(`insert into public.subscriptions (user_id, rc_app_user_id, status, entitlements) values ($1::uuid,$1::text,'active',$2)`, [
+      U, JSON.stringify({ premium: { expires_at: '2099-01-01T00:00:00Z' } }),
+    ]);
+    // RC sends the TRANSFER webhook ONLY for the destination, so nothing will ever arrive to revoke
+    // the source. Without this the source keeps premium forever — one paid entitlement, two accounts.
+    assert.equal((await one(c, `select public.revoke_rc_entitlement($1) as ok`, [U])).ok, true);
+    const row = await one(c, `select status, entitlements from public.subscriptions where user_id=$1`, [U]);
+    assert.equal(row.status, 'expired', 'source is expired');
+    assert.deepEqual(row.entitlements, {}, 'entitlement cleared');
+    // the row survives as the audit trail of who held what
+    assert.equal(await n(c, `select count(*)::int n from public.subscriptions where user_id=$1`, [U]), 1);
+    assert.equal((await one(c, `select public.revoke_rc_entitlement($1) as ok`, ['bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'])).ok, false, 'revoking a stranger reports nothing revoked');
+  });
+});
