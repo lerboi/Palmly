@@ -46,11 +46,10 @@ finding has exactly one owning task below; no finding is dropped silently.
   is expected to produce a **real, observed** test count.
 - **Last completed:** **B6** (2026-07-17) — worker-scan status guard + vt 300 + subject_profiles
   error surfaced. Suites: **Node 113/113**, **Deno 138/138**.
-- **Next task:** **B7 — card-render: private-by-default · share-intent publication · fonts ·
-  self-hosted wasm** *(H8, M4)*. B5's precede-B7 dependency is **discharged**; note `preRenderCard`
-  is now at **`worker-narrative:171`** (B5's guard shifted the line numbers off the audit's `:148`).
-  ⚠️ **B7 needs a product decision from the user** (font licences / whether binaries belong in git) —
-  per loop rule 16, ask before committing font binaries.
+- **Next task:** **B7 — card-render** *(H8, M4)*. **Both product decisions are ANSWERED** (D-10 fonts
+  → commit all 3 + wasm; D-11 → pre-render private, publish on share) and the triage + plan are
+  banked under B7. **Start at the build; do not re-ask.** B5's precede-B7 dependency is discharged;
+  `preRenderCard` now sits at **`worker-narrative:171`** (not the audit's `:148`).
 - **Carried to B22:** **M2-scan** — a `feature_hash` short-circuit is impossible by construction
   (the hash is computed *from* the extraction output, so it cannot gate the extraction); it needs
   P4 capture-time landmarks, which is **M1's** existing deferral. Record the two together.
@@ -574,6 +573,47 @@ would edit nothing and wrongly report success.
     Do not mark H1 done here.
 
 - [ ] **B7 — card-render: private-by-default · share-intent publication · fonts · self-hosted wasm** *(H8, M4)*
+  - 📋 **RESEARCH BANKED + THE TWO PRODUCT DECISIONS ARE ANSWERED (2026-07-17). No code written yet.
+    Start at the build; do not re-ask the user.**
+  - **M4 CONFIRMED, exactly as the audit states.** `card-render/` contains **only `index.ts` +
+    `render.ts` — there is no `fonts/` dir at all**. `loadFonts()` (`render.ts:18-28`) swallows every
+    miss in a `catch`, and `render.ts:36` passes `loadSystemFonts: false`, so resvg gets
+    `fontBuffers: []` → **every card today renders with NO TEXT. Dropped, not mis-fonted.**
+    `render.ts:14` fetches the resvg wasm from **unpkg.com at cold start** (`git grep unpkg.com` → 1
+    hit, that line).
+  - **H8 CONFIRMED.** `render.ts:63-68` uploads to the **public** `cards` bucket at the guessable
+    `${userId}/${sourceId}_${variant}.png` with `getPublicUrl` at `:78`, and `worker-narrative` fires
+    it for **every** completed reading — before any share intent. Advisors still flag
+    `cards_public_read` for **bucket listing** (verified in B1's advisor run; public buckets don't need
+    a broad SELECT for URL access).
+  - 🔑 **Font licence CHECKED (the task asked): Noto is SIL OFL 1.1** — bundling/embedding/
+    redistributing **with software is explicitly permitted**; the fonts may not be sold standalone and
+    the OFL file must ship alongside them. Sources: <https://github.com/notofonts/noto-fonts/blob/main/LICENSE>
+    · <https://openfontlicense.org/ofl-faq/>. **So committing them is legally fine** — the only open
+    question was the git strategy, which the user has now settled.
+  - ✅ **USER DECISION 1 (2026-07-17) — commit all 3 fonts + the wasm to git (~20MB).** `.gitattributes`
+    **already declares `*.ttf binary` and `*.otf binary`**, so the repo's own convention anticipated
+    font binaries, and it already commits PNGs (app icons). No LFS; `.git` is 41MB → ~60MB.
+    ⚠️ **Subsetting was considered and is NOT viable:** `attribution` is the user's **display_name**,
+    i.e. arbitrary input — you cannot subset a font for glyphs you cannot predict. That is also why
+    `NotoSerifSC-Regular.otf` (~17MB, the bulk) is genuinely needed despite the EN launch:
+    `card-svg.ts` emits **only `font-family="Noto Sans"` and contains no CJK** (headline/chips derive
+    from enum-bucketed English feature keys), but a CJK display_name would otherwise render as tofu on
+    the share card — the viral asset — for exactly this product's audience.
+  - ✅ **USER DECISION 2 (2026-07-17) — pre-render PRIVATE, publish on share intent.** Keep
+    worker-narrative's pre-render so sharing stays instant (the P2 moment), but write it private and
+    copy/publish to the public bucket on first share. (Not "render on share intent only", which would
+    pay resvg cold start + wasm init at the exact moment the card exists to serve.)
+  - **Plan (2-5 lines, per protocol):** (1) add `card-render/fonts/` with the 3 Noto binaries + their
+    OFL `LICENSE`, and vendor `index_bg.wasm` locally; point `ensureWasm` at the local asset and make
+    a **missing font a loud failure, not a silent catch** (the swallow is what hid M4). (2) New
+    migration: a private home for un-shared cards + **drop the `cards_public_read` listing policy**.
+    (3) `renderAndStoreCard` writes private; add a publish-on-share step that copies to the public
+    bucket and only then returns a public URL. (4) `worker-narrative:171` keeps pre-rendering, now
+    private.
+  - ⚠️ **Note the moved cite:** the audit's `worker-narrative:148` (`preRenderCard`) is now **`:171`** —
+    B5's guard shifted it. The audit's `_shared/render.ts` cite is wrong (ERRATA): it is
+    `supabase/functions/card-render/render.ts`.
   - Research: **H8** — `worker-narrative:148` pre-renders for **every** completed reading and
     `card-render/render.ts:63-68` uploads to the **public** `cards` bucket at a guessable, enumerable path
     (`${userId}/${sourceId}_${variant}.png`, `getPublicUrl` at `:78`) with display-name attribution,
@@ -851,6 +891,8 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-10 | 2026-07-17 | **USER DECISION — B7 commits all three Noto binaries + the resvg wasm to git (~20MB, `.git` 41MB → ~60MB).** Licence verified first: **SIL OFL 1.1** permits bundling/redistribution with software (no standalone sale; ship the OFL file). | Asked per loop rule 16 rather than guessed. Precedent supports it: `.gitattributes` **already declares `*.ttf`/`*.otf binary`**, so the repo's convention anticipated fonts, and PNG assets are already committed; there is no LFS to complicate it. **Subsetting was evaluated and rejected as impossible, not merely inconvenient:** the card's `attribution` is the user's **display_name** — arbitrary input — and you cannot subset for unpredictable glyphs. That is also what justifies the ~17MB `NotoSerifSC-Regular.otf` despite an EN launch: `card-svg.ts` emits only `font-family="Noto Sans"` and contains no CJK, but a CJK display_name would render as tofu **on the share card**, i.e. the viral asset, for precisely this product's target audience. Alternatives declined: Latin-only (ships that tofu bug), deploy-time fetch (makes deploys non-hermetic — the same class of external dependency M4 dings the unpkg fetch for). |
+| D-11 | 2026-07-17 | **USER DECISION — B7 keeps the pre-render but writes it PRIVATE, publishing to the public bucket only on share intent.** | Both options were spec-legal (§13/§9 only require that the *public* bucket hold user-initiated cards). Pre-render-private keeps sharing instant, which is the whole point of pre-rendering: "render on share intent only" would pay resvg cold start + wasm init at the exact moment the P2 viral share is happening. Private-by-default plus publish-on-copy gets the same privacy outcome without that latency, at the cost of one extra copy step. |
 | D-09 | 2026-07-17 | **B4 proves H7's "no orphan" property with an injectable seam instead of the live storage round-trip its Verify line asks for.** The real round-trip stays open, reassigned to B21. | Two blockers and one better option. **Blockers:** the Node harness depends on `pg` alone — a live round-trip needs `@supabase/supabase-js` (a new dependency, the same call B17 flags for `@testing-library/react-native`) or hand-rolled Storage REST calls; and it would **persistently mutate staging**, which the begin/rollback harness exists specifically to prevent (a failed test would leave a real object behind). **Better option:** the property H7 is actually about is *"a storage failure must not orphan a crop"* — a live round-trip **cannot test that**, because it cannot make S3 fail on demand. An injected failing `removeObjects` can, and asserts the exact invariant (`purgeRows` never runs). This is the repo's own idiom (`revenuecat.ts`: "Pure/injectable … so it is unit-testable without the network"). What is genuinely NOT covered: that the Storage API calls work at all against a real bucket — that is handler-integration scope, which B21 owns. |
 | D-07 | 2026-07-17 | **C4's "deletes 24h after scan creation, not after successful extraction" is closed as a FALSE POSITIVE — the spec is wrong, the SQL is right.** `crops_due_for_deletion` keeps keying the age on `created_at`. **A `Planning/Backend-specs.md` §9 correction is owed** (tracked with B22's storage-path correction). | The choice only affects scans that are **already extracted** — where the crop is spent (pass 2 reads features, never the image). For those, `created_at` deletes **sooner**, so keying on extraction would *only ever retain crops longer* and weaken the D2 claim ("analyzed, then deleted — usually within a day"). It cannot protect a backlogged crop either: that risk lives entirely in the stuck-scan branch, which fires at 24h from creation regardless. And re-analysis with improved extractors already has its designed mechanism — the `keep_image` opt-in, spec §9's own "Opt-in retained scan / until revoked" row. `created_at` is also the promise the user actually experiences ("I took a photo; it is gone within a day"). Applying the audit literally here would have **degraded privacy** while looking like a fix. Precedent: the audit makes exactly this call itself for `storage.objects.name` `[1]` vs `[2]`. |
 | D-08 | 2026-07-17 | **`sweep_stale_anon` now refuses to purge any compatibility-pair member**, accepting a bounded MAU cost rather than reassign/tombstone semantics. | This is an irreversible deletion path, so the trade is "retain a few anon rows" vs "silently destroy an active user's pair + result". Verified live that both `compatibility_pairs` FKs cascade and results cascade from the pair, so there is no way to keep the pair while deleting the member. Tombstone/reassign would bound both costs, but inventing tombstone semantics for a **shared relationship row** (who owns it? what does the survivor see?) is a product decision, not a bug fix — out of this ledger's remit. The MAU consequence is real and recorded: an anon who claims an invite and never returns is now retained indefinitely. If that cost bites, the follow-up is a tombstone design, not re-enabling the destructive cascade. |
