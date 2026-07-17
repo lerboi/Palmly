@@ -37,3 +37,61 @@ export const deriveShortCode = (tokenHash: string): string => {
   return `${s.slice(0, 3)}-${s.slice(3, 6)}`;
 };
 
+
+// ── Invite context validation (M6) ───────────────────────────────────────────────────────────────
+// `invite-create` used to persist `body.context` verbatim, and `invite-page` renders it on the
+// TRUSTED domain (palmly.app/i/{token}) as the headline name and the OG preview image. It is HTML-
+// escaped there, so this is not an XSS hole — the exposure is phishing framing and an unbounded
+// OG image: an attacker who can mint an invite controls what a recipient sees under our brand, in
+// the link preview their messenger renders, before they ever reach the app.
+//
+// Nothing else constrains it: schema.sql:120 is `context jsonb not null default '{}'` with the
+// intended shape only in a comment ({reading_id, card_variant, inviter_name}).
+
+export const INVITE_NAME_MAX = 40;
+const CARD_VARIANTS = new Set(['feed_4x5', 'story_9x16']);
+const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+/** Cap + strip control characters. Unicode-aware: this product's users are largely CJK-named, so an
+ *  ASCII allowlist would mangle legitimate names. (Distinct from compat-narrative's sanitizeName,
+ *  which additionally strips prompt-framing because its output reaches a MODEL; this one reaches
+ *  HTML that is already escaped, so length + control chars are the whole risk.) */
+const cleanName = (raw: unknown): string | undefined => {
+  if (typeof raw !== 'string') return undefined;
+  const s = raw.replace(/[\p{Cc}\p{Cf}]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, INVITE_NAME_MAX);
+  return s.length ? s : undefined;
+};
+
+/** An OG image may only come from somewhere we serve: our own site or our own storage origin.
+ *  Otherwise the preview a recipient sees under our brand is attacker-hosted. */
+export function isAllowedCardUrl(raw: unknown, allowedHosts: string[]): boolean {
+  if (typeof raw !== 'string' || raw.length > 500) return false;
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== 'https:') return false; // never let a mixed-content/plaintext image through
+  return allowedHosts.some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`));
+}
+
+/**
+ * Keep only the allowlisted, validated keys of an invite's context; drop the rest.
+ *
+ * Drops rather than throws on purpose: this payload is cosmetic, and failing an invite-create over
+ * a bad `card_image_url` would break the growth loop for a legitimate client bug. An attacker's
+ * crafted value simply never reaches the page.
+ */
+export function sanitizeInviteContext(raw: unknown, allowedHosts: string[]): Record<string, unknown> {
+  const src = (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+
+  const name = cleanName(src.inviter_name);
+  if (name) out.inviter_name = name;
+  if (typeof src.reading_id === 'string' && UUID_RE.test(src.reading_id)) out.reading_id = src.reading_id;
+  if (typeof src.card_variant === 'string' && CARD_VARIANTS.has(src.card_variant)) out.card_variant = src.card_variant;
+  if (isAllowedCardUrl(src.card_image_url, allowedHosts)) out.card_image_url = src.card_image_url;
+
+  return out;
+}

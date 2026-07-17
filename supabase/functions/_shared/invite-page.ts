@@ -152,3 +152,30 @@ export function buildInviteGonePage(reason: 'expired' | 'not_found' | 'revoked')
 <p class="about">Ask your friend to share a fresh link, or open Palmly to start your own reading.</p>
 <a class="cta" href="https://palmly.app">Open Palmly</a></main></body></html>`;
 }
+
+// ── Link-preview crawler detection (M7) ──────────────────────────────────────────────────────────
+// Every messenger fetches a shared link to render its preview card, so the FIRST hit on almost every
+// invite is a bot, not a human. That bot used to flip `created → clicked`, which means the K-factor
+// funnel's click rate was measuring "was this link shared into a chat app", not "did a person tap
+// it" — the exact number the growth loop is steered by.
+//
+// Matched on the vendor tokens these crawlers self-identify with. Deliberately conservative: a
+// missed bot only restores today's behaviour, whereas a false positive would silently discard a real
+// human click. Note `MicroMessenger` is NOT here — it is WeChat's in-app browser, i.e. a real user.
+const PREVIEW_BOTS = [
+  'facebookexternalhit', 'facebookcatalog', 'facebot',
+  'twitterbot', 'linkedinbot', 'slackbot', 'slack-imgproxy', 'discordbot', 'telegrambot',
+  'whatsapp', 'line-podcast', 'linebot', 'skypeuripreview', 'redditbot', 'pinterest',
+  'embedly', 'iframely', 'quora link preview', 'nuzzel', 'vkshare', 'outbrain',
+  'applebot', 'googlebot', 'bingbot', 'yandexbot', 'duckduckbot', 'baiduspider',
+  'developers.google.com/+/web/snippet', 'w3c_validator', 'bitlybot', 'flipboard',
+];
+
+/** Is this user-agent a link-preview crawler rather than a person? */
+export function isLinkPreviewBot(ua: string | null | undefined): boolean {
+  if (!ua) return true; // no UA at all is not a browser — never credit it with a human click
+  const u = ua.toLowerCase();
+  if (PREVIEW_BOTS.some((b) => u.includes(b))) return true;
+  // generic self-identifying crawlers, without swallowing real browsers
+  return /\b(bot|crawler|spider|preview|scraper)\b/.test(u) && !u.includes('mozilla/5.0 (') ? true : /^(curl|wget|python-requests|go-http-client|okhttp|java)/.test(u);
+}

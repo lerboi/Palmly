@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertStringIncludes } from '@std/assert';
-import { buildInviteGonePage, buildInvitePage, type InvitePageOpts } from './invite-page.ts';
+import { buildInviteGonePage, buildInvitePage, isLinkPreviewBot, type InvitePageOpts } from './invite-page.ts';
 import { deriveShortCode } from './invite.ts';
 
 const base: InvitePageOpts = {
@@ -93,4 +93,39 @@ Deno.test('buildInviteGonePage: expired/not-found shell has no compatibility CTA
 Deno.test('deriveShortCode: 6 hex chars → XXX-XXX, uppercase, no ambiguous letters', () => {
   assertEquals(deriveShortCode('a1b2c3deadbeef'), 'A1B-2C3');
   assert(/^[0-9A-F]{3}-[0-9A-F]{3}$/.test(deriveShortCode('ffffffffff')));
+});
+
+// ── M7: the first hit on nearly every invite is a crawler, not a person ──────────────────────────
+
+Deno.test('isLinkPreviewBot: messenger crawlers do not count as human clicks', () => {
+  // These are exactly the fetches that made `clicked` measure "was this shared into a chat app".
+  for (const ua of [
+    'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+    'Twitterbot/1.0',
+    'WhatsApp/2.23.20.0 A',
+    'TelegramBot (like TwitterBot)',
+    'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)',
+    'Discordbot/2.0; +https://discordapp.com',
+    'LinkedInBot/1.0 (compatible; Mozilla/5.0; Jakarta Commons-HttpClient/3.1)',
+    'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+    'Applebot/0.1; +http://www.apple.com/go/applebot',
+    'curl/8.4.0',
+    'python-requests/2.31.0',
+  ]) {
+    assert(isLinkPreviewBot(ua), `must not credit a click to: ${ua}`);
+  }
+  assert(isLinkPreviewBot(null), 'no UA at all is not a browser');
+  assert(isLinkPreviewBot(''), 'empty UA is not a browser');
+});
+
+Deno.test('isLinkPreviewBot: real people still count — a false positive silently eats a real click', () => {
+  for (const ua of [
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+    // WeChat's in-app browser: a REAL user, and a huge share of this product's audience.
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.42(0x18002a2f) NetType/WIFI Language/zh_CN',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  ]) {
+    assert(!isLinkPreviewBot(ua), `must still count the click from: ${ua}`);
+  }
 });

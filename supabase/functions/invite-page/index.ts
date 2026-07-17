@@ -5,7 +5,7 @@
 import { createContext } from '../_shared/context.ts';
 import { withErrorEnvelope } from '../_shared/http.ts';
 import { deriveShortCode, hashToken, inviteUrl } from '../_shared/invite.ts';
-import { buildInviteGonePage, buildInvitePage, type SharePlatform } from '../_shared/invite-page.ts';
+import { buildInviteGonePage, buildInvitePage, isLinkPreviewBot, type SharePlatform } from '../_shared/invite-page.ts';
 
 const APP_STORE_URL = 'https://apps.apple.com/app/palmly/id0000000000'; // TODO(H7): real Apple app id
 const WEB_URL = 'https://palmly.app';
@@ -20,8 +20,14 @@ function detectUA(ua: string): { platform: SharePlatform; isWeChat: boolean } {
   };
 }
 
+// M7: `public, max-age=300` was wrong on two counts, and became actively harmful once bots stopped
+// flipping the funnel. (1) This response is UA-ROUTED — the CTA is an App Store, Play, or web URL —
+// with no `Vary: User-Agent`, so a shared cache could hand an Android user the iOS store link.
+// (2) It records a funnel event: a link-preview bot's request would prime the cache, and the real
+// person's click 30 seconds later would be served from it, never reach this function, and never be
+// counted. Crawlers fetch a given invite once, so there is nothing here worth caching anyway.
 const html = (body: string, status = 200) =>
-  new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
+  new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', Vary: 'User-Agent' } });
 
 Deno.serve(
   withErrorEnvelope(async (req) => {
@@ -43,8 +49,14 @@ Deno.serve(
     if (invite.status === 'revoked') return html(buildInviteGonePage('revoked'), 410);
     if (new Date(invite.expires_at as string).getTime() < Date.now()) return html(buildInviteGonePage('expired'), 410);
 
-    // K-factor funnel: created → clicked (idempotent; never regress a further-along state)
-    if (invite.status === 'created') {
+    // K-factor funnel: created → clicked (idempotent; never regress a further-along state).
+    // The compare-and-set below was already correct. M7 is the UA gate in front of it: every
+    // messenger fetches a shared link to build its preview card, so the FIRST hit on nearly every
+    // invite is a crawler — and crediting it made the funnel measure "was this link shared into a
+    // chat app", not "did a person tap it". Bots still get the page (that is the point of the OG
+    // tags); they just do not move the funnel.
+    const ua = req.headers.get('user-agent');
+    if (invite.status === 'created' && !isLinkPreviewBot(ua)) {
       await ctx.admin.from('invites').update({ status: 'clicked', clicked_at: new Date().toISOString() }).eq('id', invite.id).eq('status', 'created');
     }
 
@@ -55,7 +67,7 @@ Deno.serve(
       inviterName = prof?.display_name ?? 'A friend';
     }
 
-    const { platform, isWeChat } = detectUA(req.headers.get('user-agent') ?? '');
+    const { platform, isWeChat } = detectUA(ua ?? '');
     const ctaUrl = platform === 'ios' ? APP_STORE_URL : platform === 'android' ? playUrl(token) : WEB_URL;
 
     return html(

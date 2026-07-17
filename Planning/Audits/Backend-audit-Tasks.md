@@ -36,19 +36,21 @@ finding has exactly one owning task below; no finding is dropped silently.
 
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
-- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114 → B10 117 → B11 119; Deno 133 → B4 137 → B6 138 → B8 140 → B10 141 → B11 143):**
-  **Node 119/119** (`# pass 119 / # fail 0`, 287.1s) · **Deno 143/143** (`143 passed | 0 failed`, 2s)
+- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114 → B10 117 → B11 119; Deno 133 → B4 137 → B6 138 → B8 140 → B10 141 → B11 143 → B12 147):**
+  **Node 119/119** (`# pass 119 / # fail 0`, 266.6s) · **Deno 147/147** (`147 passed | 0 failed`, 2s)
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
   quote it. The pre-B0 "Node 96/100" is now historical.
 - **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B11** (2026-07-17) — migration 0025 applied; M8's gate made atomic inside
-  `request_compat`, M9 sanitized at the model boundary. Suites: **Node 119/119**, **Deno 143/143**.
-- **Next task:** **B12 — Invite surface: context validation + clicked-attribution accuracy** *(M6, M7)*.
-  Per the ledger: **M7's compare-and-set at `invite-page:47-48` is already correct** — the fix there
-  is purely bot-UA filtering / moving `clicked` to the CTA beacon. B12 **excludes H9** (that is B13).
+- **Last completed:** **B12** (2026-07-17) — invite context validated at the write; link-preview
+  crawlers no longer credited with clicks. Suites: **Node 119/119**, **Deno 147/147**.
+- **Next task:** **B13 — H9: manual short-code claim path + rate limiting**. ⚠️ Its posture
+  (short-code collision / brute-force) was a flagged product decision — **the user has delegated it
+  to the loop**; decide it, record a Decision Log row, and carry on. Keep it minimal: do **not**
+  build the whole teaser story (H6-gated). Spec §13 explicitly requires rate-limiting on
+  `invite-claim`, and on invite-create/chat-send/compat-request generally.
 - 🚩 **HAND-OFF TO THE USER / BUILDPLAN (from B9/D-14 — reported, not written, per D-01):**
   1. **`Planning/Audits/Backend-audit.md` owes an H1 re-title** — H1 is not "faces lack a geometry
      signature", it is "**`deriveGeometry` reads the wrong source**: `line_geometry` is the model's
@@ -1001,7 +1003,50 @@ would edit nothing and wrongly report success.
   - Note: chat deflection regexes being English-only is **acceptable for an EN launch** (audit agrees) —
     record it, don't fix it.
 
-- [ ] **B12 — Invite surface: context validation + clicked-attribution accuracy** *(M6, M7)*
+- [x] **B12 — Invite surface: context validation + clicked-attribution accuracy** *(M6, M7)* — **2026-07-17**
+  - **DONE: M6 CONFIRMED · M7 PARTLY CONFIRMED (the ledger's read was right; one audit limb is a
+    FALSE POSITIVE).** No migration — all four changes are in `_shared/invite.ts`,
+    `_shared/invite-page.ts`, `invite-create/index.ts`, `invite-page/index.ts`.
+  - **M6 CONFIRMED** — `invite-create:31` persisted `body.context ?? {}` verbatim; nothing else
+    constrains it (`schema.sql:120` is `context jsonb not null default '{}'` with the intended shape
+    only in a *comment*). `invite-page` then renders it on the **trusted domain** as the headline
+    name and the OG image. Fixed at the **write**, not the read: `sanitizeInviteContext` keeps only
+    `{inviter_name, reading_id, card_variant, card_image_url}`, caps the name at 40, validates the
+    uuid/variant, and requires the OG image to be **https on our own origins** (`palmly.app` or the
+    `SUPABASE_URL` host — derived from env so it follows staging/prod without a code edit).
+    **Drops rather than throws** (D-18): the payload is cosmetic, so failing an invite over a client
+    bug would break the growth loop, while an attacker's value simply never reaches the page.
+  - **M7 — the ledger's ERRATA-style read is CONFIRMED: `invite-page:47-48` was already a correct
+    compare-and-set** (`.eq('status','created')` makes it idempotent and non-regressing), so the fix
+    is purely the UA gate. Added `isLinkPreviewBot`: every messenger fetches a shared link to build
+    its preview, so the **first hit on nearly every invite is a crawler** — crediting it made
+    `clicked` measure *"was this link shared into a chat app"*, not *"did a person tap it"*, which is
+    the number the growth loop is steered by. Bots still get the page (that is what the OG tags are
+    **for**); they just do not move the funnel.
+  - 🔴 **M7's caching limb is a FALSE POSITIVE as stated — but fixing the bot filter FORCED a caching
+    change anyway, for a different and worse reason (D-19).** The audit says 5-min CDN caching
+    "undercounts real repeat clicks". It cannot: `created→clicked` is a **one-way transition**, so
+    repeat clicks are never counted by design, cached or not. **The real problem only appears once
+    bots stop flipping the status:** a crawler's request would prime the cache, and the real person's
+    click seconds later would be served from it — never reaching the function, never counted. So the
+    bot filter and `max-age=300` are incompatible. Also found while there: the response is
+    **UA-routed** (App Store / Play / web CTA) with **no `Vary`**, so a shared cache could hand an
+    Android user the iOS store link — an unreported bug. Now `Cache-Control: no-store` +
+    `Vary: User-Agent`. Crawlers fetch a given invite once, so nothing here was worth caching.
+  - Verify (observed): `deno check invite-create/index.ts invite-page/index.ts _shared/invite.ts
+    _shared/invite-page.ts` → clean; `_shared/invite.test.ts + _shared/invite-page.test.ts` **17/17**;
+    `invite_create + invite_page` (Node) **7/7**; full **Deno 147/147** (+4); full **Node 119/119**
+    (`# pass 119 / # fail 0`, 266.6s).
+  - Regression tests added (4): the OG-image allowlist rejects attacker-hosted images, plaintext http
+    **on our own host**, and the `palmly.app.evil.example` **suffix-confusion** host; the context
+    allowlist drops unknown keys (`is_admin`, `evil`) and invalid values while capping the name; the
+    bot list covers 11 real crawler UAs; and — the one that protects revenue — **four real browser
+    UAs must still count, including WeChat's `MicroMessenger` in-app browser**, since a false positive
+    silently eats a genuine click from a large share of this product's audience.
+  - 🐛 **Test bug caught by the suite, not the code:** my first bidi assertion expected `A‮B` → `AB`.
+    The code is right and the test was wrong — a format char becomes a **space**, not nothing,
+    because deleting it would let a zero-width joiner silently fuse two tokens into one (exactly the
+    trick it would be used for). Assertion corrected to `A B`.
   - Research: **M6** — `invite-create/index.ts:22-31` writes `context: body.context ?? {}` straight into the
     invites row with **no allowlist/length caps** on `inviter_name`/`card_image_url`, which `invite-page`
     renders on the trusted domain (XSS-escaped, but phishing framing + OG image unconstrained). **M7** —
@@ -1177,6 +1222,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B12 — `_shared/invite.ts` (`sanitizeInviteContext`, `isAllowedCardUrl`) + `_shared/invite-page.ts` (`isLinkPreviewBot`) + `invite-create` + `invite-page` (no migration): M6 validated at the **write** — allowlist {inviter_name, reading_id, card_variant, card_image_url}, name capped 40, OG image must be **https on our own origins** (env-derived, follows staging/prod). M7: the compare-and-set was **already correct** (ledger right) — the fix is the UA gate, since the first hit on nearly every invite is a crawler, making `clicked` measure "was this shared into a chat app". **M7's caching limb is a FALSE POSITIVE** (a one-way transition can't undercount repeat clicks) **but caching still had to change (D-19)**: the bot filter would let a crawler prime the cache and swallow the real click, and the page is UA-routed with **no `Vary`** (a cached iOS page → Android user gets the wrong store) → `no-store` + `Vary: User-Agent`. Evidence: `deno check` clean; `invite.test.ts+invite-page.test.ts` 17/17; Node `invite_create+invite_page` 7/7; Deno `147 passed | 0 failed` (+4); Node `# pass 119 / # fail 0` (266595.2ms). +4 tests (incl. WeChat MicroMessenger must still count) — 2026-07-17
 - B11 — migration `20260717000025_m8_compat_free_gate_atomic.sql` applied + `compat-request/index.ts` + `_shared/compat-narrative.ts`: M8's count→act moved **inside** `request_compat` (3-arg overload, `for update` on the requester's profile row) — it was unclosable from the Edge fn, since the count and the act were separate PostgREST transactions. **The interpolated `.or()` limb was fixed by deletion** (the filter no longer exists); `isUuid` asserted anyway. Premium passed, not recomputed, so **B15's `expires_at` change stays single-source** (D-17). M9: `sanitizeName` at the model boundary in `buildCompatRequest` — Unicode-aware (CJK names intact; an ASCII allowlist would itself be a bug), strips control/format + framing chars, caps at 40. Evidence: `deno check` clean; `compat_lifecycle+worker_compat` 8/8; `compat-narrative.test.ts` 5/5; Deno `143 passed | 0 failed` (+2); Node `# pass 119 / # fail 0` (287052.6ms). +4 tests incl. the injection fixture — 2026-07-17
 - B10 — migration `20260717000024_h5_chat_ordering_m12b_citations.sql` applied + `chat-send/index.ts`: H5 order fix (most-recent-8, reversed) + additive `citations jsonb` (M12b) + monotonic `seq` identity column & `(thread_id, seq desc)` index. **The audit's literal fix was insufficient (D-16)**: `created_at` is `now()` = transaction_timestamp (**proven: `select now()=now()` → true**) and chat-send inserts both rows of a turn in ONE statement → identical timestamps, random uuid pk → a turn's order is **undefined**, so "descending + reverse" could feed the model **[assistant, user]**. ERRATA confirmed: `chat.ts:149` `slice(-8)` is a no-op. Evidence: `deno check` clean; `chat.test.mjs` 6/6; `_shared/chat.test.ts` 13/13; Deno `141 passed | 0 failed`; Node `# pass 117 / # fail 0` (267825.0ms). +4 regression tests (the Node one **demonstrates** the old query cannot see the newest turn) — 2026-07-17
 - B9 — **no code, by design.** H1 CONFIRMED by executing the real modules (`distance(faceA,faceA)=Infinity`, `matchSubject`→`null`, palm control `=0`) and closed as **DECISION D-14** after an 11-agent adversarial investigation (unanimous 3/3), every claim re-verified by hand. **The audit's fix is unbuildable** (face schema is 100% enums — no landmarks to make ratios from) and **both alternatives are wrong**: option A would anchor identity in the one field the code documents as unstable (`features.ts:2-3` "exact pixel paths vary"; `consistency.ts:51-52` won't even merge it across votes of the *same image*), would leak past the hardcoded strip-lists (`features.ts:26`, `consistency.ts:68`) into `featureHash`+`sameFeatures` → **a 3rd vote on every face scan, +50% cost forever**, and would flip the posture **closed→open** (a friend's face → `matched` → your reading). Option B is unsound at every threshold (1 enum of 12 = 0.0833). **Decisive**: `scan-create`/`scan-ingest` don't exist, all four tables are 0 rows, and the extraction prompt is palm-only → the cost is real × **zero scans**. Real finding: **`deriveGeometry` reads the wrong source**; identity belongs in `feature_sets.geometry` (on-device ratios, §6.6.3 — M1's known deferral). Hand-off filed in STATE — 2026-07-17
@@ -1199,6 +1245,8 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-19 | 2026-07-17 | **M7's "5-min CDN caching undercounts real repeat clicks" is a FALSE POSITIVE as written — yet B12 still changed the caching, to `no-store` + `Vary: User-Agent`, for two different reasons.** | **Why the audit's claim is wrong:** `created→clicked` is a **one-way transition**, so repeat clicks are never counted whether or not the page is cached. Caching cannot undercount a number nobody records. **Why the caching had to change anyway:** (1) **The bot filter and `max-age=300` are incompatible.** Today a crawler's request flips the status, so caching is harmless. Once bots stop flipping it, the crawler's fetch **primes the cache** and the real person's click seconds later is served from it — never reaching the function, never counted. The fix for M7's real limb would have created a worse version of the bug the audit imagined. (2) **The response is UA-routed with no `Vary`** — the CTA is an App Store, Play, or web URL chosen from the user-agent, so a shared cache could hand an Android user the iOS store link. That is an unreported bug, found only because M7 sent me to look at this header. Crawlers fetch a given invite once, so nothing here was worth caching; `no-store` costs one cheap SSR render per click. |
+| D-18 | 2026-07-17 | **`sanitizeInviteContext` DROPS invalid values instead of rejecting the request.** | The invite context is **cosmetic** (headline name, OG image, routing hints). Throwing would mean a legitimate client bug — a stale `card_variant`, a mis-built URL — **fails invite-create outright and breaks the P2 growth loop**, which is the one thing the audit says never to paywall or block. Dropping degrades gracefully: the page falls back to `profiles.display_name` and `OG_DEFAULT`, both of which it already handles. An attacker gains nothing either way — their value never reaches the page — so the only party a throw would punish is a real user with a buggy client. Validation lives at the **write** rather than the read for the same reason B4 collects before deleting: the trusted-domain render is the last place you want to be deciding whether data is safe. |
 | D-17 | 2026-07-17 | **M8's atomic gate is a 3-arg `request_compat` OVERLOAD that takes `p_has_premium` as a parameter, rather than recomputing entitlement in SQL or adding a partial unique index.** | **Why it had to move into SQL at all:** the count and the act were separate PostgREST round-trips, and no lock survives between two HTTP transactions — so the window was unclosable from the Edge Function. **Why an overload, not a default arg:** adding a 3rd parameter *with a default* makes the existing 2-arg call ambiguous ("function is not unique") and would **break** it; differing arity is unambiguous, leaves the old function intact (expand), and lets B18 contract it later. **Why not a partial unique index** (the ledger's guess at the shape): `compatibility_results` has no `requester_id`, so no index on it can express "at most one free result per *user*" — the user lives on `compatibility_pairs`. Adding a requester column + an `is_free` flag would still need the function to know premium-ness, so it lands back here anyway, plus two new columns. **Why premium is passed rather than recomputed:** `isPremiumRow` (`entitlement.ts:13`) is the single definition of that rule and **B15 is chartered to change its `expires_at: null` semantics** — a SQL copy would create a second place to update and hand B15 a silent drift bug. The flag cannot be forged: the only caller is an Edge Function running with the service key that reads `subscriptions` itself, and `request_compat` is revoked from anon/authenticated. **Bonus:** moving the gate deleted the string-interpolated `.or()` filter, so M8's second limb was fixed by subtraction. |
 | D-16 | 2026-07-17 | **B10 adds a monotonic `seq` column rather than implementing H5's fix as literally prescribed.** | The audit says "order descending + limit + reverse", but that is **not deterministic in this schema**, so the literal fix would have been quietly half-broken. `created_at` defaults to `now()` = `transaction_timestamp()`, which is **constant within a transaction** (proven on staging: `select now() = now()` → true), and `chat-send` inserts **both rows of a turn in a single statement** — so a question and its answer carry an **identical timestamp**, while the `gen_random_uuid()` pk is random and cannot break the tie. "The most recent 8" could therefore hand the model **[assistant, user]**, i.e. a conversation with the answer before the question. Today's ascending read has the same ambiguity; it is simply invisible because the whole bug is that it never reaches recent turns at all. A `bigint generated by default as identity` + `(thread_id, seq desc)` index makes the ordering unambiguous and the index an ordered backwards scan. Free to add here: `chat_messages` is **0 rows**, so there is no backfill and no pre-existing order to invent. If chat data ever exists, this reasoning expires. |
 | D-15 | 2026-07-17 | **B9's schema change is additive-to-v1, not a new v2.** (The B9 Note demanded this be decided explicitly.) | A real `v2` is a trap, not an option: `prompts/build-prompts.mjs:29` **hardcodes `'v1'`** and skips any family lacking that exact path, so a `prompts/*/v2` would emit **no** `.generated.ts` while `--check` still prints `PROMPTS_OK` — **a false green in CI** (`ci.yml:70`). There is no v2 precedent in the repo or its history, so a v2 means fixing the compiler first — a separate, larger job. Additive-to-v1 is also **safe here specifically**: `feature_sets` and `readings` are **empty on staging (0 rows, verified)** and no face scan has ever run, so there is no v1 data a new required field could invalidate. If face data ever exists, this reasoning expires. |
