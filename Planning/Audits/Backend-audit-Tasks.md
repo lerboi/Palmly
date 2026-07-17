@@ -36,23 +36,25 @@ finding has exactly one owning task below; no finding is dropped silently.
 
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
-- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114 → B10 117 → B11 119 → B13 124; Deno 133 → B4 137 → B6 138 → B8 140 → B10 141 → B11 143 → B12 147 → B13 148):**
-  **Node 124/124** (`# pass 124 / # fail 0`, 262.8s) · **Deno 148/148** (`148 passed | 0 failed`, 2s)
+- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114 → B10 117 → B11 119 → B13 124; Deno 133 → B4 137 → B6 138 → B8 140 → B10 141 → B11 143 → B12 147 → B13 148 → B14 151):**
+  **Node 124/124** (`# pass 124 / # fail 0`, 264.4s) · **Deno 151/151** (`151 passed | 0 failed`, 2s)
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
   quote it. The pre-B0 "Node 96/100" is now historical.
 - **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B13** (2026-07-17) — migration 0026 applied; H9's short-code resolver +
-  §13 rate limiting, and the code widened to 40 bits (D-20). Suites: **Node 124/124**, **Deno 148/148**.
-- **Next task:** **B14 — C3: verify the RevenueCat webhook signature scheme against current RC docs.**
-  ⚠️ **The highest-blast-radius item in the codebase**, and the one the RESEARCH step exists for.
-  **WebFetch RC's CURRENT webhook docs — do not decide from memory or from the audit's assertion.**
-  🪤 **The trap:** `rcSignature` (`_shared/revenuecat.ts:35`) makes a test that signs with our own
-  helper and verifies with our own verifier **trivially green regardless of whether the scheme is
-  right**. C3 closes `[~]` (docs-verified decision + code), **never `[x]`** — the live proof is
-  H8-gated.
+- **Last completed:** **B14** (2026-07-17, `[~]`) — **C3 closed as a FALSE POSITIVE**: RC's scheme
+  is right, no code change; the real risk re-filed as H8 config (D-21). Suites: **Node 124/124**,
+  **Deno 151/151**.
+- **Next task:** **B15 — H4 residue: rc_event_id NOT NULL · TRANSFER · expires_at:null**. B14's
+  dependency is **discharged** — RC's documented scheme is confirmed, so TRANSFER/ordering semantics
+  can now be decided against what RC actually sends. ⚠️ B15's TRANSFER call is **the loop's to make**
+  (rule 16). Note **B1 deferred H4's ordering guard here (D-05)**: `latest_event_at = now()` is
+  PROCESSING time and `RcEvent` has no event-timestamp field — check RC's payload for
+  `event_timestamp_ms` before building any ordering guard. Also **D-17**: `isPremiumRow` is the
+  single definition of premium (`compat-request` passes it into SQL rather than duplicating it), so
+  changing `expires_at: null` semantics stays a one-place edit — keep it that way.
 - 🚩 **HAND-OFF TO THE USER / BUILDPLAN (from B9/D-14 — reported, not written, per D-01):**
   1. **`Planning/Audits/Backend-audit.md` owes an H1 re-title** — H1 is not "faces lack a geometry
      signature", it is "**`deriveGeometry` reads the wrong source**: `line_geometry` is the model's
@@ -1133,7 +1135,61 @@ would edit nothing and wrongly report success.
 
 # PHASE 5 — Vendor, contract & closure
 
-- [ ] **B14 — C3: verify the RevenueCat webhook signature scheme against current RC docs** *(C3)*
+- [~] **B14 — C3: verify the RevenueCat webhook signature scheme against current RC docs** *(C3)* — **2026-07-17** — docs-verified decision landed; `[~]` **by design** (the live proof is H8-gated).
+  - 🟢 **DONE: C3 is a FALSE POSITIVE. The scheme is RIGHT.** No code change — the implementation
+    matches RevenueCat's current documented wire format point for point.
+  - **The audit says:** *"RevenueCat's shipped webhook auth is a **static `Authorization` header
+    value** configured in the dashboard — not a t/v1 HMAC scheme … If RC doesn't send this exact
+    header, every webhook 401s → `subscriptions` never updates → chat/compat server gates permanently
+    402 paying customers. Highest-blast-radius single item in the codebase."* §6 also ranks C3 the
+    **#1 risk**. **It is wrong.**
+  - **Docs verified 2026-07-17** — <https://www.revenuecat.com/docs/integrations/webhooks>, which has
+    a section titled **"Webhook Signature Verification (HMAC)"**:
+    | RevenueCat's docs | `_shared/revenuecat.ts` |
+    |---|---|
+    | `X-RevenueCat-Webhook-Signature: t=<unix_timestamp>,v1=<hmac_sha256_hex>` | parses `t` + `v1` off that exact header (`:46-53`) |
+    | HMAC-SHA256 over `"<timestamp>.<raw_json_body>"` | `hmacSha256Hex(secret, \`${t}.${rawBody}\`)` (`:57`) |
+    | "the **raw request body bytes, exactly as received** — before any JSON parsing" | `await req.text()` **before** `JSON.parse` (`revenuecat-webhook/index.ts`) |
+    | constant-time comparison | `constantTimeEqual` (`:58`) |
+    | "optionally reject … (e.g. 5 minutes)" | `toleranceSec = 300` (`:43`) |
+    RC offers **both** an optional `Authorization` header **and** optional HMAC signing. The audit saw
+    the first and concluded the second does not exist.
+  - 🔬 **Methodology note — I nearly got fooled the way the audit did.** My first `WebFetch` prompt
+    *named* the `t=…,v1=…` format while asking whether it existed; a small summarizer echoing my own
+    hypothesis back is not evidence. Re-asked with a **neutral** prompt that described no format at
+    all (same answer, incl. the section title), then corroborated via an independent **WebSearch**
+    retrieval path. Three sources agree.
+  - 🪤 **The trap, escaped by construction.** The ledger warns that `rcSignature` makes a
+    sign-with-ours/verify-with-ours test **trivially green regardless of the scheme**. So the new
+    tests use an **INDEPENDENT ORACLE**: a vector computed by `node:crypto`'s `createHmac` (a
+    different implementation from our WebCrypto helper) straight from RC's documented format, with
+    the hex **hardcoded**. Our verifier accepts bytes it did not generate. Nothing in that test is
+    produced by the code under test.
+  - Verify (observed): `_shared/revenuecat.test.ts` **10/10**; full **Deno 151/151** (+3); full
+    **Node 124/124** (`# pass 124 / # fail 0`, 264.4s). **Explicitly NOT a live green** — no RC
+    account exists (H8), and `REVENUECAT_WEBHOOK_SECRET` is unset on staging.
+  - Regression tests added (3): our verifier accepts an **independently computed** signature; our
+    `rcSignature` **reproduces `node:crypto` exactly** (so the helper and verifier cannot drift into
+    agreeing with each other on a wrong format); and the concatenation is **order-sensitive** —
+    a signature over `"<body>.<t>"` is rejected, because that is the mistake that would silently 401
+    every paying customer.
+  - 🧑 **THE REAL RESIDUAL — a CONFIGURATION dependency, not a code defect, and the audit's framing
+    would have hidden it (D-21).** RC's HMAC signing is **opt-in**: you toggle it per-integration and
+    the signing secret is **shown exactly once, at creation or rotation, and can never be retrieved
+    again**. Our handler **requires** the signature (`missing_signature` → 401) and 500s if
+    `REVENUECAT_WEBHOOK_SECRET` is unset. So the audit's feared outcome — every webhook rejected,
+    paying customers permanently 402'd — **is reachable, but via the dashboard, not the code.**
+    **H8 setup, exactly:**
+    1. In the RC dashboard, open the webhook integration and **toggle HMAC webhook signing ON**.
+    2. **Copy the signing secret immediately** — it is displayed once and is unrecoverable; rotating
+       is the only recovery.
+    3. Set it as `REVENUECAT_WEBHOOK_SECRET` on the Edge Functions (never in git — `docs/ENVIRONMENT.md`).
+    4. Send a test event and confirm **200 + `applied: true`**, then confirm the `subscriptions` row.
+       Note RC treats **anything other than 200 as failure** and retries 5× (5/10/20/40/80 min) before
+       **giving up permanently** — so a wrong secret silently burns the retry budget within ~2.6h.
+  - **Not built, deliberately:** support for RC's optional `Authorization` header. Accepting *either*
+    mechanism would turn two independent controls into an OR and **weaken** the surface; HMAC is
+    strictly stronger and is what the code already implements correctly.
   - Research: **this is the finding the loop's RESEARCH step exists for — the highest-blast-radius item in
     the codebase.** `_shared/revenuecat.ts:38-59` implements a **Stripe-style** `t=<ts>,v1=<hexHMAC>` scheme.
     The *implementation* is excellent (raw-body, ±300s replay window at `:56`, constant-time compare at
@@ -1281,6 +1337,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B14 — **no code change: C3 is a FALSE POSITIVE.** RC's current docs (verified 2026-07-17, <https://www.revenuecat.com/docs/integrations/webhooks>) have a **"Webhook Signature Verification (HMAC)"** section documenting exactly `X-RevenueCat-Webhook-Signature: t=<unix_ts>,v1=<hmac_sha256_hex>` over `"<t>.<raw_json_body>"` + constant-time compare + ~5min replay window — line for line what `_shared/revenuecat.ts` already implements. The audit called this the **#1 risk in the codebase**; rewriting it would have replaced a correct control with a weaker one. Trap escaped by construction: the +3 tests use an **independent oracle** (`node:crypto` vector, hardcoded hex) so nothing under test signs its own homework; one pins that the reversed `"<body>.<t>"` concatenation is **rejected**. **Real residual re-filed as H8 config (D-21):** HMAC signing is opt-in and the secret is shown ONCE — if the toggle is off, RC gives up after 5 retries (~2.6h) and paying customers are permanently 402'd. Evidence: `revenuecat.test.ts` 10/10; Deno `151 passed | 0 failed` (+3); Node `# pass 124 / # fail 0` (264399.6ms). **`[~]` — live proof H8-gated** — 2026-07-17
 - B13 — migration `20260717000026_h9_short_code_and_rate_limits.sql` applied + `_shared/ratelimit.ts` + `_shared/invite.ts` + invite-claim/invite-create/chat-send/compat-request/cleanup: H9's resolver (`resolve_invite_code` — normalizes typed input, claimable-only, **refuses ambiguity rather than guessing**, `text_pattern_ops` index) + spec §13 rate limiting (Postgres counters — Edge fns are stateless; **increment+compare in ONE atomic statement**; limits tuned to the threat: code 5/h vs token 30/h; **fails open + logs**; swept by `cleanup`). **The short code is widened 6->10 hex (24->40 bits) — D-20, the load-bearing half:** a prefix match hits ANY live invite, so at 24 bits with 100k invites a guesser wins in **~1 in 167** and *burns* the invite; rate limiting cannot rescue that, entropy can. Free — the code is derived, never stored. Evidence: `git grep` shows a real resolver at `invite-claim:48`; **50 guesses/hour -> exactly 5 allowed**; `deno check` clean x6; `rate_limit.test.mjs` 5/5; Deno `148 passed | 0 failed`; Node `# pass 124 / # fail 0` (262768.3ms). +7 tests. The suite caught 2 of my own regressions (a test pinning the OLD 6-hex length; the 20->21 table census) — 2026-07-17
 - B12 — `_shared/invite.ts` (`sanitizeInviteContext`, `isAllowedCardUrl`) + `_shared/invite-page.ts` (`isLinkPreviewBot`) + `invite-create` + `invite-page` (no migration): M6 validated at the **write** — allowlist {inviter_name, reading_id, card_variant, card_image_url}, name capped 40, OG image must be **https on our own origins** (env-derived, follows staging/prod). M7: the compare-and-set was **already correct** (ledger right) — the fix is the UA gate, since the first hit on nearly every invite is a crawler, making `clicked` measure "was this shared into a chat app". **M7's caching limb is a FALSE POSITIVE** (a one-way transition can't undercount repeat clicks) **but caching still had to change (D-19)**: the bot filter would let a crawler prime the cache and swallow the real click, and the page is UA-routed with **no `Vary`** (a cached iOS page → Android user gets the wrong store) → `no-store` + `Vary: User-Agent`. Evidence: `deno check` clean; `invite.test.ts+invite-page.test.ts` 17/17; Node `invite_create+invite_page` 7/7; Deno `147 passed | 0 failed` (+4); Node `# pass 119 / # fail 0` (266595.2ms). +4 tests (incl. WeChat MicroMessenger must still count) — 2026-07-17
 - B11 — migration `20260717000025_m8_compat_free_gate_atomic.sql` applied + `compat-request/index.ts` + `_shared/compat-narrative.ts`: M8's count→act moved **inside** `request_compat` (3-arg overload, `for update` on the requester's profile row) — it was unclosable from the Edge fn, since the count and the act were separate PostgREST transactions. **The interpolated `.or()` limb was fixed by deletion** (the filter no longer exists); `isUuid` asserted anyway. Premium passed, not recomputed, so **B15's `expires_at` change stays single-source** (D-17). M9: `sanitizeName` at the model boundary in `buildCompatRequest` — Unicode-aware (CJK names intact; an ASCII allowlist would itself be a bug), strips control/format + framing chars, caps at 40. Evidence: `deno check` clean; `compat_lifecycle+worker_compat` 8/8; `compat-narrative.test.ts` 5/5; Deno `143 passed | 0 failed` (+2); Node `# pass 119 / # fail 0` (287052.6ms). +4 tests incl. the injection fixture — 2026-07-17
@@ -1305,6 +1362,7 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-21 | 2026-07-17 | **C3 is closed as a FALSE POSITIVE — the RevenueCat signature scheme is correct — and the real risk is re-filed as an H8 CONFIGURATION step.** | The audit calls C3 the **#1 risk in the codebase** on the claim that RC ships "a static `Authorization` header value … not a t/v1 HMAC scheme". RC's current docs (verified 2026-07-17, <https://www.revenuecat.com/docs/integrations/webhooks>) contain a section **"Webhook Signature Verification (HMAC)"** documenting exactly `X-RevenueCat-Webhook-Signature: t=<unix_timestamp>,v1=<hmac_sha256_hex>` over `"<t>.<raw_json_body>"`, with constant-time comparison and an optional ~5-minute replay window — which is, line for line, what `_shared/revenuecat.ts` already does. RC offers **both** an optional Authorization header **and** optional HMAC signing; the audit saw the first and concluded the second did not exist. **Rewriting this to chase the audit would have replaced a correct, stronger control with a weaker one — the single most expensive possible outcome here.** **But the audit's instinct was not worthless:** the feared lockout IS reachable, because HMAC signing is **opt-in per integration** and the secret is **shown once, unrecoverable**. If the toggle is off or the secret is wrong, our handler 401s/500s every delivery and RC gives up after 5 retries (~2.6h) — permanently 402'ing paying customers. That is a **dashboard** failure, not a code one, so it is filed as an explicit H8 checklist rather than 'fixed'. **Not** adding support for the Authorization header: accepting either mechanism would make two independent controls an OR and weaken the surface. |
 | D-20 | 2026-07-17 | **B13's short code is WIDENED from 6 to 10 hex (24 -> 40 bits), and that — not the rate limiting — is the load-bearing half of H9's fix.** Delegated to the loop by the user; decided on arithmetic. | The audit treats H9's risk as "collision + brute-force implications … that is exactly why the spec pairs it with rate limiting". **Rate limiting alone cannot save a 24-bit code, because a prefix match hits ANY live invite:** the guesser's odds are `N / 2^bits`, not one-in-the-code-space. At 6 hex (16.7M) with 100k live invites that is **~1 in 167 guesses** to hijack a stranger's invite — and a hit **burns** it (claims are single-use), so the real recipient is locked out too: hijack *and* denial of service on the growth loop. Per-user throttling does not fix a per-*account* attack when anonymous sign-up is cheap. At 10 hex (1.1e12) it is ~1 in 1.1M at a **million** live invites, which no realistic throttle budget searches. **The change is free**: the code is *derived from token_hash, never stored*, so there is no data to migrate (`invites` holds 1 row); the cost is typing `XXXXX-XXXXX` instead of `XXX-XXX` on the rare fallback path — ordinary redemption-code UX. Collisions fall out too: at 24 bits they are near-certain at scale, at 40 bits rare — and an ambiguous prefix is **refused, never guessed**, because handing a claimant somebody else's invite is the one failure this code must not have. |
 | D-19 | 2026-07-17 | **M7's "5-min CDN caching undercounts real repeat clicks" is a FALSE POSITIVE as written — yet B12 still changed the caching, to `no-store` + `Vary: User-Agent`, for two different reasons.** | **Why the audit's claim is wrong:** `created→clicked` is a **one-way transition**, so repeat clicks are never counted whether or not the page is cached. Caching cannot undercount a number nobody records. **Why the caching had to change anyway:** (1) **The bot filter and `max-age=300` are incompatible.** Today a crawler's request flips the status, so caching is harmless. Once bots stop flipping it, the crawler's fetch **primes the cache** and the real person's click seconds later is served from it — never reaching the function, never counted. The fix for M7's real limb would have created a worse version of the bug the audit imagined. (2) **The response is UA-routed with no `Vary`** — the CTA is an App Store, Play, or web URL chosen from the user-agent, so a shared cache could hand an Android user the iOS store link. That is an unreported bug, found only because M7 sent me to look at this header. Crawlers fetch a given invite once, so nothing here was worth caching; `no-store` costs one cheap SSR render per click. |
 | D-18 | 2026-07-17 | **`sanitizeInviteContext` DROPS invalid values instead of rejecting the request.** | The invite context is **cosmetic** (headline name, OG image, routing hints). Throwing would mean a legitimate client bug — a stale `card_variant`, a mis-built URL — **fails invite-create outright and breaks the P2 growth loop**, which is the one thing the audit says never to paywall or block. Dropping degrades gracefully: the page falls back to `profiles.display_name` and `OG_DEFAULT`, both of which it already handles. An attacker gains nothing either way — their value never reaches the page — so the only party a throw would punish is a real user with a buggy client. Validation lives at the **write** rather than the read for the same reason B4 collects before deleting: the trusted-domain render is the last place you want to be deciding whether data is safe. |

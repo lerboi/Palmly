@@ -55,3 +55,47 @@ Deno.test('isUuid distinguishes a Supabase UUID from an RC anonymous id', () => 
   assert(!isUuid('$RCAnonymousID:abc123'));
   assert(!isUuid(undefined));
 });
+
+// ── C3: the wire format, pinned against an INDEPENDENT oracle ────────────────────────────────────
+//
+// Every other signature test here signs with our own `rcSignature` and verifies with our own
+// `verifyWebhookSignature` — which is trivially green no matter what the scheme is. That is exactly
+// the trap the audit's C3 walked into from the other side (it asserted the scheme was wrong).
+//
+// This vector was computed by a DIFFERENT implementation (node:crypto's createHmac, not WebCrypto)
+// from RevenueCat's documented wire format:
+//     X-RevenueCat-Webhook-Signature: t=<unix_timestamp>,v1=<hmac_sha256_hex>
+//     v1 = HMAC-SHA256( secret, "<t>.<raw_json_body>" )  — hex, over the RAW bytes
+// Docs verified 2026-07-17: https://www.revenuecat.com/docs/integrations/webhooks
+//
+// If anyone "fixes" the concatenation, the encoding, or the header parsing, this fails — because
+// nothing in this test is produced by the code under test.
+const RC_VECTOR = {
+  secret: 'whsec_palmly_test_vector',
+  t: '1700000000',
+  body: '{"event":{"id":"evt_test","type":"INITIAL_PURCHASE","app_user_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}}',
+  v1: '63074dabc37dbb28fcc4078d784fb0bc7ffba7d35ecbe23d7a022c2fbba0f62e',
+};
+
+Deno.test('C3: verifyWebhookSignature accepts a signature produced by an INDEPENDENT implementation', async () => {
+  const { secret, t, body, v1 } = RC_VECTOR;
+  const res = await verifyWebhookSignature(body, `t=${t},v1=${v1}`, secret, Number(t) * 1000);
+  assertEquals(res.valid, true, 'our verifier must accept RC-format bytes it did not generate itself');
+});
+
+Deno.test('C3: our own rcSignature agrees with the independent oracle (the scheme, not just itself)', async () => {
+  // Pins the two implementations to the SAME wire format. If rcSignature drifts, the helper and the
+  // verifier would still agree with each other — and this is what would catch that.
+  const { secret, t, body, v1 } = RC_VECTOR;
+  assertEquals(await rcSignature(secret, t, body), v1, 'rcSignature must reproduce node:crypto exactly');
+});
+
+Deno.test('C3: the wire format is order-sensitive — "<body>.<t>" must NOT verify', async () => {
+  // The concatenation is the part most easily got wrong, and getting it wrong silently 401s every
+  // paying customer. This asserts the mistake is actually detected.
+  const { secret, t, body } = RC_VECTOR;
+  // node:crypto's HMAC over the REVERSED concatenation "<body>.<t>" begins a533ac89dfd3caa1…
+  const reversed = await verifyWebhookSignature(body, `t=${t},v1=a533ac89dfd3caa1${'0'.repeat(48)}`, secret, Number(t) * 1000);
+  assertEquals(reversed.valid, false, 'a signature over body.t (the reversed order) must be rejected');
+  assertEquals(reversed.reason, 'signature_mismatch');
+});
