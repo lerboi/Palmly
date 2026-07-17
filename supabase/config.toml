@@ -175,9 +175,18 @@ refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
 enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
-enable_anonymous_sign_ins = false
-# Allow/disallow testing manual linking of accounts
-enable_manual_linking = false
+# TRUE, matching live staging (audit M11). Palmly's entire entry path is `signInAnonymously()`
+# (app/src/lib/auth.ts:23) — verified live: 107 of 107 users are anonymous. `false` here was not
+# merely drift: a `supabase config push` would have DISABLED anonymous sign-in on the project and
+# locked out every existing user plus every new one. Per-IP throttle: [auth.rate_limit].anonymous_users.
+enable_anonymous_sign_ins = true
+# Allow/disallow testing manual linking of accounts.
+# TRUE per Backend spec §418: the anon→permanent upgrade calls `linkIdentity()` (Apple/Google) or
+# `updateUser({phone})`, which "requires manual linking enabled". The upgrade path itself is NOT YET
+# BUILT (the app only calls signInAnonymously today, and auth.identities is empty), so this cannot be
+# verified against live with a read-only MCP — but `true` is the safe value in both directions: it
+# matches the spec, and a push cannot switch OFF a capability the spec requires.
+enable_manual_linking = true
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
 minimum_password_length = 6
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
@@ -211,6 +220,20 @@ token_verifications = 30
 web3 = 30
 
 # Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
+# DELIBERATELY still commented out (audit M11 lists "no Turnstile" as part of the drift). Backend
+# §420/§699 do want invisible Turnstile on session creation to bound anonymous abuse — but enabling
+# it here is not a code change we can make honestly:
+#   * it needs `secret = env(TURNSTILE_SECRET_KEY)`, which is a P3.T6 human/env gate (docs/
+#     ENVIRONMENT.md) — and a secret must never be committed to this file;
+#   * enabling it with a blank/absent secret would make a `config push` reject session creation,
+#     i.e. break the anonymous sign-in this very file just protected.
+# So it stays OFF here until the Cloudflare key exists, at which point this becomes:
+#   [auth.captcha]
+#   enabled = true
+#   provider = "turnstile"
+#   secret = "env(TURNSTILE_SECRET_KEY)"
+# Until then the anonymous-abuse controls that ARE live: [auth.rate_limit].anonymous_users = 30/hr/IP
+# (§420) and the stale-anon cleanup sweep (migration 0020).
 # [auth.captcha]
 # enabled = true
 # provider = "hcaptcha"
@@ -419,10 +442,6 @@ enabled = true
 # so `false` would accept a forged `sub`. Workers + public/HMAC fns are `false` and authenticate
 # in-function via the unforgeable service key (`requireMode 'secret'`) or their own signature check.
 # All share the `functions/` Deno import map (resolves the `@supabase/supabase-js` bare specifier).
-
-[functions.hello]
-verify_jwt = false
-import_map = "./functions/deno.json"
 
 [functions.worker-scan]
 verify_jwt = false

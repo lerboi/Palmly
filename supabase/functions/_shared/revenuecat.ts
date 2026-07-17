@@ -3,6 +3,7 @@
 // signature computed over `"<t>.<raw_json_body>"` with the integration's signing secret. We verify
 // with a constant-time compare + a timestamp-tolerance window (replay protection). Pure/injectable
 // (rawBody, header, secret, nowMs) so it is unit-testable without the network.
+import { constantTimeEqual } from './timing.ts';
 
 async function hmacSha256Hex(secret: string, message: string): Promise<string> {
   const key = await crypto.subtle.importKey(
@@ -16,14 +17,6 @@ async function hmacSha256Hex(secret: string, message: string): Promise<string> {
   return Array.from(new Uint8Array(sig))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
-}
-
-/** Length-independent constant-time hex compare. */
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let out = 0;
-  for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return out === 0;
 }
 
 export interface SigResult {

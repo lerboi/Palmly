@@ -38,7 +38,11 @@ jobs:
         env:
           DB_PASSWORD: ${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}
 
+      # --prune deletes functions that exist on the project but not in the repo. Without it, removing
+      # a function's directory does NOT remove it from Supabase: the `hello` skeleton stayed ACTIVE
+      # and verify_jwt=false on staging long after it stopped existing here (audit Low). Deploy is
+      # only meaningful as a sync if the repo is allowed to be the whole truth, deletions included.
       - name: Deploy Edge Functions
-        run: supabase functions deploy --project-ref "$PROJECT_REF"
+        run: supabase functions deploy --project-ref "$PROJECT_REF" --prune
         env:
           PROJECT_REF: ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}

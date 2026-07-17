@@ -37,7 +37,7 @@ finding has exactly one owning task below; no finding is dropped silently.
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
 - **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114 → B10 117 → B11 119 → B13 124 → B15 127 → B16 130 → B18 133; Deno 133 → B4 137 → B6 138 → B8 140 → B10 141 → B11 143 → B12 147 → B13 148 → B14 151 → B15 152 → B17 154):**
-  **Node 133/133** (`# pass 133 / # fail 0`, 282.1s) · **Deno 159/159** (`159 passed | 0 failed`, 3s)
+  **Node 135/135** (`# pass 135 / # fail 0`) · **Deno 163/163** (`163 passed | 0 failed`, 3s)
   · app jest **39/39** (8 suites) — but see B17: the app suite asserts against its own `PREVIEW_*`
   fixtures, so it **structurally cannot** catch a server-contract change. Never cite it as evidence.
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
@@ -46,15 +46,15 @@ finding has exactly one owning task below; no finding is dropped silently.
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B19** (2026-07-17) — M3 closed; the fortune fan-out is bounded, resumable and
-  now fails loudly. No migration. Suites: **Node 133/133**, **Deno 159/159**.
-- **Next task:** **B20 — Housekeeping: the Low/informational bullets** *(Low ×5, M11)*. Six small,
-  independent items: remove the `hello/` scaffold; make the secret gate at `_shared/auth-resolve.ts:44`
-  **constant-time**; `moddatetime` for `profiles.updated_at`; **narrow the broadcast payload**; the M11
-  `config.toml` drift; and leaked-password protection, which is a **🧑 dashboard toggle** — mark it, do
-  not fake it. Triage each on its own: B18 and B17 both show a throwaway line can outrank the headline,
-  and D-23 shows a Low bullet can be **working as intended**. Re-read the real max migration counter
-  before writing any SQL (29 applied; `moddatetime` needs one).
+- **Last completed:** **B20** (2026-07-17) — [~] by design: 5 of 6 Low/M11 items landed (migration
+  0030 + `--prune`); only the 🧑 leaked-password toggle is open. Suites: **Node 135/135**, **Deno 163/163**.
+- **Next task:** **B21 — §3.3 test coverage gaps: HTTP handlers · storage round-trip · untested
+  `_shared`**. The audit's own final work item. Note B19 just made one gap smaller by accident: the
+  fortune fan-out moved into an injectable `_shared` seam precisely because the handler was untestable
+  — that is the shape the HTTP-posture matrix wants. B21 also inherits **B4's live storage round-trip**
+  (D-09). ⚠️ `verify_jwt` is **security-load-bearing** (`decodeJwtSub` does not verify): 6 user-mode
+  `true` / 11 worker-public `false` — assert the posture, never flip one. `hello` is **gone** as of
+  B20, so the matrix is 17 functions, and `image-delete` is in-repo but **not deployed** (D-24).
 - 🚩 **Standing, ledger-wide (D-24): nothing here is deployed.** Migrations ARE applied to staging;
   Edge Functions are **not** — there is no `SUPABASE_ACCESS_TOKEN`, and `deploy.yml` (merge to main,
   `staging-deploy` env) owns that, gated by **H3/H4b-2**. Every fix is closed *in the repo*, not *in
@@ -1476,23 +1476,81 @@ would edit nothing and wrongly report success.
     The concurrency test has teeth: against the old sequential loop max-in-flight is 1, so `> 1` fails.
   - **`buildFortuneBatch` KEPT** despite being production-dead (D-28). **EN-only KEPT** (D-29).
 
-- [ ] **B20 — Housekeeping: the Low/informational bullets** *(Low ×5, M11)*
-  - Research + Build (six items, grouped because each costs more to track than to fix):
-    (a) **remove `hello/`** — an 11-line unauthenticated echo of the decoded-but-unverified JWT sub.
-    (b) **constant-time secret gate** — the `token === env.serviceKey` compare is at
-    **`_shared/auth-resolve.ts:44`** (**not** `context.ts` — ERRATA); one file, **18-function reach**, with
-    an existing `auth-resolve.test.ts` net. Theoretical (the secret *is* the key), but cheap.
-    (c) **moddatetime** trigger for `profiles.updated_at` (new migration).
-    (d) **narrow the broadcast payload** from the full `scans` row (incl. `storage_path`, `capture_meta`) to
-    status — no leak (owner-only topic), just wider than it should be.
-    (e) **M11** — align `config.toml:178-217` with live staging (`enable_anonymous_sign_ins=true` per
-    cleared H5; manual linking; Turnstile). Harmless until someone pushes config.
-    (f) **leaked-password protection** — 🧑 a **dashboard toggle**, not code. Flag `[!]`/human **inside**
-    this task; do not let it block the other five.
-  - Verify: `ls supabase/functions/hello` **fails**; `deno test ... _shared/auth-resolve.test.ts` + full
-    133+; both suites green; `verify_jwt` posture unchanged (`mcp__supabase__list_edge_functions`).
-  - Note: **`verify_jwt` is SECURITY-LOAD-BEARING** — `auth-resolve.decodeJwtSub` decodes the JWT sub
-    **without verifying it**; user-mode fns need `verify_jwt=true`, workers/webhooks `false`. Never flip one.
+- [~] **B20 — Housekeeping: the Low/informational bullets** *(Low ×5, M11)* — **2026-07-17**
+  - **DONE: five of six landed; (f) is 🧑 human-gated and is the ONLY reason this is [~] not [x].**
+    Migration `20260717000030_low_moddatetime_narrow_broadcast.sql` (counter re-read: max was 29).
+    **All six CONFIRMED** — no false positives here — but **two were worse than the bullet says.**
+  - **(a) `hello` — CONFIRMED, and the bullet understates it twice.** Not "still deployed" in the
+    abstract: live MCP shows it **`status: ACTIVE`, `verify_jwt: false`** *right now* — an
+    unauthenticated, publicly-invokable function echoing a **decoded-but-unverified** JWT sub.
+    🎯 **And deleting it does not delete it.** `deploy.yml:42` ran `supabase functions deploy
+    --project-ref …`, and the CLI's own help documents a **`--prune`** flag: *"Delete Functions that
+    exist in Supabase project but not locally."* Without it, removing `hello/` from the repo would
+    have left the live function ACTIVE **forever**, and the ledger would have recorded a fix that
+    changed nothing about the running system. Removed the directory + its `[functions.hello]`
+    config block, **and added `--prune`** (D-30). Verified the blast radius before adding it: repo
+    has **18** function dirs, live has **17** → after removing `hello`, prune deletes **exactly
+    `hello`** and deploys `image-delete`. Nothing else is at risk.
+  - **(b) constant-time secret gate — CONFIRMED (theoretical, as the bullet says).** Fixed at
+    `_shared/auth-resolve.ts:44`, the real site (**not** `context.ts` — ERRATA was right). Repo
+    precedent decided the shape: `revenuecat.ts` **already had** a private `constantTimeEqual` for
+    the webhook HMAC, so this was never a question of *whether* but of *two copies of a security
+    primitive*. Extracted to `_shared/timing.ts`; both import it. The anon/publishable key compare is
+    **deliberately left as `===`** — it ships in the client bundle, so there is no secret to leak.
+  - **(c) `profiles.updated_at` — CONFIRMED.** Verified live before writing: `profiles` had **ZERO
+    triggers** and **nothing** in `supabase/functions` or `app/src` ever writes the column, so since
+    0001 it has been permanently equal to `created_at` — a timestamp that always lied. `moddatetime`
+    installed into `extensions` (never `public`) + a BEFORE UPDATE trigger.
+  - **(d) broadcast payload — CONFIRMED, and ~twice as wide as stated.** The bullet says "the full
+    `scans` row"; `realtime.broadcast_changes` (read live via `pg_get_functiondef`) builds
+    `jsonb_build_object('old_record', OLD, 'record', NEW, …)` — so it ships **every column, twice**
+    (`storage_path`, `capture_meta`, `keep_image`, `user_id`, …) on **every** transition. Replaced
+    with a direct `realtime.send` carrying `{id, status, failure_reason}`. The bullet's "no leak" is
+    correct and unchanged (`realtime.messages` RLS keeps topic `scan:{id}` owner-only) — this is a
+    blast-radius fix: a status ping is not a reason to put a private bucket key on a websocket.
+    ⚠️ **The client contract was checked by READING the client, not by trusting the tests:**
+    `app/src/lib/useScanStatus.ts:69` reads `msg.payload.record.status`/`.failure_reason`, so the
+    envelope is preserved and only its contents shrink. (The app's jest tests assert against their
+    own fixtures and structurally cannot catch a server-contract change.)
+  - **(e) M11 config drift — CONFIRMED, and it is the one with teeth.** `enable_anonymous_sign_ins`
+    was `false` locally while live is ON — **proven, not inferred: 107 of 107 staging users are
+    `is_anonymous`, with zero `auth.identities`.** So a `supabase config push` would not have been
+    "harmless drift": it would have **disabled the app's entire entry path** (`signInAnonymously()`,
+    `app/src/lib/auth.ts:23`) and locked out every existing and future user. Set `true`.
+    `enable_manual_linking` → `true` per Backend §418 (the anon→permanent upgrade needs it).
+    **Turnstile deliberately NOT enabled (D-31)** — it needs a secret this file must never hold.
+  - **(f) 🧑 leaked-password protection — CONFIRMED still disabled** (live advisor
+    `auth_leaked_password_protection`: *"Leaked password protection is currently disabled"*).
+    **This is a dashboard toggle and cannot be closed by code — NOT faked green.**
+    → **Auth → Providers → Email → "Prevent use of leaked passwords" = ON.** Moot today (auth is
+    anon + OAuth/OTP, and there are zero password users), which is exactly why it is safe to flip now
+    rather than during an incident. This task returns to [x] when that toggle is on.
+  - Verify (observed): `ls supabase/functions/hello` → **"No such file or directory"** ✅ · live MCP
+    after 0030: `moddatetime 1.0` in schema `extensions`, trigger `profiles_set_updated_at` present,
+    `broadcast_scan_status` **does not call `broadcast_changes`**, does call `realtime.send`, and
+    contains **no** `storage_path|capture_meta|keep_image`; `scan_status_broadcast` trigger + the
+    `scan_owner_receives_status` RLS policy **intact** · `deno check` clean · full **Deno 163/163**
+    (`163 passed | 0 failed`) · full **Node 135/135** (`# pass 135 / # fail 0`, exit 0).
+  - Regression tests added (**6**): Deno — `timing.test.ts` (the primitive agrees with `===` on every
+    shape incl. the first-char and last-char cases, and XOR cannot be fooled by cancelling
+    differences), `auth-resolve.test.ts` (the gate still refuses a prefix / key+1 byte /
+    transposition / wrong case / empty-key, and the publishable key is unaffected). Node — the
+    broadcast payload test **observes a real emitted `realtime.messages` row** and asserts the wire
+    contains neither the storage key nor capture meta; the moddatetime test pins the trigger def and
+    the override property.
+    ⚠️ **Two of my own checks were wrong before the code was** — recorded because both are traps a
+    future task will hit: (1) a live check for `storage_path` in `pg_get_functiondef` returned
+    **YES-BAD against correct code**, because the new function's own *comment* names the old helper —
+    assert on the emitted payload, never on the function's source text; (2) the first moddatetime
+    test asserted `updated_at` **advances** between two writes and **failed against a correct
+    trigger**: `moddatetime` stamps `now()` = **transaction-start**, and this harness is one rolled-
+    back transaction, so `now()` is frozen for its whole duration (probed: with a 50ms `pg_sleep`,
+    `updated_at` stayed at `…40.415` while `clock_timestamp()` reached `…41.035`). The advance is
+    real in production, where each UPDATE is its own transaction; it is simply **unobservable here**.
+  - 📝 Observed, out of scope (not a §4/§5 finding, → B22): live security advisors WARN that the
+    trigger functions `broadcast_scan_status`/`broadcast_compat_status`/`handle_new_user` are
+    `anon`-executable via `/rest/v1/rpc/…`. Pre-existing and benign (a plpgsql trigger function
+    invoked outside a trigger just errors), and it predates this task on both broadcasts.
 
 - [ ] **B21 — §3.3 test coverage gaps: HTTP handlers · storage round-trip · untested `_shared`** *(audit §3.3)*
   - Research: the audit's own final suggested work item, and the gaps are real (recon confirmed): **(1) no
@@ -1542,6 +1600,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B20 — migration `20260717000030_low_moddatetime_narrow_broadcast.sql` applied: **all six items CONFIRMED, five landed, (f) is 🧑**. 🎯 **`hello` was live** (`ACTIVE`, `verify_jwt=false`) and **deleting the directory would not have removed it** — `deploy.yml` lacked `--prune`, so the "fix" would have changed nothing in production; added it (D-30, blast radius verified: prune deletes exactly `hello`). **M11 had teeth**: local `enable_anonymous_sign_ins=false` vs live ON — proven by **107/107 anonymous users** — so a config push would have locked out every user; Turnstile deliberately left off (D-31 — needs a secret; enabling it blank would break session creation). Broadcast was **~2× wider than the bullet says** (`broadcast_changes` ships every column TWICE, as `record` AND `old_record`) → narrow `realtime.send` with the client envelope preserved (checked by reading `useScanStatus.ts:69`, since app jest cannot catch a server contract change). `constantTimeEqual` extracted to `_shared/timing.ts` (revenuecat.ts already had a private copy). Two of my own checks were wrong before the code was: a `pg_get_functiondef` grep flagged correct code (the function's own comment names the old helper), and a moddatetime "it advances" assertion failed against a correct trigger (moddatetime stamps txn-start `now()`; one rolled-back txn cannot observe an advance — probed: `now()` frozen at …40.415 while `clock_timestamp()` hit …41.035). Evidence: `ls supabase/functions/hello` → No such file; live MCP: `moddatetime 1.0` in `extensions`, `profiles_set_updated_at` present, `broadcast_scan_status` calls `realtime.send` not `broadcast_changes` and contains no `storage_path|capture_meta|keep_image`, trigger + owner RLS policy intact; advisor `auth_leaked_password_protection` still **disabled** (🧑). Deno **163 passed | 0 failed**; Node **# pass 135 / # fail 0**. +6 tests — 2026-07-17
 - B19 — **no migration, no schema change** (Edge Function code only): M3 CONFIRMED both limbs. The 61-bucket fan-out left the handler for an injectable `generateFortuneDay` in `_shared/fortune.ts` — **bounded concurrency** (worker pool over a shared cursor, `FORTUNE_CONCURRENCY=6`), **resume** (skip buckets already stored for (date, locale); `force:true` still refreshes all 61), and an **honest verdict** (failures are *named* in `missing[]`, not counted; `fortuneDayComplete()`; the handler throws `fortune_incomplete` → **500** + a `worker_telemetry` `status='failed'` row, which is what `ops_alerts` reads). Corrected the audit's wording — the loop never aborted, so a bad night yields a **subset**, not a *prefix*, which is exactly why resume must be driven by what is missing in the table. Understated limb surfaced: 61 sequential Gemini calls outrun the Edge Function **wall clock**, so the invocation is killed partway through — the real mechanism behind missing buckets, no Gemini errors needed. `buildFortuneBatch` kept (D-28 — D-13's precedent does not transfer); EN-only kept (D-29). Evidence: `deno check` clean; `fortune.test.ts` **9 passed | 0 failed**; full Deno **159 passed | 0 failed**; `fortune_generate.test.mjs` **# pass 3 / # fail 0**; full Node **# pass 133 / # fail 0**. +5 tests — 2026-07-17
 - B18 — migration `20260717000029_m10_drop_raw_enqueue_push.sql` applied: the raw `enqueue_push` **DROPPED** (D-26 — zero production callers; `worker-compat:110` already used the deduped path, the only reference was a test). **The audit's "secondary note" was the better half:** the marketing cap was check-then-insert, so two concurrent sends with *different* dedupe keys both passed → 2 marketing pushes in a day (same shape as M8). **The fix was one word** — `notification_log_marketing_idx` already had the exact columns + predicate and simply was not UNIQUE; made it unique, deleted the pre-check, switched to an untargeted `on conflict do nothing` that catches BOTH the dedupe key and the cap. UTC-day window kept (D-27 — "the user's day" is undefined while timezones live on devices, not users). Evidence: `git grep enqueue_push\b` → **0 callers**; live MCP: only `enqueue_push_deduped` survives, cap index is `CREATE UNIQUE INDEX … WHERE cap_class='marketing'`, old index gone; `notification_dedupe+push_dispatch+queues` 19/19; Node `# pass 133 / # fail 0` (282106.7ms); Deno `154 passed | 0 failed`. +3 tests, 1 migrated — 2026-07-17
 - B17 — **no migration, no schema change: the fix was DELETING the client field** (D-25). `reveal.ts` + `RevealView.tsx`: `teaser?: string` removed (it was fed only by `PREVIEW_*` fixtures and rendered by a branch that is dead twice over — `filterDepth` + `depthLevel=1` mean `lockedSections()` returns `[]` on real data). **The decisive fact the audit missed: there is nothing to truncate** — depth-2 prose is generated only ON UNLOCK (C.12), so filling a teaser would mean generating premium prose the user has not bought and shipping it behind a CSS blur, i.e. M12a's own suggestion produces M12a's leak. The title IS the tease (code-derived from the claim skeleton, zero tokens, zero leak). **Refines the audit:** Ajv is the *second* line of defence — `graft` (narrative.ts:247-262) rebuilds sections from the skeleton and is an allowlist by construction, so a model-invented field never reaches the validator. Evidence (all Verify legs, incl. the 2 NOT in CI): `kb/audit.mjs` → **required=141 chunks=141 / P5T4_OK**; `build-prompts --check` → **PROMPTS_OK**; `eval p5t1` → **P5T1_OK**; app typecheck+lint clean, `jest --ci` **39/39**; Deno `154 passed | 0 failed` (+2); Node `# pass 130 / # fail 0`. +2 tests (graft drops a model teaser; the real schema rejects one) — 2026-07-17
@@ -1572,6 +1631,8 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-30 | 2026-07-17 | **`deploy.yml` gains `--prune`, so deleting a function from the repo actually deletes it from Supabase. Decided by the loop (rule 16).** | The Low bullet says "remove `hello` before launch", and removing the directory is the obvious reading — but it would have been **theatre**: `supabase functions deploy` only pushes what it finds, so the live `hello` (verified **ACTIVE, verify_jwt=false**) would have survived every future deploy while the repo and this ledger both claimed it was gone. That is the exact failure mode this ledger exists to prevent — a fix that closes a finding on paper and changes nothing in production. The CLI's own help documents the fix: `--prune` = *"Delete Functions that exist in Supabase project but not locally"*. **The flag is destructive, so the blast radius was verified rather than assumed:** repo = 18 function dirs, live = 17; after removing `hello`, prune deletes **exactly `hello`** and nothing else (`image-delete` is local-only, which prune does not touch — it deploys). It runs only from `deploy.yml`, only on merge to main, only from a full checkout, so there is no "deployed from a partial branch and nuked the project" path. The alternative — leaving a 🧑 "remember to run `supabase functions delete hello`" note — makes the repo NOT the source of truth for what is live, which is the whole point of having a deploy pipeline. |
+| D-31 | 2026-07-17 | **M11 is aligned on anonymous sign-ins + manual linking, but Turnstile stays OFF in `config.toml`.** | M11 lists three drifts; they are not the same kind. **`enable_anonymous_sign_ins`** is unambiguous and load-bearing — live is ON (**107/107 staging users are anonymous**), local said `false`, and a config push would have locked out the entire user base. Fixed. **`enable_manual_linking`** cannot be verified against live with a read-only MCP (`auth.identities` is empty — nobody has linked yet, because the upgrade path is NOT YET BUILT), but `true` is safe in **both** directions: Backend §418 requires it for `linkIdentity()`, and a push can then never switch OFF a capability the spec depends on. **Turnstile is different in kind and is NOT enabled**: it requires `secret = env(TURNSTILE_SECRET_KEY)`, a P3.T6 human/env gate — and enabling captcha with a blank secret would make a config push **reject session creation**, i.e. break the very anonymous sign-in this change just protected. Writing the block now to look complete would turn a documentation gap into an outage. The exact block to paste when the Cloudflare key exists is recorded inline in `config.toml`. Meanwhile the abuse controls that ARE live: `anonymous_users = 30`/hr/IP (§420) + the stale-anon cleanup (0020). |
 | D-28 | 2026-07-17 | **`buildFortuneBatch` is KEPT even though nothing in production calls it — D-13's "dead code" precedent does NOT apply. Decided by the loop (rule 16).** | M3 is right that it is dead: its only consumer is `fortune.test.ts:43`. The ledger flagged D-13 ("a poller with no schedule is dead code") as the precedent, and the honest answer is that the precedent does not transfer. **D-13 struck a poller because a poller that is never scheduled silently does nothing while LOOKING live** — it was a correctness trap that could make someone believe a job was running. `buildFortuneBatch` is a **pure request-builder with no side effects and no illusion of being wired**: nothing calls it, the module header says exactly why it exists, and it cannot mislead anyone into thinking fortunes are batched. The harm D-13 addressed does not exist here. It is also not speculative — it is the ready request construction for a **known, planned, human-gated** leg (H4c paid tier → Gemini Batch, 50% off), tested, ~20 lines. Deleting it would destroy work that unblocks in one step, to satisfy a rule whose purpose is to prevent a trap this code cannot set. **Revisit if H4c is ever abandoned**, at which point it becomes genuinely dead and should go. |
 | D-29 | 2026-07-17 | **fortune-generate stays EN-only; the locale fan-out is recorded, not built.** | The schema is per (date × bucket × **locale**) and the handler defaults `locale: 'en'` with nothing iterating locales, so today exactly one locale is ever generated. That is **not a bug in M3's sense** — the parameter works, and a caller can already pass `{"locale":"zh"}` and get a full 61-bucket day. What is missing is a *scheduler* that fans out over the locales the product supports, which is **§NOT YET BUILT** (the cron wiring) plus a product decision about which locales ship — both **out of this ledger's scope** (rule 4). Building a locale loop now would also multiply the nightly Gemini spend by the locale count against a **free-tier key** (H4c), i.e. guarantee the partial-day failure this task just made loud. The resume + honest-verdict work is per (date, locale) and composes with a future fan-out unchanged. |
 | D-26 | 2026-07-17 | **The raw `enqueue_push` is DROPPED, not merely revoked.** | A function nobody may call and nobody should use is a trap, not a safety net — the next person adding an enqueuer reaches for the shorter, more obvious name and silently bypasses §10's dedupe + cap. That matters *now* rather than hypothetically: §NOT YET BUILT **C.10 still has most of the enqueuers to add** (reading-ready, invite-accepted, the timezone-sharded fortune fan-out, solar terms, onboarding, win-back), so this is precisely the window in which the wrong path would get picked. Safe to drop, verified rather than assumed: **zero production callers** (`worker-compat:110`, the only real enqueuer, already used the deduped path; the sole reference was a test, migrated here). If prod is ever rebuilt from migrations (P12), 0013 creates it and 0029 removes it → net absent. |

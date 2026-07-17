@@ -116,3 +116,39 @@ test('canonical-pair check (user_a < user_b) is enforced', async () => {
     );
   });
 });
+
+test('Low (B20): profiles.updated_at is maintained by moddatetime — the DB owns it, not the client', async () => {
+  await withRollback(async (c) => {
+    await applyMigrations(c);
+    const U = '33333333-3333-3333-3333-333333333333';
+    await seedUser(c, U); // trigger auto-creates the profile (migration 0005)
+
+    // Before migration 0030 `profiles` had ZERO triggers and nothing in supabase/functions or
+    // app/src ever wrote this column, so it stayed equal to created_at forever — a timestamp that
+    // always lied. The trigger is what makes 0001's `not null default now()` mean something.
+    const def = (await c.query(
+      `select pg_get_triggerdef(oid) def from pg_trigger
+        where tgrelid='public.profiles'::regclass and tgname='profiles_set_updated_at' and not tgisinternal`,
+    )).rows;
+    assert.equal(def.length, 1, 'the trigger exists');
+    assert.match(def[0].def, /BEFORE UPDATE/i, 'BEFORE, so it overrides rather than races the write');
+    assert.match(def[0].def, /moddatetime\('updated_at'\)/i, 'and stamps the updated_at column specifically');
+
+    // ⚠️ What this test deliberately does NOT assert: that updated_at ADVANCES between two writes.
+    // moddatetime stamps now() — the TRANSACTION START timestamp — and this whole harness is one
+    // rolled-back transaction, so now() is frozen for its entire duration (verified: with a 50ms
+    // pg_sleep, updated_at stayed at now()=…40.415 while clock_timestamp() reached …41.035). The
+    // advance is real in production, where every UPDATE is its own transaction; it is simply not
+    // observable here, and an assertion that it advances fails against CORRECT code.
+    //
+    // What IS observable, and is the property that matters: the database overrides whatever the
+    // client sends, so updated_at cannot be back-dated or pinned.
+    const { now_ts } = (await c.query(`select now() as now_ts`)).rows[0];
+    await c.query(`update public.profiles set display_name='Renamed', updated_at='2000-01-01T00:00:00Z' where id=$1`, [U]);
+    const after = (await c.query(`select created_at, updated_at from public.profiles where id=$1`, [U])).rows[0];
+
+    assert.deepEqual(after.updated_at, now_ts, 'the trigger stamped now(), not the value the client supplied');
+    assert.ok(after.updated_at.getUTCFullYear() > 2000, 'a client-supplied updated_at is discarded');
+    assert.deepEqual(after.created_at, (await c.query(`select created_at from public.profiles where id=$1`, [U])).rows[0].created_at, 'created_at is untouched');
+  });
+});

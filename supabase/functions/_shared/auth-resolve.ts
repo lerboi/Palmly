@@ -1,5 +1,6 @@
 // Pure auth-mode resolver (Backend §4: `user` | `secret` | `none`). No external deps so it is
 // cheaply unit-testable. Client construction lives in context.ts.
+import { constantTimeEqual } from './timing.ts';
 
 export type AuthMode = 'user' | 'secret' | 'none';
 
@@ -41,7 +42,14 @@ export function resolveAuth(
 ): ResolvedAuth {
   const token = bearerToken(req);
   if (!token) return { mode: 'none', token: null, userId: null };
-  if (env.serviceKey && token === env.serviceKey) return { mode: 'secret', token, userId: null };
+  // Constant-time: this compare IS the internal privilege gate (`requireMode 'secret'`) for every
+  // worker, so a plain `===` — which returns on the first differing character — makes it a timing
+  // oracle. Theoretical (a network hides far more jitter than a string compare reveals, and the
+  // secret being compared IS the key, so the gate is exactly key-possession), but the primitive is
+  // five lines and this is the wrong place to be interesting.
+  if (env.serviceKey && constantTimeEqual(token, env.serviceKey)) return { mode: 'secret', token, userId: null };
+  // The anon/publishable key is deliberately a plain compare: it is published in the client bundle,
+  // so there is no secret to leak and nothing to protect against timing.
   if (env.anonKey && token === env.anonKey) return { mode: 'none', token, userId: null };
   if (token.startsWith('eyJ')) return { mode: 'user', token, userId: decodeJwtSub(token) };
   return { mode: 'none', token, userId: null };
