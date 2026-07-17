@@ -1,5 +1,5 @@
 import { assert, assertEquals } from '@std/assert';
-import { buildExpoMessage, inQuietHours, prefsAllow, pushClass, sendExpoPush, shouldSend, tokensToPrune, type DeviceRow, type ExpoTicket, type PushJob } from './push.ts';
+import { buildExpoMessage, inQuietHours, isRetryableTicket, prefsAllow, pushClass, sendExpoPush, shouldSend, tokensToPrune, type DeviceRow, type ExpoTicket, type PushJob } from './push.ts';
 
 const job = (type: string): PushJob => ({ user_id: 'u', type, title: 'T', body: 'B', deep_link: 'palmly://x' });
 const dev = (prefs: DeviceRow['notif_prefs'], token: string | null = 'ExpoTok'): DeviceRow => ({ expo_push_token: token, notif_prefs: prefs, timezone: 'Asia/Singapore' });
@@ -66,4 +66,36 @@ Deno.test('tokensToPrune: only DeviceNotRegistered tokens are returned', () => {
     { status: 'error', details: { error: 'MessageTooBig' } },
   ];
   assertEquals(tokensToPrune(messages, tickets), ['dead']);
+});
+
+// ── H6: a failed batch must not be archived ──────────────────────────────────────────────────────
+
+Deno.test('isRetryableTicket: transport failures and rate limits retry; permanent errors do not', () => {
+  // The H6 regression. push-dispatch archived every job it read regardless of ticket outcome, and
+  // sendExpoPush turns a 5xx into error tickets rather than throwing — so a failed Expo batch was
+  // silently deleted, never sent, never retried. These are the tickets that must survive.
+  assert(isRetryableTicket({ status: 'error', message: 'expo_http_503' }), 'a 5xx batch must be retried, not archived');
+  assert(isRetryableTicket({ status: 'error', message: 'network down' }), 'a network throw must be retried');
+  assert(isRetryableTicket({ status: 'error', message: 'no_ticket' }), 'a missing ticket must be retried');
+  assert(isRetryableTicket({ status: 'error', details: { error: 'MessageRateExceeded' } }), 'Expo: "implement exponential backoff and slowly retry"');
+  assert(isRetryableTicket({ status: 'error', details: { error: 'TOO_MANY_REQUESTS' } }), '>600/s → back off and retry');
+
+  // ...and the ones that must NOT be retried: re-sending can never make them land, so retrying
+  // would pin the job on the queue until it dead-letters.
+  assert(!isRetryableTicket({ status: 'ok', id: 'r' }), 'a delivered push is done');
+  assert(!isRetryableTicket({ status: 'error', details: { error: 'DeviceNotRegistered' } }), 'token is dead → pruned, not retried');
+  assert(!isRetryableTicket({ status: 'error', details: { error: 'MessageTooBig' } }), 'payload >4096B will never fit');
+  assert(!isRetryableTicket({ status: 'error', details: { error: 'MismatchSenderId' } }), 'FCM credential mismatch is permanent');
+  assert(!isRetryableTicket({ status: 'error', details: { error: 'InvalidCredentials' } }), 'revoked credentials are permanent');
+  assert(!isRetryableTicket(undefined), 'no ticket for a job that sent nothing → archive it');
+});
+
+Deno.test('sendExpoPush: a 5xx yields error tickets rather than throwing (why H6 lost jobs silently)', async () => {
+  // Pinning the premise the archive fix rests on: because this never throws, the caller reaches its
+  // archive loop on a total Expo outage. That is exactly how a failed batch got deleted.
+  const messages = [{ to: 'a' }, { to: 'b' }];
+  const tickets = await sendExpoPush(messages, () => Promise.resolve(new Response('upstream boom', { status: 503 })));
+  assertEquals(tickets.length, 2);
+  assertEquals(tickets.every((t) => t.status === 'error'), true);
+  assertEquals(tickets.every((t) => isRetryableTicket(t)), true, 'every ticket in a 5xx batch is retryable → nothing gets archived');
 });

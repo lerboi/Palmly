@@ -97,6 +97,32 @@ export async function sendExpoPush(messages: Record<string, unknown>[], fetchImp
   return tickets;
 }
 
+/**
+ * Expo error codes that are worth retrying. Everything else is permanent — re-sending a
+ * MessageTooBig or a MismatchSenderId just burns the send again and never lands.
+ * Docs (2026-07-17): https://docs.expo.dev/push-notifications/sending-notifications/
+ *   retryable  — MessageRateExceeded ("implement exponential backoff and slowly retry"),
+ *                TOO_MANY_REQUESTS (>600/s), plus our own transport failures (5xx / network).
+ *   permanent  — DeviceNotRegistered, MessageTooBig, MismatchSenderId, InvalidCredentials.
+ */
+const RETRYABLE_EXPO_ERRORS = new Set(['MessageRateExceeded', 'TOO_MANY_REQUESTS']);
+
+/**
+ * Should the job that produced this ticket be left on the queue for redelivery?
+ *
+ * This is what stops H6's silent drop: push-dispatch archived every job it read regardless of
+ * ticket outcome, so an Expo 5xx (which `sendExpoPush` turns into error tickets rather than
+ * throwing — see its docstring) meant those notifications were deleted, never sent, never retried.
+ */
+export function isRetryableTicket(t: ExpoTicket | undefined): boolean {
+  if (!t || t.status === 'ok') return false;
+  const code = t.details?.error;
+  if (code) return RETRYABLE_EXPO_ERRORS.has(code);
+  // No structured code → it came from our own transport wrapper (`expo_http_5xx`, a network throw,
+  // or `no_ticket`). Those are transport-level, i.e. retryable: the message never reached Expo.
+  return true;
+}
+
 /** Tokens whose ticket says DeviceNotRegistered → prune from `devices` (§10). */
 export function tokensToPrune(messages: { to?: unknown }[], tickets: ExpoTicket[]): string[] {
   const prune: string[] = [];

@@ -36,20 +36,23 @@ finding has exactly one owning task below; no finding is dropped silently.
 
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
-- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114; Deno 133 → B4 137 → B6 138):**
-  **Node 114/114** (`# pass 114 / # fail 0`, 247.8s) · **Deno 138/138** (`138 passed | 0 failed`, 4s)
+- **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114; Deno 133 → B4 137 → B6 138 → B8 140):**
+  **Node 114/114** (`# pass 114 / # fail 0`, 247.2s) · **Deno 140/140** (`140 passed | 0 failed`, 2s)
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
   quote it. The pre-B0 "Node 96/100" is now historical.
 - **The audit's own "can't run the suites" caveat DOES NOT APPLY HERE.** It was written on a Mac with
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B7** (2026-07-17) — migration 0023 applied; cards private-by-default,
-  publish-on-share, fonts + wasm vendored (15MB). Suites: **Node 114/114**, **Deno 138/138**.
-- **Next task:** **B8 — push-dispatch: archive-after-send · receipts · N+1 · loop-until-empty** *(H6)*.
-  Read the **ERRATA row on H6 first** — it is worse than the audit states (`:47` archives *before*
-  `sendExpoPush` is even called at `:53`). Expo's current push-receipt docs are required reading
-  (`_shared/push.ts` has no `getReceipt` — receipt polling is genuinely net-new surface).
+- **Last completed:** **B8** (2026-07-17, `[~]`) — push-dispatch archive-on-success + N+1 +
+  loop-until-empty; receipts deferred to the cron (D-13). Suites: **Node 114/114**, **Deno 140/140**.
+- **Next task:** **B9 — H1: face repeat-scan consistency (face geometry signature)**. Note B6 already
+  shipped its **live detector**: worker-scan now emits telemetry `subject_profile:'exists_unmatched'`
+  exactly when a "new" subject collides with `unique(user_id,kind)` — i.e. when a face fails to match
+  itself. ⚠️ B9's Verify has **mandatory manual legs** (`node kb/audit.mjs` → `P5T4_OK`,
+  `required=141 chunks=141`; `node prompts/build-prompts.mjs --check` → `PROMPTS_OK`; `cd eval && npm
+  run p5t1` → `P5T1_OK`) — `kb/audit.mjs` is **NOT in CI**. Prefer **numeric landmark ratios over new
+  enums** (a new enum throws `unmapped schema enum path(s)` at `audit.mjs:141-143`).
 - **App-side follow-up B7 creates (NOT this ledger's scope — P6 wiring):** the share button must now
   call `card-render` with `{action:'publish', card_id}` before handing the URL to the share sheet.
   Until then a pre-rendered card exists but is never published — which is the *correct*, private
@@ -147,7 +150,7 @@ would edit nothing and wrongly report success.
 | H2: "copy `worker-compat`'s guard" | `worker-compat:65-68` is a **status check** on a row `compat-request` already created. `worker-narrative` has **no such row** → the fix needs a DB unique constraint or SELECT-before-insert, **not** a copy-paste. It pulls in a migration. |
 | M14: "0010:36-40 creates a pair for generic" | True, **but `kind` is never fetched** by the select at `0010:20` — the guard requires changing the select too. |
 | C4 predicate omits `uploaded`/`queued`/`extracting` | Also omits **`narrating`** — the audit missed one. |
-| H6: push-dispatch "archives regardless of ticket outcome" | **Worse:** `:47` pushes `msg_id` into `archived` **before `sendExpoPush` is even called** at `:53` — jobs die even when the Expo POST *throws*. |
+| ~~H6: push-dispatch "archives regardless of ticket outcome" → **Worse:** `:47` pushes `msg_id` into `archived` before `sendExpoPush` at `:53` — jobs die even when the Expo POST *throws*.~~ | 🔴 **THIS ERRATA ROW WAS ITSELF WRONG — struck 2026-07-17 by B8 (D-12).** Unreachable on two counts: (1) `:47` only appends to a **local array**; the real `queue_archive` RPC is at `:63`, **after** the send — a throw there would *prevent* the archive, not cause it. (2) **`sendExpoPush` never throws** (`_shared/push.ts:80` docstring; `:84-95` converts a 5xx into error tickets and catches network throws). **The audit's plainer original wording is the correct one** and is CONFIRMED: control always reaches the unconditional archive, so a failed Expo batch was silently deleted. Fixed in B8. |
 | H5: "orders ascending, then slices last 8" | The `slice(-8)` at `chat.ts:149` is a **no-op**; the bug is purely the order clause at `chat-send/index.ts:96`. |
 | §3.2 "neither suite is runnable" | **Runnable here.** Deno **133/133 green**; Node **96/100** (B0). The "3 tests never in a recorded green run" question is resolved — they pass. |
 
@@ -682,7 +685,63 @@ would edit nothing and wrongly report success.
     stop flagging the listing policy. `deno test` + full Node suite green.
   - Note: **AFTER B5** (shared file). The audit's `_shared/render.ts` cite is **wrong** — see ERRATA.
 
-- [ ] **B8 — push-dispatch: archive-after-send · receipts · N+1 · loop-until-empty** *(H6)*
+- [~] **B8 — push-dispatch: archive-after-send · receipts · N+1 · loop-until-empty** *(H6)* — **2026-07-17** — 3 of 4 limbs landed; **receipts deferred** (needs the cron — same boundary as C2/B2).
+  - **DONE: H6 PARTLY CONFIRMED. The AUDIT is right; the ⚠️ ERRATA row on H6 is WRONG — see D-12.**
+    No migration; all changes in `push-dispatch/index.ts` + `_shared/push.ts`.
+  - 🔴 **ERRATA CORRECTION (the ledger's own table was in error).** It claims: *"Worse: `:47` pushes
+    `msg_id` into `archived` before `sendExpoPush` is even called at `:53` — jobs die even when the
+    Expo POST throws."* **That scenario is unreachable, on two counts:**
+    1. `:47` only pushes into a **local array**. The actual `queue_archive` RPC is at **`:63`, AFTER**
+       the send. If the send threw, `:63` would never run and pgmq would redeliver — the *opposite*
+       of "jobs die".
+    2. **`sendExpoPush` never throws at all.** Its own docstring (`_shared/push.ts:80`) says so, and
+       `:84-95` proves it: a 5xx becomes error tickets (`:87`), a network throw is caught (`:93`).
+       "When the Expo POST throws" is not a state this code can reach.
+    **The audit's plainer original claim — "all read jobs are archived regardless of ticket outcome
+    … a failed Expo batch (5xx) silently drops those notifications" — is the correct one, and is
+    CONFIRMED.** The ERRATA reached for a scarier framing and landed on a fiction. Table corrected.
+  - **Archive-on-failure CONFIRMED + FIXED.** Because `sendExpoPush` returns error tickets instead of
+    throwing, control *always* reached the unconditional archive at `:63` — so an Expo outage deleted
+    every notification in the batch: never sent, never retried, no trace. Now each job's ticket slice
+    is attributed back to its `msg_id` and archived **only when nothing about it is worth retrying**.
+  - **Retry policy from Expo's CURRENT docs** (fetched 2026-07-17,
+    <https://docs.expo.dev/push-notifications/sending-notifications/>): retryable =
+    `MessageRateExceeded` ("implement exponential backoff and slowly retry") + `TOO_MANY_REQUESTS`
+    (>600/s) + our own transport failures (5xx/network/`no_ticket` — the message never reached Expo);
+    permanent = `DeviceNotRegistered`, `MessageTooBig`, `MismatchSenderId`, `InvalidCredentials`
+    (re-sending can never make these land, so retrying would pin the job until it dead-letters).
+    A job with **zero** messages (all devices gated by prefs/quiet hours) has no tickets → archived.
+  - **N+1 CONFIRMED + FIXED** (`:42`) — one `devices` query per job meant a 100-job tick paid 100
+    serialized round-trips before a single push went out. Now one `.in('user_id', …)` per chunk,
+    grouped in memory.
+  - **Loop-until-empty CONFIRMED + FIXED** (`:33`) — one 100-job chunk per 15s tick made a 10K-user
+    fortune fan-out take ~25 min, for a send that is supposed to land at 8:30 *local*. Now drains
+    until empty under a **20s wall-clock budget**, deliberately well inside the 60s queue vt so a slow
+    tick cannot have its own in-flight messages redelivered underneath it.
+  - 🔶 **Receipts NOT built — deferred, with the same rationale as C2/B2 (D-13).** Expo's docs are
+    explicit: *"check push receipts 15 minutes after sending"*. That makes receipt polling
+    **inherently a separately scheduled job**, needing (a) ticket-id persistence and (b) a cron to
+    poll later — **and the cron wiring is exactly what this ledger puts out of scope** (§NOT YET
+    BUILT A.3; the audit itself also lists "Expo receipt polling" under §NOT YET BUILT C.10).
+    Writing a poller with no schedule would produce **dead code** — precisely the thing M3 dings
+    `buildFortuneBatch` for. So B8 closes `[~]`: the drop-on-failure bug (the part that loses data
+    today) is fixed; receipts ride with the cron work.
+    **Consequence recorded honestly:** `DeviceNotRegistered` pruning stays *largely ineffective*,
+    because Expo returns it predominantly at **receipt** time — confirmed in the docs, which list it
+    under both ticket- and receipt-time errors. Ticket-time pruning (already implemented) catches only
+    the subset Expo rejects immediately.
+  - Verify (observed): `deno check push-dispatch/index.ts _shared/push.ts` → clean; `_shared/push.test.ts`
+    **9/9**; Deno **140/140** (+2); `push_dispatch.test.mjs` **4/4**; full Node **114/114**
+    (`# pass 114 / # fail 0`, 247.2s).
+  - Regression tests added (2, both Deno): `isRetryableTicket` pins **both** directions — a 5xx /
+    network / `no_ticket` / rate-limit ticket must be retried (the H6 drop), and `ok` /
+    DeviceNotRegistered / MessageTooBig / MismatchSenderId / InvalidCredentials must **not** be
+    (retrying those would pin the job until dead-letter). Plus a test pinning the *premise* the whole
+    fix rests on: **a 503 yields error tickets rather than throwing**, which is exactly how the old
+    code reached its archive loop during an outage.
+  - ⚠️ **Honest limit:** the per-job archive attribution lives in the unexported handler body, so it
+    is covered by `deno check` + the classifier's unit tests, not end-to-end — same handler-test gap
+    as B5/B6, and **B21**'s to close.
   - Research: **worse than the audit states (ERRATA)** — `:47` pushes `msg_id` into `archived` **before
     `sendExpoPush` is called** at `:53`, so jobs die even when the Expo POST *throws*; `:63` archives
     everything unconditionally; `:42` is an N+1 devices SELECT inside the job loop; `:33` is a hard
@@ -924,6 +983,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B8 — `push-dispatch/index.ts` + `_shared/push.ts` (no migration): archive **only** jobs with no retryable ticket (per-job attribution), N+1 devices query → one `.in()` per chunk, loop-until-empty under a 20s budget (inside the 60s vt). **🔴 The ERRATA's own H6 row was WRONG and is struck (D-12)** — `sendExpoPush` **never throws** (`push.ts:80` docstring, `:84-95`), and `:47` only appends to a local array while the real archive is at `:63` *after* the send; the **audit's plainer claim is the right one** and is CONFIRMED. Retry policy taken from Expo's live docs (retryable: MessageRateExceeded/TOO_MANY_REQUESTS/transport; permanent: DeviceNotRegistered/MessageTooBig/MismatchSenderId/InvalidCredentials). **Receipts deferred → cron (D-13); `[~]`.** Evidence: `deno check` clean; Deno `140 passed | 0 failed` (+2); `push_dispatch` 4/4; Node `# pass 114 / # fail 0` (247158.8ms) — 2026-07-17
 - B7 — migration `20260717000023_h8_cards_private_by_default.sql` applied + `card-render/{render,index}.ts` + **15MB vendored assets** (3 Noto fonts + OFL LICENSE + `index_bg.wasm`, each verified by **magic bytes** — the first SC URL 404'd and curl wrote a 311KB GitHub error page into a plausible `.otf`). H8: new private `card-drafts` bucket, `publishCard` is the only CDN path, `cards_public_read` dropped (**advisors no longer flag `public_bucket_allows_listing`**), `share_cards.published_at` + unique(user_id,source_id,variant). M4: wasm vendored, `loadFonts` throws instead of `catch {}`. **M4 proven visually**: same card rendered twice — no fonts **35,852 B, headline/chips/domain/attribution ALL MISSING**; with fonts **54,460 B, all present incl. CJK 美玲** (which vindicates D-10). Evidence: `git grep unpkg.com` → **0 hits**; `deno check` clean; Deno `138 passed | 0 failed`; Node `# pass 114 / # fail 0` (247766.4ms). +2 tests, 1 rewritten (the old "cards publicly readable" test encoded the bug) — 2026-07-17
 - B6 — `worker-scan/index.ts` + `_shared/retry.ts` (no migration): status guard via new `alreadyProcessed()` (policy extracted to `_shared` so it is unit-testable), `vt` 60→**300**, `subject_profiles` insert error surfaced as telemetry instead of swallowed. Live answer to the ledger's question: **`subject_profiles_user_id_kind_key UNIQUE (user_id,kind)` EXISTS** → H1's insert half is a **silent no-op**, not row growth. H2-scan is self-reinforcing: the subject_profile insert precedes `archive`, so a redelivery matches the subject the scan itself just created → regresses narrating→matched. vt arithmetic: 3 votes × ~107s ≈ **320s > 60s**. `exists_unmatched` telemetry is now B9's live H1 detector. Evidence: `deno check` clean; Deno `138 passed | 0 failed` (+1); `worker_scan+worker_retry` 6/6; Node `# pass 113 / # fail 0` (242881.4ms). +2 regression tests. **M2-scan deferred → B22 w/ M1** (feature_hash is computed *from* the extraction, so it cannot gate the extraction) — 2026-07-17
 - B5 — migration `20260717000022_h2_readings_unique.sql` applied + `worker-narrative/index.ts`: guard before the paid model call (redelivery settles instead of regenerating), `23505` handled as success-by-someone-else, `vt` 60→**180**. vt proven too short by arithmetic: withRetry = 5 attempts × 5-20s (§11.2) + ~7s backoff ≈ **107s > 60s**, so a *healthy slow* call was redelivered — no crash needed. Live pre-state: `readings` had only pkey + (user_id,created_at) — no uniqueness. Evidence: `deno check` clean; `worker_narrative` 4/4; Node `# pass 112 / # fail 0` (242257.6ms); Deno `137 passed | 0 failed`. +1 regression test (duplicate depth-1 rejected; depth 1+2 coexist). **"No second model call" not unit-testable until B21** — 2026-07-17
@@ -942,6 +1002,8 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-12 | 2026-07-17 | **The ⚠️ ERRATA table's own H6 row is struck as WRONG.** The audit's plainer original claim stands; D-03's "trust the ERRATA over the audit" does **not** hold here. | The row claimed jobs die "even when the Expo POST *throws*" — a state this code cannot reach. `:47` only appends to a **local array**; the real `queue_archive` RPC is at `:63`, **after** the send, so a throw there would *prevent* archiving, not cause it. And `sendExpoPush` **never throws** — its own docstring says so (`_shared/push.ts:80`) and `:84-95` proves it (5xx → error tickets; network throw → caught). The bug is real but is exactly what the audit said plainly: control **always** reaches the unconditional archive, so a failed batch is silently deleted. **Lesson worth keeping: the ERRATA is recon, not scripture** — it was verified against the tree, but this row reasoned from line numbers without reading the callee, reached for a scarier framing, and landed on a fiction. Verify each row against the code the way D-03 says to verify the audit. |
+| D-13 | 2026-07-17 | **H6's receipt-polling limb is deferred to the buildplan's cron work; B8 closes `[~]`.** | Expo's docs are explicit — *"check push receipts 15 minutes after sending"* — which makes receipt polling **inherently a separately scheduled job**: it needs ticket-id persistence **plus a cron to poll later**. The cron→worker wiring is precisely what this ledger's SCOPE excludes (§NOT YET BUILT A.3), and the audit itself files "Expo receipt polling" under §NOT YET BUILT C.10. Shipping a poller with no schedule would be **dead code** — the exact defect M3 raises against `buildFortuneBatch` ("genuinely dead in production; its only consumer is a test"). Same boundary and same `[~]` treatment as C2/B2: the limb that loses data **today** (archiving failed batches) is fixed now; the limb that needs a scheduler goes with the scheduler. **Recorded consequence:** `DeviceNotRegistered` pruning stays largely ineffective until then, since Expo returns it predominantly at receipt time — which is the audit's own point, and remains true. |
 | D-10 | 2026-07-17 | **USER DECISION — B7 commits all three Noto binaries + the resvg wasm to git (~20MB, `.git` 41MB → ~60MB).** Licence verified first: **SIL OFL 1.1** permits bundling/redistribution with software (no standalone sale; ship the OFL file). | Asked per loop rule 16 rather than guessed. Precedent supports it: `.gitattributes` **already declares `*.ttf`/`*.otf binary`**, so the repo's convention anticipated fonts, and PNG assets are already committed; there is no LFS to complicate it. **Subsetting was evaluated and rejected as impossible, not merely inconvenient:** the card's `attribution` is the user's **display_name** — arbitrary input — and you cannot subset for unpredictable glyphs. That is also what justifies the ~17MB `NotoSerifSC-Regular.otf` despite an EN launch: `card-svg.ts` emits only `font-family="Noto Sans"` and contains no CJK, but a CJK display_name would render as tofu **on the share card**, i.e. the viral asset, for precisely this product's target audience. Alternatives declined: Latin-only (ships that tofu bug), deploy-time fetch (makes deploys non-hermetic — the same class of external dependency M4 dings the unpkg fetch for). |
 | D-11 | 2026-07-17 | **USER DECISION — B7 keeps the pre-render but writes it PRIVATE, publishing to the public bucket only on share intent.** | Both options were spec-legal (§13/§9 only require that the *public* bucket hold user-initiated cards). Pre-render-private keeps sharing instant, which is the whole point of pre-rendering: "render on share intent only" would pay resvg cold start + wasm init at the exact moment the P2 viral share is happening. Private-by-default plus publish-on-copy gets the same privacy outcome without that latency, at the cost of one extra copy step. |
 | D-09 | 2026-07-17 | **B4 proves H7's "no orphan" property with an injectable seam instead of the live storage round-trip its Verify line asks for.** The real round-trip stays open, reassigned to B21. | Two blockers and one better option. **Blockers:** the Node harness depends on `pg` alone — a live round-trip needs `@supabase/supabase-js` (a new dependency, the same call B17 flags for `@testing-library/react-native`) or hand-rolled Storage REST calls; and it would **persistently mutate staging**, which the begin/rollback harness exists specifically to prevent (a failed test would leave a real object behind). **Better option:** the property H7 is actually about is *"a storage failure must not orphan a crop"* — a live round-trip **cannot test that**, because it cannot make S3 fail on demand. An injected failing `removeObjects` can, and asserts the exact invariant (`purgeRows` never runs). This is the repo's own idiom (`revenuecat.ts`: "Pure/injectable … so it is unit-testable without the network"). What is genuinely NOT covered: that the Storage API calls work at all against a real bucket — that is handler-integration scope, which B21 owns. |
