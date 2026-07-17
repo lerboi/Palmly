@@ -37,7 +37,7 @@ finding has exactly one owning task below; no finding is dropped silently.
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
 - **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114 → B10 117 → B11 119 → B13 124 → B15 127 → B16 130 → B18 133; Deno 133 → B4 137 → B6 138 → B8 140 → B10 141 → B11 143 → B12 147 → B13 148 → B14 151 → B15 152 → B17 154):**
-  **Node 133/133** (`# pass 133 / # fail 0`, 282.1s) · **Deno 154/154** (`154 passed | 0 failed`, 2s)
+  **Node 133/133** (`# pass 133 / # fail 0`, 282.1s) · **Deno 159/159** (`159 passed | 0 failed`, 3s)
   · app jest **39/39** (8 suites) — but see B17: the app suite asserts against its own `PREVIEW_*`
   fixtures, so it **structurally cannot** catch a server-contract change. Never cite it as evidence.
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
@@ -46,16 +46,15 @@ finding has exactly one owning task below; no finding is dropped silently.
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B18** (2026-07-17) — migration 0029 applied; raw `enqueue_push` dropped and
-  the marketing cap made atomic (a UNIQUE partial index). Suites: **Node 133/133**, **Deno 154/154**.
-- **Next task:** **B19 — M3: fortune-generate resilience (bounded concurrency + resume)**.
-  The Batch-API rewrite is **H4c-blocked** → in-scope fix is bounded concurrency + resume-missing-
-  buckets + an **honest non-200/alert on partial completion** (today `:50-53` swallows every
-  per-bucket error and still returns 200 after generating only a *prefix* of the 61 buckets).
-  EN-only stays — record it, don't fix it. Note `buildFortuneBatch` (`_shared/fortune.ts:74`) is
-  genuinely dead in production (its only consumer is `fortune.test.ts:43`) — that is M3's own
-  observation, and D-13's "a poller with no schedule is dead code" reasoning is the precedent for
-  what to do about it.
+- **Last completed:** **B19** (2026-07-17) — M3 closed; the fortune fan-out is bounded, resumable and
+  now fails loudly. No migration. Suites: **Node 133/133**, **Deno 159/159**.
+- **Next task:** **B20 — Housekeeping: the Low/informational bullets** *(Low ×5, M11)*. Six small,
+  independent items: remove the `hello/` scaffold; make the secret gate at `_shared/auth-resolve.ts:44`
+  **constant-time**; `moddatetime` for `profiles.updated_at`; **narrow the broadcast payload**; the M11
+  `config.toml` drift; and leaked-password protection, which is a **🧑 dashboard toggle** — mark it, do
+  not fake it. Triage each on its own: B18 and B17 both show a throwaway line can outrank the headline,
+  and D-23 shows a Low bullet can be **working as intended**. Re-read the real max migration counter
+  before writing any SQL (29 applied; `moddatetime` needs one).
 - 🚩 **Standing, ledger-wide (D-24): nothing here is deployed.** Migrations ARE applied to staging;
   Edge Functions are **not** — there is no `SUPABASE_ACCESS_TOKEN`, and `deploy.yml` (merge to main,
   `staging-deploy` env) owns that, gated by **H3/H4b-2**. Every fix is closed *in the repo*, not *in
@@ -1434,16 +1433,48 @@ would edit nothing and wrongly report success.
   - Verify: `git grep -n "enqueue_push\b" -- supabase` shows **no remaining callers** of the raw path;
     `node --test --test-concurrency=1 notification_dedupe.test.mjs queues.test.mjs` + full 100/100.
 
-- [ ] **B19 — M3: fortune-generate resilience (bounded concurrency + resume)** *(M3)*
-  - Research: `fortune-generate/index.ts:35-56` awaits one Gemini call + one upsert per bucket across
-    `allPillarBuckets()` = **61 entries** (`_shared/pillar.ts:66-75`: 60 sexagenary + 1 generic) with **zero
-    concurrency**, and **swallows every per-bucket error at `:50-53`** — so a bad Gemini day silently
-    generates only a **prefix** of the 61 and **still returns 200**. `buildFortuneBatch`
-    (`_shared/fortune.ts:74`) is genuinely dead in production (its only consumer is `fortune.test.ts:43`).
-  - Build: **the Batch-API rewrite is H4c-blocked** → in-scope fix is bounded concurrency +
-    resume-missing-buckets + an **honest non-200/alert on partial completion**. EN-only stays (record it).
-  - Verify: `deno test ... _shared/fortune.test.ts` (add: partial failure must **not** return 200) + full
-    133+; `node --test --test-concurrency=1 fortune_generate.test.mjs` + full 100/100.
+- [x] **B19 — M3: fortune-generate resilience (bounded concurrency + resume)** *(M3)* — **2026-07-17**
+  - **DONE: M3 CONFIRMED (both limbs), with one wording correction and one limb the audit understated.**
+    **No migration, no schema change** — this is Edge Function code only.
+  - **CONFIRMED (zero concurrency):** the loop was a plain `for (const b of buckets)` with `await`
+    inside, across `allPillarBuckets()` = **61** (verified: `pillar.ts:66-75` builds 60 sexagenary +
+    1 generic). **CONFIRMED (swallowed errors):** `catch { failed++ }` plus `if (!r.ok) { failed++ }`,
+    and `Deno.serve` ended at `jsonResponse(result)` — **200 unconditionally**, `failed` count and all.
+  - 📝 **Wording correction (the audit says "prefix"):** the loop does **not** abort — its header calls
+    best-effort-per-bucket deliberate — so a bad night yields an arbitrary **subset**, not a prefix.
+    The distinction matters for the fix: the failures are *scattered*, so "retry from where it stopped"
+    is meaningless and **resume must be driven by what is actually missing in the table**.
+  - ⚠️ **The limb the audit understated — this is a wall-clock bug, not just a slow one.** 61 sequential
+    Gemini calls in ONE invocation is 61 × latency; at a few seconds a call that runs past the Edge
+    Function's wall-clock budget and the invocation is **killed partway through** — which is the *actual*
+    mechanism by which "only some buckets exist" happens on a normal day, no Gemini errors required.
+    Bounded concurrency is therefore the fix for correctness, not for speed.
+  - **Built** (`_shared/fortune.ts` + `fortune-generate/index.ts`): the fan-out moved out of the handler
+    into an injectable `generateFortuneDay(...)` (repo precedent: the pure/injectable `_shared` seam is
+    what makes anything here testable — the old in-handler loop could not be tested at all).
+    • **Bounded concurrency** — a worker pool over a shared cursor, `FORTUNE_CONCURRENCY = 6`, so no
+    wave barrier idles the pool and the rate limiter never sees 61 at once. • **Resume** — `existing()`
+    reads the buckets already stored for (date, locale) and skips them, so recovering a bad night costs
+    the failures, not another 61 calls; `{"force":true}` keeps the header's promised refresh-everything
+    re-run. • **Honest verdict** — every failure is **named** (`missing[]`, `failures[]`) instead of
+    counted, `fortuneDayComplete()` is the predicate, and the handler now **throws `AppError
+    'fortune_incomplete'` → 500** plus a `worker_telemetry` row with `status='failed'` (that table is
+    what `ops_alerts` reads, so this is the alert). A partial day is a failed day: tomorrow every user
+    in a missing bucket opens the app to no fortune, and a 200 told the cron the night went fine.
+  - Verify (observed): `deno check` clean · `deno test _shared/fortune.test.ts` → **9 passed | 0 failed**
+    · full **Deno 159/159** (`159 passed | 0 failed`, 3s — 154 baseline + 5 new) · `node --test
+    --test-concurrency=1 fortune_generate.test.mjs` → **# pass 3 / # fail 0** · full **Node 133/133**
+    (`# pass 133 / # fail 0`).
+  - Regression tests added (**5**, all in `_shared/fortune.test.ts`): a partial day is **not** complete
+    and names *which* buckets are missing (the Verify line's "must not return 200"); a complete day is,
+    and an **upsert** failure counts as missing too (a fortune written nowhere is as absent as one never
+    generated); **concurrency is bounded** — observed max-in-flight ≤ 6 **and > 1**; **resume** skips the
+    58 already-stored buckets and writes only the 3 missing; **force** re-generates all 61.
+    ⚠️ **Test-harness note (the trap avoided):** the first harness recovered "which bucket is this call
+    for?" from **call order** — which is meaningless the moment calls are concurrent, so it would have
+    been testing a fiction. It identifies the bucket from the **request's own `day_pillar`** instead.
+    The concurrency test has teeth: against the old sequential loop max-in-flight is 1, so `> 1` fails.
+  - **`buildFortuneBatch` KEPT** despite being production-dead (D-28). **EN-only KEPT** (D-29).
 
 - [ ] **B20 — Housekeeping: the Low/informational bullets** *(Low ×5, M11)*
   - Research + Build (six items, grouped because each costs more to track than to fix):
@@ -1511,6 +1542,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B19 — **no migration, no schema change** (Edge Function code only): M3 CONFIRMED both limbs. The 61-bucket fan-out left the handler for an injectable `generateFortuneDay` in `_shared/fortune.ts` — **bounded concurrency** (worker pool over a shared cursor, `FORTUNE_CONCURRENCY=6`), **resume** (skip buckets already stored for (date, locale); `force:true` still refreshes all 61), and an **honest verdict** (failures are *named* in `missing[]`, not counted; `fortuneDayComplete()`; the handler throws `fortune_incomplete` → **500** + a `worker_telemetry` `status='failed'` row, which is what `ops_alerts` reads). Corrected the audit's wording — the loop never aborted, so a bad night yields a **subset**, not a *prefix*, which is exactly why resume must be driven by what is missing in the table. Understated limb surfaced: 61 sequential Gemini calls outrun the Edge Function **wall clock**, so the invocation is killed partway through — the real mechanism behind missing buckets, no Gemini errors needed. `buildFortuneBatch` kept (D-28 — D-13's precedent does not transfer); EN-only kept (D-29). Evidence: `deno check` clean; `fortune.test.ts` **9 passed | 0 failed**; full Deno **159 passed | 0 failed**; `fortune_generate.test.mjs` **# pass 3 / # fail 0**; full Node **# pass 133 / # fail 0**. +5 tests — 2026-07-17
 - B18 — migration `20260717000029_m10_drop_raw_enqueue_push.sql` applied: the raw `enqueue_push` **DROPPED** (D-26 — zero production callers; `worker-compat:110` already used the deduped path, the only reference was a test). **The audit's "secondary note" was the better half:** the marketing cap was check-then-insert, so two concurrent sends with *different* dedupe keys both passed → 2 marketing pushes in a day (same shape as M8). **The fix was one word** — `notification_log_marketing_idx` already had the exact columns + predicate and simply was not UNIQUE; made it unique, deleted the pre-check, switched to an untargeted `on conflict do nothing` that catches BOTH the dedupe key and the cap. UTC-day window kept (D-27 — "the user's day" is undefined while timezones live on devices, not users). Evidence: `git grep enqueue_push\b` → **0 callers**; live MCP: only `enqueue_push_deduped` survives, cap index is `CREATE UNIQUE INDEX … WHERE cap_class='marketing'`, old index gone; `notification_dedupe+push_dispatch+queues` 19/19; Node `# pass 133 / # fail 0` (282106.7ms); Deno `154 passed | 0 failed`. +3 tests, 1 migrated — 2026-07-17
 - B17 — **no migration, no schema change: the fix was DELETING the client field** (D-25). `reveal.ts` + `RevealView.tsx`: `teaser?: string` removed (it was fed only by `PREVIEW_*` fixtures and rendered by a branch that is dead twice over — `filterDepth` + `depthLevel=1` mean `lockedSections()` returns `[]` on real data). **The decisive fact the audit missed: there is nothing to truncate** — depth-2 prose is generated only ON UNLOCK (C.12), so filling a teaser would mean generating premium prose the user has not bought and shipping it behind a CSS blur, i.e. M12a's own suggestion produces M12a's leak. The title IS the tease (code-derived from the claim skeleton, zero tokens, zero leak). **Refines the audit:** Ajv is the *second* line of defence — `graft` (narrative.ts:247-262) rebuilds sections from the skeleton and is an allowlist by construction, so a model-invented field never reaches the validator. Evidence (all Verify legs, incl. the 2 NOT in CI): `kb/audit.mjs` → **required=141 chunks=141 / P5T4_OK**; `build-prompts --check` → **PROMPTS_OK**; `eval p5t1` → **P5T1_OK**; app typecheck+lint clean, `jest --ci` **39/39**; Deno `154 passed | 0 failed` (+2); Node `# pass 130 / # fail 0`. +2 tests (graft drops a model teaser; the real schema rejects one) — 2026-07-17
 - B16 — migration `20260717000028_m12c_image_paths_collect.sql` applied + new `supabase/functions/image-delete/index.ts` + `config.toml` (`verify_jwt = true`): M12c CONFIRMED (**zero callers** of `request_image_deletion` while every sibling was wired). The Edge fn **imports `purgeAccountStorageFirst`** rather than re-implementing B4's ordering. New read-only `image_paths_for_deletion` exists because `request_image_deletion` returns the paths AND nulls them in one call — using it to collect would destroy the reference before the blob is gone (the H7 bug); its predicate is identical to that function's, **pinned by a test**. Evidence: `deno check` clean; `data_lifecycle` 13/13; Deno `152 passed | 0 failed`; Node `# pass 130 / # fail 0` (274494.1ms). +3 tests, +1 widened. 🧑 **Deploy + live curl NOT doable — no SUPABASE_ACCESS_TOKEN; deploy.yml/CI owns it (H3/H4b-2). `list_edge_functions` confirms image-delete is undeployed (D-24)** — 2026-07-17
@@ -1540,6 +1572,8 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-28 | 2026-07-17 | **`buildFortuneBatch` is KEPT even though nothing in production calls it — D-13's "dead code" precedent does NOT apply. Decided by the loop (rule 16).** | M3 is right that it is dead: its only consumer is `fortune.test.ts:43`. The ledger flagged D-13 ("a poller with no schedule is dead code") as the precedent, and the honest answer is that the precedent does not transfer. **D-13 struck a poller because a poller that is never scheduled silently does nothing while LOOKING live** — it was a correctness trap that could make someone believe a job was running. `buildFortuneBatch` is a **pure request-builder with no side effects and no illusion of being wired**: nothing calls it, the module header says exactly why it exists, and it cannot mislead anyone into thinking fortunes are batched. The harm D-13 addressed does not exist here. It is also not speculative — it is the ready request construction for a **known, planned, human-gated** leg (H4c paid tier → Gemini Batch, 50% off), tested, ~20 lines. Deleting it would destroy work that unblocks in one step, to satisfy a rule whose purpose is to prevent a trap this code cannot set. **Revisit if H4c is ever abandoned**, at which point it becomes genuinely dead and should go. |
+| D-29 | 2026-07-17 | **fortune-generate stays EN-only; the locale fan-out is recorded, not built.** | The schema is per (date × bucket × **locale**) and the handler defaults `locale: 'en'` with nothing iterating locales, so today exactly one locale is ever generated. That is **not a bug in M3's sense** — the parameter works, and a caller can already pass `{"locale":"zh"}` and get a full 61-bucket day. What is missing is a *scheduler* that fans out over the locales the product supports, which is **§NOT YET BUILT** (the cron wiring) plus a product decision about which locales ship — both **out of this ledger's scope** (rule 4). Building a locale loop now would also multiply the nightly Gemini spend by the locale count against a **free-tier key** (H4c), i.e. guarantee the partial-day failure this task just made loud. The resume + honest-verdict work is per (date, locale) and composes with a future fan-out unchanged. |
 | D-26 | 2026-07-17 | **The raw `enqueue_push` is DROPPED, not merely revoked.** | A function nobody may call and nobody should use is a trap, not a safety net — the next person adding an enqueuer reaches for the shorter, more obvious name and silently bypasses §10's dedupe + cap. That matters *now* rather than hypothetically: §NOT YET BUILT **C.10 still has most of the enqueuers to add** (reading-ready, invite-accepted, the timezone-sharded fortune fan-out, solar terms, onboarding, win-back), so this is precisely the window in which the wrong path would get picked. Safe to drop, verified rather than assumed: **zero production callers** (`worker-compat:110`, the only real enqueuer, already used the deduped path; the sole reference was a test, migrated here). If prod is ever rebuilt from migrations (P12), 0013 creates it and 0029 removes it → net absent. |
 | D-27 | 2026-07-17 | **The marketing cap's UTC-day window is kept as-is; only the RACE is fixed.** | The audit notes the cap is both check-then-insert **and** UTC-day based. The race is an unambiguous bug and is now a `UNIQUE` partial index. The window is not: **"the user's day" has no single definition here.** `notification_log` is keyed per *user*, but timezones live on *devices* (`devices.timezone`), and a user may hold several in different zones — so a local-day cap would first require inventing a canonical per-user timezone, which is a product/schema decision, not a bug fix. And the window mostly holds where it matters: the dominant marketing push is the daily fortune, already **timezone-sharded to 8:30 local** (§10), so consecutive fortunes are 24h apart and always land on different UTC days for every zone. **Residual, stated rather than papered over:** for a user whose local day straddles UTC midnight, a *second, different* marketing type (e.g. a win-back after a fortune) can fall on the next UTC day while still being the same local day — 2 marketing pushes in one local day, versus §10's "hard cap 1/day". Revisit if/when a canonical per-user timezone exists; inventing one now to guard an edge the fortune schedule already avoids would be over-engineering. |
 | D-25 | 2026-07-17 | **M12(a): the `teaser` field is DELETED from the client, and deliberately NOT added to the schema. Decided by the loop (rule 16).** | The ledger guessed the answer might be "delete the client field", and it is — for a reason neither it nor the audit states. **There is nothing to truncate.** Depth-2 prose is generated **only on unlock** (§NOT YET BUILT C.12), so before purchase the locked prose does not exist; "code-derived truncation" has no source text. The only way to fill a `teaser` would be to generate premium prose for a section the user has **not paid for** and ship it to the device behind a CSS blur — which is precisely the leak M12a warns about, arrived at *by implementing M12a's own suggestion*. Adding it to the schema also contradicts that schema's own description ("only `headline`, `title`, `body` are model-authored") and would make a 4th generative field on the trust-critical pass. **What the tease should be instead:** the section `title`, which is already code-derived from the deterministic claim skeleton — it conveys *"you have a Fate Line chapter"* for zero tokens and zero leak, and the locked card already renders it. The card null-guarded `teaser`, so deleting it degrades gracefully rather than emptying the paywall. **When C.12 lands**, if a richer tease is wanted, it must be derived from the skeleton — never from prose the user has not bought. Two tests now hold this line: graft drops a model-emitted teaser, and the real schema rejects one. |

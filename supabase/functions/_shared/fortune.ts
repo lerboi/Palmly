@@ -8,6 +8,7 @@ import AjvDefault from 'ajv';
 import fortuneSchema from '../../../schemas/fortune.v1.json' with { type: 'json' };
 import { toGeminiSchema } from './schema.ts';
 import { bannedHits, type GeminiCall, type GeminiResponse } from './narrative.ts';
+import type { BucketInfo } from './pillar.ts';
 
 export const FORTUNE_MODEL = 'gemini-3.1-flash-lite';
 export const FORTUNE_PROMPT_VERSION = 'fortune.v1';
@@ -62,6 +63,115 @@ export async function generateFortune(input: FortuneInput): Promise<FortuneResul
   if (hits.length) return { ok: false, failureReason: 'content_safety', detail: hits.join(',') };
 
   return { ok: true, content, usage: res.usageMetadata };
+}
+
+// ── One day's fan-out (audit M3) ─────────────────────────────────────────────────────────────────
+// 61 buckets × one sync Gemini call. Three properties the old in-handler loop lacked:
+//   * bounded concurrency — it awaited each bucket in turn, so the wall clock was 61 × latency,
+//     which at a few seconds a call runs past the Edge Function's wall-clock budget and gets the
+//     invocation killed partway through. FORTUNE_CONCURRENCY at a time turns that into ~11 waves.
+//   * resume — a re-run regenerates only what is actually missing for (date, locale), so recovering
+//     from a bad night costs the failures, not another 61 calls. `force` keeps the old
+//     refresh-everything behaviour for a deliberate re-generate (the handler's `force: true`).
+//   * an honest verdict — every failure is *named* (`missing`) rather than counted, so the caller
+//     can say which buckets are absent instead of returning "200, some worked".
+// Injectable (geminiCall/existing/upsert) so all three are unit-testable without network or DB.
+export const FORTUNE_CONCURRENCY = 6;
+
+export interface FortuneFailure {
+  bucket: string;
+  reason: string;
+  detail?: string;
+}
+export interface FortuneDayInput {
+  date: string;
+  locale: string;
+  systemInstruction: string;
+  buckets: BucketInfo[];
+  geminiCall: GeminiCall;
+  /** Buckets already stored for (date, locale) — skipped unless `force`. */
+  existing: () => PromiseLike<string[]>;
+  upsert: (bucket: string, content: Record<string, unknown>) => PromiseLike<{ error: unknown }>;
+  concurrency?: number;
+  force?: boolean;
+}
+export interface FortuneDayResult {
+  date: string;
+  locale: string;
+  total: number;
+  skipped: number;
+  generated: number;
+  failed: number;
+  /** The buckets still absent after this run. Empty ⇔ the day is complete. */
+  missing: string[];
+  failures: FortuneFailure[];
+}
+
+/** The day is complete only when nothing is missing. The handler MUST NOT return 200 otherwise. */
+export function fortuneDayComplete(r: FortuneDayResult): boolean {
+  return r.missing.length === 0;
+}
+
+export async function generateFortuneDay(input: FortuneDayInput): Promise<FortuneDayResult> {
+  const limit = Math.max(1, input.concurrency ?? FORTUNE_CONCURRENCY);
+  const done = input.force ? new Set<string>() : new Set(await input.existing());
+  const todo = input.buckets.filter((b) => !done.has(b.bucket));
+  const failures: FortuneFailure[] = [];
+  let generated = 0;
+  let cursor = 0;
+
+  // A worker pool over a shared cursor: `limit` in flight, no wave barrier, so one slow bucket
+  // never idles the rest. Safe without a lock — the read-and-increment has no await inside it.
+  const worker = async (): Promise<void> => {
+    for (;;) {
+      const i = cursor++;
+      if (i >= todo.length) return;
+      const b = todo[i];
+      try {
+        const r = await generateFortune({
+          date: input.date,
+          bucket: b.bucket,
+          element: b.element,
+          dayPillar: b.day_pillar,
+          locale: input.locale,
+          systemInstruction: input.systemInstruction,
+          geminiCall: input.geminiCall,
+        });
+        if (!r.ok) {
+          failures.push({ bucket: b.bucket, reason: r.failureReason, detail: r.detail });
+          continue;
+        }
+        const { error } = await input.upsert(b.bucket, r.content);
+        if (error) {
+          failures.push({ bucket: b.bucket, reason: 'upsert_failed', detail: errText(error) });
+          continue;
+        }
+        generated++;
+      } catch (e) {
+        // Still best-effort per bucket — one bad bucket must not abort the other 60 — but the
+        // failure is now recorded and surfaced instead of being swallowed into a counter.
+        failures.push({ bucket: b.bucket, reason: 'unhandled', detail: errText(e) });
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, todo.length) }, worker));
+
+  return {
+    date: input.date,
+    locale: input.locale,
+    total: input.buckets.length,
+    skipped: input.buckets.length - todo.length,
+    generated,
+    failed: failures.length,
+    missing: failures.map((f) => f.bucket).sort(),
+    failures,
+  };
+}
+
+function errText(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message);
+  return String(e);
 }
 
 // ── Batch API request construction (for the paid-tier scale path; unit-testable) ────────────────
