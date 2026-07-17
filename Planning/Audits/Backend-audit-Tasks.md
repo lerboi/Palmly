@@ -37,7 +37,7 @@ finding has exactly one owning task below; no finding is dropped silently.
 - **Status:** 🟩 **IN PROGRESS** — B0 done 2026-07-17. Baseline is now honestly green, so from here a
   red test is this round's own regression.
 - **Baseline suites (re-pinned 2026-07-17; both grow as tasks add regression tests — Node B0 100 → B1 105 → B2 106 → B3 109 → B4 111 → B5 112 → B6 113 → B7 114 → B10 117 → B11 119 → B13 124 → B15 127 → B16 130 → B18 133; Deno 133 → B4 137 → B6 138 → B8 140 → B10 141 → B11 143 → B12 147 → B13 148 → B14 151 → B15 152 → B17 154):**
-  **Node 135/135** (`# pass 135 / # fail 0`) · **Deno 163/163** (`163 passed | 0 failed`, 3s)
+  **Node 135/135** (`# pass 135 / # fail 0`) · **Deno 184/184** (`184 passed | 0 failed`, 3s)
   · app jest **39/39** (8 suites) — but see B17: the app suite asserts against its own `PREVIEW_*`
   fixtures, so it **structurally cannot** catch a server-contract change. Never cite it as evidence.
   · app jest **39/39** (8 suites). ⚠️ The buildplan's "Deno 130 / Node 100" is **stale** — do not
@@ -46,15 +46,16 @@ finding has exactly one owning task below; no finding is dropped silently.
   no Deno and no `.env.staging`. **This is the Windows dev machine:** Deno 2.9.2 is at
   `C:\Users\leheh\.deno\bin\deno.exe` and `.env.staging` is present. Both suites run. Every task below
   is expected to produce a **real, observed** test count.
-- **Last completed:** **B20** (2026-07-17) — [~] by design: 5 of 6 Low/M11 items landed (migration
-  0030 + `--prune`); only the 🧑 leaked-password toggle is open. Suites: **Node 135/135**, **Deno 163/163**.
-- **Next task:** **B21 — §3.3 test coverage gaps: HTTP handlers · storage round-trip · untested
-  `_shared`**. The audit's own final work item. Note B19 just made one gap smaller by accident: the
-  fortune fan-out moved into an injectable `_shared` seam precisely because the handler was untestable
-  — that is the shape the HTTP-posture matrix wants. B21 also inherits **B4's live storage round-trip**
-  (D-09). ⚠️ `verify_jwt` is **security-load-bearing** (`decodeJwtSub` does not verify): 6 user-mode
-  `true` / 11 worker-public `false` — assert the posture, never flip one. `hello` is **gone** as of
-  B20, so the matrix is 17 functions, and `image-delete` is in-repo but **not deployed** (D-24).
+- **Last completed:** **B21** (2026-07-17) — [~] by design: posture matrix + all of gap 3 landed, and
+  **CI now actually runs the Deno suite** (it had been red since P9.T6); handler-HTTP (D-34) + storage
+  round-trip parked. Suites: **Node 135/135**, **Deno 184/184**.
+- **Next task:** **B22 — Record-only: findings that close as decisions, not code** — the TERMINAL
+  task. It owns C5, M1, M5, the remaining Low bullets, the owed spec corrections (the §9 `created_at`
+  one from D-07 and the storage-path `[1]`/`[2]` one), M2-scan (deferred from B6), B20's advisor note
+  (anon-executable trigger fns), and now **B21's `inkFaint` observation** (2.66:1, doesn't mirror the
+  app's `textTertiary`, 0 uses — a tripwire test guards it). Then write the **final reconciliation**:
+  every §4/§5 finding ID → a terminal state, with counts (confirmed+fixed vs false positive vs
+  deferred/blocked). Do NOT reopen B20/B21 — both are [~] for stated, human/parked reasons.
 - 🚩 **Standing, ledger-wide (D-24): nothing here is deployed.** Migrations ARE applied to staging;
   Edge Functions are **not** — there is no `SUPABASE_ACCESS_TOKEN`, and `deploy.yml` (merge to main,
   `staging-deploy` env) owns that, gated by **H3/H4b-2**. Every fix is closed *in the repo*, not *in
@@ -1552,22 +1553,82 @@ would edit nothing and wrongly report success.
     `anon`-executable via `/rest/v1/rpc/…`. Pre-existing and benign (a plpgsql trigger function
     invoked outside a trigger just errors), and it predates this task on both broadcasts.
 
-- [ ] **B21 — §3.3 test coverage gaps: HTTP handlers · storage round-trip · untested `_shared`** *(audit §3.3)*
-  - Research: the audit's own final suggested work item, and the gaps are real (recon confirmed): **(1) no
-    test exercises ANY Edge Function HTTP handler** — all 23 Deno test files live in `_shared/`, the ~29
-    Node tests speak only SQL, and handler auth/routing was verified by **one-off live curls only**. That
-    is a thin net under a **security-load-bearing** matrix (6 user-mode `verify_jwt=true` / 11 worker/public
-    gating on the service key in-function). **(2) Storage is tested at SQL-policy level only** — no real
-    upload/signed-URL/delete round-trip (B4 should already have added the first one; extend it).
-    **(3) Untested `_shared` modules:** `context.ts`, `telemetry.ts`, `palette.ts`.
-  - Build: smoke tests for the 17 handlers — at minimum the **posture** matrix per function (no-JWT → 403,
-    no-key → 403, key → 200) plus routing/shape. Then the storage round-trip and the three module tests.
-  - Verify: both suites green with the new counts (Deno **>133**, Node **100**) — paste them. Every new
-    handler test must **fail** if you deliberately flip a `verify_jwt` or drop a gate (prove the net
-    actually catches something; a test that passes against broken code is worse than no test).
-  - Note: live-Gemini paths (image extraction, caching) are **untestable until H4c** — say so, don't fake
-    them. Per-task regression tests (B0–B20) come first; this task closes **what's left over**. If context
-    is short, land the handler posture matrix (the highest-value slice) and park the rest `[~]`.
+- [~] **B21 — §3.3 test coverage gaps: HTTP handlers · storage round-trip · untested `_shared`** *(audit §3.3)* — **2026-07-17**
+  - **PARTLY DONE by design.** All three gaps **CONFIRMED**. Landed: the **posture matrix** (the
+    ledger's own "highest-value slice") + **all of gap 3**. Parked: the per-handler HTTP invocation
+    (D-34) and the storage round-trip. **No migration, no schema change.**
+  - 🎯 **The audit missed the bigger finding, and so did this task's own Research line: the tests it
+    wants to add would not have run.** Verified by reproducing CI's exact commands locally:
+    - **The Deno CI job has been RED since P9.T6** (`f51b260` — long before this audit). `ci.yml:64`
+      ran `deno test --no-check` with **no permission flags**, so `embeddings.test.ts` (needs
+      `--allow-env` for GEMINI_API_KEY) and `narrative.test.ts` (needs `--allow-read` for a schema
+      file) both fail: observed **`FAILED | 161 passed | 2 failed`**. The entire Deno suite was
+      **decorative** in CI.
+    - **The 135 Node tests run in NO workflow at all** — `git grep "node --test|supabase/tests" --
+      .github/` returns **nothing**. The whole begin/rollback SQL suite, where most of *this
+      ledger's* regression tests live (B18's marketing cap, B20's broadcast, H2's unique index …),
+      is **local-only** (D-33 — 🧑, needs DB creds).
+    - **And I broke the typecheck step in B20**: `ci.yml:61` still ran `deno check hello/index.ts …`
+      after B20 deleted `hello/` → **`TS2307: Cannot find module`**. My regression, fixed here.
+    **This is B20's `--prune` finding again:** closing a coverage gap by adding tests to a suite CI
+    cannot run is the same species of change-nothing fix. So CI was fixed **first**.
+  - **CI fixed** (`.github/workflows/ci.yml`): typecheck now `deno check *.ts */index.ts _shared/*.ts`
+    — **every** entrypoint rather than one deleted sample (and it covers the new root-level test,
+    which `--no-check` would otherwise leave unchecked forever); tests now run with explicit
+    `--allow-env --allow-net --allow-read` (explicit, **not `-A`**, so a test that wants a *new*
+    capability — spawn, write — fails loudly instead of being waved through).
+  - **(1) HTTP handlers — CONFIRMED, and the audit's prescribed test is partly IMPOSSIBLE.** Zero
+    tests import any `index.ts`; all 24 Deno test files were in `_shared/`. But the suggested
+    "no-JWT → 403" handler test **cannot exist**: `verify_jwt` is a **platform** gate enforced
+    *before* our code runs, so there is no code of ours to call. What is real, and is what now has a
+    test, is the **consistency of the two halves**: `config.toml` declares the platform gate and the
+    handler declares its own (`requireMode`), they live in different files, and nothing checked they
+    agreed. `edge-posture.test.ts` derives the expectation **from the handler sources** and compares
+    it to config — two independent artifacts, so flipping either fails. Invariants pinned: every
+    `requireMode(…,'user')` fn **must** be `verify_jwt=true` (else `decodeJwtSub` trusts a **forged
+    sub** — the highest-consequence one-word mistake in the repo); every `requireMode(…,'secret')`
+    worker **must** be `verify_jwt=false` (else the platform 401s its own cron); and a fn with **no**
+    gate must be on a reasoned `PUBLIC_BY_DESIGN` allowlist (`invite-page` = public landing page,
+    `revenuecat-webhook` = HMAC *is* the gate) — **fail-closed**, so a new ungated function fails.
+  - ✅ **The Verify line's mutation demand, actually performed** (not claimed):
+    - flipped `chat-send` → `verify_jwt=false` (the forged-sub bug) → **`FAILED | 3 passed | 1
+      failed`**, "a user-mode handler MUST have verify_jwt=true". Reverted.
+    - dropped `requireMode` from `cleanup/index.ts` → **`AssertionError: cleanup has no requireMode()
+      and is not on the PUBLIC_BY_DESIGN allowlist … it is an unauthenticated endpoint.`** Reverted
+      (⚠️ the first revert silently no-op'd — wrong relative path from inside `supabase/functions` —
+      caught by re-checking `git status`; **always verify a mutation revert landed**).
+  - **(3) Untested `_shared` — CONFIRMED, now closed.** `context.test.ts` (6): the gate itself —
+    a user JWT gets an **RLS-scoped** client and *never* `ctx.admin` (they were the same object ⇒ RLS
+    bypassed on every table, silently), a user JWT can **never** satisfy `requireMode('secret')`
+    (which is all that stops any signed-in user POSTing to the `verify_jwt=false` workers), missing
+    env ⇒ 500 `config_error`, and an explicit test that the sub is decoded **unverified** so the
+    `verify_jwt` dependency is impossible to forget. `telemetry.test.ts` (4): the `status:'ok'`
+    default, an explicit status overriding it (spread order decides whether a failure is *recorded*
+    as one — `ops_alerts` reads that column), and the contract that a DB error is **logged, never
+    thrown** — plus an honest test documenting the real limit (a *throwing* client is **not** caught).
+    `palette.test.ts` (7): WCAG contrast recomputed from the **spec** as an independent oracle (the
+    module stores hexes and computes nothing) — the instrument is sanity-checked against black-on-
+    white = 21:1 first, then LIGHT `onAccent`-on-`accent` is re-derived as **4.81:1**, the exact
+    number V22 measured by hand once and trusted forever.
+  - 📝 **Found while testing, deliberately NOT "fixed" (→ B22):** `LIGHT.inkFaint` (#9A9AA0) on bg is
+    **2.66:1** — below AA *and* below the 3:1 large-text bar — **and** it does not mirror the app's
+    `textTertiary` (#8A8375) as palette.ts's header claims; it is a leftover from the archived indigo
+    skin. **Inert: `inkFaint` has 0 uses in both consumers** (`ink` 11, `inkWash` 6, `accent` 5). My
+    first test asserted AA on it and **failed against a palette nobody renders** — the test was
+    wrong, not the colour. Re-picking a designed hex to satisfy a test I had just written would be
+    exactly the "changing correct code to satisfy a wrong line" this ledger forbids. Left as a
+    **tripwire** test that fires the day someone adopts it.
+  - Verify (observed): CI step 1 `deno check *.ts */index.ts _shared/*.ts` → **clean** (was
+    `TS2307`) · CI step 2 `deno test --no-check --allow-env --allow-net --allow-read` → **`184
+    passed | 0 failed`** (was `161 passed | 2 failed`) · full **Node 135/135** (`# pass 135 / # fail
+    0`, exit 0 — B21 touched no SQL and no Node test; run to prove that).
+  - **Parked, with the reason (not silently dropped):**
+    - **Per-handler HTTP invocation (D-34)** — needs a `handler.ts`/`index.ts` split ×17.
+    - **(2) Storage round-trip** — still SQL-policy-level only (`storage.test.mjs` seeds uploads "as
+      superuser"); a real upload/signed-URL/delete needs live Storage calls that the begin/rollback
+      harness **cannot roll back**, so it needs its own cleanup path. Inherits B4's live round-trip
+      (D-09).
+    - Live-Gemini paths (image extraction, caching) remain **untestable until H4c** — stated, not faked.
 
 - [ ] **B22 — Record-only: findings that close as decisions, not code** *(C5, M1, M5, Low ×5)*
   - Research + Record — **a single terminal task so the ledger can honestly reach all-`[x]`/`[!]` without
@@ -1600,6 +1661,7 @@ would edit nothing and wrongly report success.
 
 > One line per completed task: `- B# — <what landed> — <real evidence: test counts / MCP output / paths> — YYYY-MM-DD`
 
+- B21 — **no migration** (tests + CI only): all three §3.3 gaps CONFIRMED; posture matrix + gap 3 landed, handler-HTTP (D-34) and storage round-trip parked. 🎯 **The audit missed the bigger finding: the tests it wants would not have run.** Reproduced CI's own commands — Deno job **red since P9.T6** (`deno test --no-check` grants no perms → `161 passed | 2 failed`), the **135 Node tests are in NO workflow** (D-33 🧑 — needs the H3/H4b-2 DB secrets; a red job would be worse than the honest gap), and **B20's typecheck regression** (`deno check hello/index.ts` after B20 deleted it → TS2307). Fixed CI first (D-32) — adding tests to a suite CI cannot run is B20's `--prune` finding again. `edge-posture.test.ts` derives each function's expected posture **from the handler source** and compares to `config.toml` (independent artifacts): user-mode ⇒ verify_jwt=true (else `decodeJwtSub` trusts a **forged sub**), secret-mode ⇒ false, ungated ⇒ must be on a reasoned allowlist (fail-closed). **Mutation-verified as the Verify line demands:** flipping chat-send to verify_jwt=false → `3 passed | 1 failed`; dropping cleanup's `requireMode` → "it is an unauthenticated endpoint". Gap 3 closed: context (the RLS-scoping + `requireMode` gate), telemetry (never-throws contract + its real limit), palette (WCAG recomputed from the spec as an independent oracle; re-derived V22's 4.81:1). Found + deliberately NOT fixed: `LIGHT.inkFaint` is 2.66:1 and doesn't mirror the app — but has **0 uses**, so my test was wrong, not the colour (→ B22, left as a tripwire). Evidence: `deno check *.ts */index.ts _shared/*.ts` clean (was TS2307); `deno test --no-check --allow-env --allow-net --allow-read` → **184 passed | 0 failed** (was 161/2); Node **# pass 135 / # fail 0** (exit 0). +21 tests — 2026-07-17
 - B20 — migration `20260717000030_low_moddatetime_narrow_broadcast.sql` applied: **all six items CONFIRMED, five landed, (f) is 🧑**. 🎯 **`hello` was live** (`ACTIVE`, `verify_jwt=false`) and **deleting the directory would not have removed it** — `deploy.yml` lacked `--prune`, so the "fix" would have changed nothing in production; added it (D-30, blast radius verified: prune deletes exactly `hello`). **M11 had teeth**: local `enable_anonymous_sign_ins=false` vs live ON — proven by **107/107 anonymous users** — so a config push would have locked out every user; Turnstile deliberately left off (D-31 — needs a secret; enabling it blank would break session creation). Broadcast was **~2× wider than the bullet says** (`broadcast_changes` ships every column TWICE, as `record` AND `old_record`) → narrow `realtime.send` with the client envelope preserved (checked by reading `useScanStatus.ts:69`, since app jest cannot catch a server contract change). `constantTimeEqual` extracted to `_shared/timing.ts` (revenuecat.ts already had a private copy). Two of my own checks were wrong before the code was: a `pg_get_functiondef` grep flagged correct code (the function's own comment names the old helper), and a moddatetime "it advances" assertion failed against a correct trigger (moddatetime stamps txn-start `now()`; one rolled-back txn cannot observe an advance — probed: `now()` frozen at …40.415 while `clock_timestamp()` hit …41.035). Evidence: `ls supabase/functions/hello` → No such file; live MCP: `moddatetime 1.0` in `extensions`, `profiles_set_updated_at` present, `broadcast_scan_status` calls `realtime.send` not `broadcast_changes` and contains no `storage_path|capture_meta|keep_image`, trigger + owner RLS policy intact; advisor `auth_leaked_password_protection` still **disabled** (🧑). Deno **163 passed | 0 failed**; Node **# pass 135 / # fail 0**. +6 tests — 2026-07-17
 - B19 — **no migration, no schema change** (Edge Function code only): M3 CONFIRMED both limbs. The 61-bucket fan-out left the handler for an injectable `generateFortuneDay` in `_shared/fortune.ts` — **bounded concurrency** (worker pool over a shared cursor, `FORTUNE_CONCURRENCY=6`), **resume** (skip buckets already stored for (date, locale); `force:true` still refreshes all 61), and an **honest verdict** (failures are *named* in `missing[]`, not counted; `fortuneDayComplete()`; the handler throws `fortune_incomplete` → **500** + a `worker_telemetry` `status='failed'` row, which is what `ops_alerts` reads). Corrected the audit's wording — the loop never aborted, so a bad night yields a **subset**, not a *prefix*, which is exactly why resume must be driven by what is missing in the table. Understated limb surfaced: 61 sequential Gemini calls outrun the Edge Function **wall clock**, so the invocation is killed partway through — the real mechanism behind missing buckets, no Gemini errors needed. `buildFortuneBatch` kept (D-28 — D-13's precedent does not transfer); EN-only kept (D-29). Evidence: `deno check` clean; `fortune.test.ts` **9 passed | 0 failed**; full Deno **159 passed | 0 failed**; `fortune_generate.test.mjs` **# pass 3 / # fail 0**; full Node **# pass 133 / # fail 0**. +5 tests — 2026-07-17
 - B18 — migration `20260717000029_m10_drop_raw_enqueue_push.sql` applied: the raw `enqueue_push` **DROPPED** (D-26 — zero production callers; `worker-compat:110` already used the deduped path, the only reference was a test). **The audit's "secondary note" was the better half:** the marketing cap was check-then-insert, so two concurrent sends with *different* dedupe keys both passed → 2 marketing pushes in a day (same shape as M8). **The fix was one word** — `notification_log_marketing_idx` already had the exact columns + predicate and simply was not UNIQUE; made it unique, deleted the pre-check, switched to an untargeted `on conflict do nothing` that catches BOTH the dedupe key and the cap. UTC-day window kept (D-27 — "the user's day" is undefined while timezones live on devices, not users). Evidence: `git grep enqueue_push\b` → **0 callers**; live MCP: only `enqueue_push_deduped` survives, cap index is `CREATE UNIQUE INDEX … WHERE cap_class='marketing'`, old index gone; `notification_dedupe+push_dispatch+queues` 19/19; Node `# pass 133 / # fail 0` (282106.7ms); Deno `154 passed | 0 failed`. +3 tests, 1 migrated — 2026-07-17
@@ -1631,6 +1693,9 @@ would edit nothing and wrongly report success.
 | D-01 | 2026-07-17 | This ledger does **not** update `MVP_Buildplan.md`'s STATE block. | **No precedent:** the buildplan contains zero references to either redesign ledger, and two complete side-ledger rounds (R1–R24, V1–V23) landed without touching it. Silently changing that would misrepresent convention. If the buildplan should learn about this round, that is a deliberate, separate call by the user. **Exception:** if a task lands work the buildplan lists as its own "Next task" (the cron wiring), say so in the final report rather than editing it unilaterally. |
 | D-02 | 2026-07-17 | Scope = the audit's **findings** (§4/§5) only; §NOT YET BUILT and §RECOMMENDED ADDITIONS are excluded. | The first is `MVP_Buildplan.md`'s job; the second is a feature backlog, not a defect list. The single exception (C2/C4's dependence on the cron wiring) is delivered as an explicit interim (B2/B3) rather than a silent scope expansion. |
 | D-03 | 2026-07-17 | `Backend-audit.md`'s cites are **superseded by the ERRATA table** where they conflict with the code. | Recon verified every anchor against the tree: four cites name files that have never existed. The audit remains the authority on *what the finding is*; the repo is the authority on *where it lives*. |
+| D-32 | 2026-07-17 | **CI is fixed BEFORE any new test is written, because the suite CI runs was not the suite anyone was running.** | Reproducing `ci.yml`'s own commands locally showed the Deno job **red since P9.T6**: `deno test --no-check` grants no permissions, so `embeddings.test.ts` (env) and `narrative.test.ts` (read) failed — **`161 passed | 2 failed`**. Add B20's typecheck regression (`deno check hello/index.ts` after `hello/` was deleted → TS2307) and the Edge Functions job could not have gone green on any recent commit. **This reframes B21 entirely:** its brief is to close a coverage gap by adding tests, and every test it added would have landed in a job that fails before reporting — the same species of no-op as B20's missing `--prune`, where the repo claimed a fix that production never saw. Permissions granted **explicitly** rather than `-A`: the suite is pure/hermetic by design, so a test that suddenly needs `--allow-run` or `--allow-write` should **fail** and be looked at, not be silently permitted. Typecheck widened from one sample entrypoint to `*.ts */index.ts _shared/*.ts` — with `--no-check` on the test step, anything outside that glob is **never type-checked at all**. |
+| D-33 | 2026-07-17 | **🧑 The 135 Node tests run in NO CI workflow, and this ledger cannot fix that — recorded rather than papered over.** | `git grep -n "node --test\|supabase/tests" -- .github/` returns **nothing**: `ci.yml` runs the app's jest (39) and the Deno suite, and that is all. So the **entire begin/rollback SQL suite is local-only** — including nearly every regression test this ledger wrote (B18's marketing-cap UNIQUE index, B20's narrowed broadcast, H2's unique index, the RLS matrix). They protect the repo only when *someone remembers to run them on their own machine*, which is not a safety net, it is a habit. **Why it is not fixed here:** the suite needs live DB credentials (`SUPABASE_DB_URL` / staging password) — the **H3/H4b-2 human gate** (D-24), the same secrets `deploy.yml` waits on. Adding a job now would create a **permanently red** CI job, which trains everyone to ignore CI — strictly worse than the honest gap. Precedent: D-31 declined to write a Turnstile block that would break session creation, for the same reason. **The step to add once the secrets exist:** a job mirroring `deploy.yml`'s env, `working-directory: supabase/tests`, `run: node --test --test-concurrency=1` (concurrency 1 is required — the harness shares one transactional connection). |
+| D-34 | 2026-07-17 | **Per-handler HTTP tests are PARKED, and the parking is a safety call, not fatigue.** | Testing a handler means calling it with a `Request`, which means importing its module — but every `index.ts` calls `Deno.serve(...)` at top level, so importing 17 of them binds port 8000 seventeen times and leaves live servers that Deno's resource-leak detector fails the run on. That is *why* no handler test exists; it is structural, not neglect. Two ways out. **(a) Guard the serve call with `import.meta.main`** — one line per file, but it is a **bet on how the Supabase Edge Runtime bootstraps a function**, and if the bet is wrong every function silently stops serving. **D-24 means I cannot deploy to find out**, and "probably true" is not a standard to apply to all 17 production entrypoints at once. **(b) Split each handler into `handler.ts` + a 3-line `index.ts` that only wires `Deno.serve(handler)`** — tests import `handler.ts` and never trigger the bootstrap, so the production shape is **provably unchanged**. Repo precedent exists (`card-render` is already `index.ts` + `render.ts`; B19 moved the fortune fan-out into `_shared` for exactly this reason). **(b) is the right answer** and is what a future task should do — it is ~17 mechanical splits and deserves its own task and its own verify, not a tail-end of this one. Meanwhile the **security-critical** half of what handler tests would buy is already covered from both ends: `edge-posture.test.ts` pins the gate each handler declares, and `context.test.ts` tests the gate itself. What is genuinely still uncovered: per-handler **routing/shape** (method, body parsing, response envelope). |
 | D-30 | 2026-07-17 | **`deploy.yml` gains `--prune`, so deleting a function from the repo actually deletes it from Supabase. Decided by the loop (rule 16).** | The Low bullet says "remove `hello` before launch", and removing the directory is the obvious reading — but it would have been **theatre**: `supabase functions deploy` only pushes what it finds, so the live `hello` (verified **ACTIVE, verify_jwt=false**) would have survived every future deploy while the repo and this ledger both claimed it was gone. That is the exact failure mode this ledger exists to prevent — a fix that closes a finding on paper and changes nothing in production. The CLI's own help documents the fix: `--prune` = *"Delete Functions that exist in Supabase project but not locally"*. **The flag is destructive, so the blast radius was verified rather than assumed:** repo = 18 function dirs, live = 17; after removing `hello`, prune deletes **exactly `hello`** and nothing else (`image-delete` is local-only, which prune does not touch — it deploys). It runs only from `deploy.yml`, only on merge to main, only from a full checkout, so there is no "deployed from a partial branch and nuked the project" path. The alternative — leaving a 🧑 "remember to run `supabase functions delete hello`" note — makes the repo NOT the source of truth for what is live, which is the whole point of having a deploy pipeline. |
 | D-31 | 2026-07-17 | **M11 is aligned on anonymous sign-ins + manual linking, but Turnstile stays OFF in `config.toml`.** | M11 lists three drifts; they are not the same kind. **`enable_anonymous_sign_ins`** is unambiguous and load-bearing — live is ON (**107/107 staging users are anonymous**), local said `false`, and a config push would have locked out the entire user base. Fixed. **`enable_manual_linking`** cannot be verified against live with a read-only MCP (`auth.identities` is empty — nobody has linked yet, because the upgrade path is NOT YET BUILT), but `true` is safe in **both** directions: Backend §418 requires it for `linkIdentity()`, and a push can then never switch OFF a capability the spec depends on. **Turnstile is different in kind and is NOT enabled**: it requires `secret = env(TURNSTILE_SECRET_KEY)`, a P3.T6 human/env gate — and enabling captcha with a blank secret would make a config push **reject session creation**, i.e. break the very anonymous sign-in this change just protected. Writing the block now to look complete would turn a documentation gap into an outage. The exact block to paste when the Cloudflare key exists is recorded inline in `config.toml`. Meanwhile the abuse controls that ARE live: `anonymous_users = 30`/hr/IP (§420) + the stale-anon cleanup (0020). |
 | D-28 | 2026-07-17 | **`buildFortuneBatch` is KEPT even though nothing in production calls it — D-13's "dead code" precedent does NOT apply. Decided by the loop (rule 16).** | M3 is right that it is dead: its only consumer is `fortune.test.ts:43`. The ledger flagged D-13 ("a poller with no schedule is dead code") as the precedent, and the honest answer is that the precedent does not transfer. **D-13 struck a poller because a poller that is never scheduled silently does nothing while LOOKING live** — it was a correctness trap that could make someone believe a job was running. `buildFortuneBatch` is a **pure request-builder with no side effects and no illusion of being wired**: nothing calls it, the module header says exactly why it exists, and it cannot mislead anyone into thinking fortunes are batched. The harm D-13 addressed does not exist here. It is also not speculative — it is the ready request construction for a **known, planned, human-gated** leg (H4c paid tier → Gemini Batch, 50% off), tested, ~20 lines. Deleting it would destroy work that unblocks in one step, to satisfy a rule whose purpose is to prevent a trap this code cannot set. **Revisit if H4c is ever abandoned**, at which point it becomes genuinely dead and should go. |

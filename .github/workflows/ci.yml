@@ -57,11 +57,19 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      # Every function entrypoint, not one representative. This used to check `hello/index.ts` — the
+      # skeleton — which B20 deleted, so the step was failing with TS2307. Checking */index.ts means
+      # a type error in ANY of the 17 handlers fails CI, which is what the single sample stood in for.
       - name: Deno typecheck
-        run: deno check hello/index.ts _shared/*.ts
+        run: deno check *.ts */index.ts _shared/*.ts
         working-directory: supabase/functions
+      # Permissions are REQUIRED, not optional: with no flags `deno test` denies env + read, so
+      # embeddings.test.ts (reads GEMINI_API_KEY) and narrative.test.ts (reads a schema file) failed —
+      # this step had been red since P9.T6, i.e. the entire Deno suite was decorative in CI. Granted
+      # explicitly rather than with -A, so a test that wants a NEW capability (spawn, write) fails
+      # loudly instead of being waved through.
       - name: Deno tests
-        run: deno test --no-check
+        run: deno test --no-check --allow-env --allow-net --allow-read
         working-directory: supabase/functions
       - uses: actions/setup-node@v4
         with:
