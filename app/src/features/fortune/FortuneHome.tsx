@@ -12,9 +12,11 @@ import { FortuneCard } from './FortuneCard';
 import { type Fortune, almanacDate } from './fortune';
 
 export interface FortuneHomeProps {
-  fortune: Fortune;
+  /** Today's fortune. Absent while it loads / before the day's row is generated → the first-run state. */
+  fortune?: Fortune | null;
   premium: boolean;
-  streak: number;
+  /** Real consecutive-day streak; 0 (the honest default until retention wires it) hides the strip. */
+  streak?: number;
   /** Pending compatibility partner (the red-thread row), if any. */
   partnerName?: string | null;
   /** No reading yet — show the calm first-run state instead of the fortune. */
@@ -28,11 +30,13 @@ export interface FortuneHomeProps {
  * fortune hero card (free/premium), a pending-compatibility red-thread row, and entries to the
  * readings shelf and chat. English-first, no CJK. A first-run user sees a traced-palm hero.
  */
-export function FortuneHome({ fortune, premium, streak, partnerName, firstRun, now }: FortuneHomeProps) {
+export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRun, now }: FortuneHomeProps) {
   const theme = useTheme();
   const router = useRouter();
   const [ts] = useState(() => now ?? Date.now());
   const date = almanacDate(new Date(ts));
+  // No fortune to show (loading, or the day's row isn't generated) → the calm first-run state.
+  const showFirstRun = firstRun || !fortune;
 
   return (
     <Screen scroll>
@@ -48,11 +52,11 @@ export function FortuneHome({ fortune, premium, streak, partnerName, firstRun, n
         </View>
       </View>
 
-      {firstRun ? (
+      {showFirstRun ? (
         <FirstRunState onScan={() => router.push('/primer')} />
       ) : (
         <>
-          <StreakStrip streak={streak} />
+          {streak > 0 ? <StreakStrip streak={streak} /> : null}
           <FortuneCard fortune={fortune} premium={premium} onUnlock={() => router.push('/paywall')} />
           {partnerName ? <RedThreadRow name={partnerName} onPress={() => router.push('/share')} index={0} /> : null}
           <RowLink icon="history" label="Your readings" onPress={() => router.push('/history')} index={1} />

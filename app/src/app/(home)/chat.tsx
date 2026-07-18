@@ -1,11 +1,13 @@
 import { ChatThread } from '@/features/chat/ChatThread';
-import { PREVIEW_CHIPS, PREVIEW_THREAD } from '@/features/chat/chat';
+import { useEntitlement } from '@/lib/entitlements';
 
 /**
- * Premium chat thread (UIUX §2.11, P9.T6). Renders {@link ChatThread}. Seeded with a grounded
- * preview thread + chips for the device-free web screenshot; the real route loads the thread's
- * messages, streams replies from `chat-send` (SSE), and generates chips from the reading's features.
+ * Chat thread (UIUX §2.11, audit F0.3). Gated by the free-by-default entitlement store (no hardcoded
+ * `premium`): a free user sees {@link ChatThread}'s honest unlock gate, not a fabricated conversation.
+ * The real message load + `chat-send` SSE stream + the one-free-question gate land in F1.T11; until
+ * then production passes no fixture thread (the preview thread stays under `/dev/*`).
  */
 export default function Chat() {
-  return <ChatThread premium messages={PREVIEW_THREAD} chips={PREVIEW_CHIPS} />;
+  const { premium } = useEntitlement();
+  return <ChatThread premium={premium} messages={[]} chips={[]} />;
 }
