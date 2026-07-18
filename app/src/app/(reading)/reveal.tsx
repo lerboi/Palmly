@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import { RevealView, type RevealState } from '@/features/reading/RevealView';
+import { RevealView, type ReadingKind, type RevealState } from '@/features/reading/RevealView';
 import { PREVIEW_GEOMETRY, type Reading } from '@/features/reading/reveal';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { loadReading } from '@/lib/readings';
@@ -24,6 +24,7 @@ export default function Reveal() {
   const [reading, setReading] = useState<Reading | undefined>(undefined);
   const [geometry, setGeometry] = useState<LineGeometry>(PREVIEW_GEOMETRY);
   const [loadedId, setLoadedId] = useState<string | undefined>(undefined);
+  const [kind, setKind] = useState<ReadingKind>('palm');
   const [photoDeletedAt, setPhotoDeletedAt] = useState<string | null>(null);
 
   // Reset to the loading state when the target (or a retry) changes — during render, not in an
@@ -49,6 +50,7 @@ export default function Reveal() {
         setReading(res.reading);
         setGeometry(res.geometry);
         setLoadedId(res.id);
+        setKind(res.kind);
         setPhotoDeletedAt(res.photoDeletedAt);
         setState('ready');
         void setFirstReadingComplete(); // returning-user redirect (F0.7): this user now has a reading
@@ -67,6 +69,7 @@ export default function Reveal() {
       reading={reading}
       geometry={geometry}
       state={state}
+      kind={kind}
       readingId={loadedId}
       photoDeletedAt={photoDeletedAt}
       onRetry={() => setReloads((r) => r + 1)}

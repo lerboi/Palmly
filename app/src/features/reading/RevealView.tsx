@@ -20,9 +20,10 @@ import { useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
 import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
 import { FACE_READING_ENABLED } from '@/lib/capabilities';
-import { type Reading, type ReadingSection, SECTION_LINE, freeSections, lockedSections, traditionFootnote } from './reveal';
+import { type Reading, type ReadingSection, FACE_SECTION_ICON, SECTION_LINE, freeSections, lockedSections, traditionFootnote } from './reveal';
 
 export type RevealState = 'ready' | 'pending' | 'error';
+export type ReadingKind = 'palm' | 'face';
 
 export interface RevealViewProps {
   /** Optional in `pending`/`error` (those states only draw the geometry) — required in `ready`. */
@@ -30,6 +31,9 @@ export interface RevealViewProps {
   geometry: LineGeometry;
   /** `pending` while the reading loads, `error` on load failure (redesign R15). Default `ready`. */
   state?: RevealState;
+  /** Palm vs face reading (audit F1.6) — drives the hero, per-section visual, tradition footnotes,
+   *  and which cross-sell / compare cards show. Defaults to `palm`. */
+  kind?: ReadingKind;
   /** The reading's id — threaded into the share sheet so the invite carries the real reading (F0.4). */
   readingId?: string;
   /** When the source photo was deleted/uploaded — powers the timestamped privacy badge (F1.1). */
@@ -65,7 +69,7 @@ const PENDING_LINES = [
  * hook, a branded **seal** share affordance, and a single trust footer. English-first, no decorative
  * CJK. A living pending state + an honest error state.
  */
-export function RevealView({ reading, geometry, state = 'ready', readingId, photoDeletedAt, onBack, onRetry }: RevealViewProps) {
+export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', readingId, photoDeletedAt, onBack, onRetry }: RevealViewProps) {
   const theme = useTheme();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -112,9 +116,13 @@ export function RevealView({ reading, geometry, state = 'ready', readingId, phot
         contentStyle={{ paddingBottom: theme.spacing.xxl + 56 }}
       >
         <AppHeader onBack={back} />
-        {/* ── Hero: the palm draws itself, then the editorial headline rises ── */}
+        {/* ── Hero: the palm draws itself (face reads its own themed motif), then the headline rises ── */}
         <View style={{ alignItems: 'center', marginBottom: theme.spacing.xl }}>
-          <PalmDiagram geometry={geometry} size={260} signatureLines={['heart_line', 'fate_line']} animate />
+          {kind === 'face' ? (
+            <FaceHero />
+          ) : (
+            <PalmDiagram geometry={geometry} size={260} signatureLines={['heart_line', 'fate_line']} animate />
+          )}
           <Animated.View entering={enter(n++)}>
             <Text variant="editorialHeadline" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
               {reading.headline}
@@ -133,9 +141,10 @@ export function RevealView({ reading, geometry, state = 'ready', readingId, phot
         {free.map((section, i) => (
           <View key={section.key}>
             <Animated.View entering={enter(n++)}>
-              <SectionCard section={section} geometry={geometry} readingId={readingId} index={i} />
+              <SectionCard section={section} geometry={geometry} kind={kind} readingId={readingId} index={i} />
             </Animated.View>
-            {i === 1 ? (
+            {/* The compat hook is palm-based (a face reading has no palm to compare) — palm only. */}
+            {kind === 'palm' && i === 1 ? (
               <Animated.View entering={enter(n++)}>
                 <CompareCard onPress={() => router.push(shareCompatHref)} />
               </Animated.View>
@@ -157,10 +166,16 @@ export function RevealView({ reading, geometry, state = 'ready', readingId, phot
           </View>
         ) : null}
 
-        <SecondHandOfferCard onPress={() => router.push('/primer?hand=left' as Href)} />
-        <TrustFooter onMethodology={() => router.push('/methodology')} photoDeletedAt={photoDeletedAt} />
-        {/* Face door gated until the face reveal content path exists (audit F1.6); F1.T7 re-enables it. */}
-        {FACE_READING_ENABLED ? <FaceOfferCard onPress={() => router.push('/face')} /> : null}
+        {/* The second-hand offer is palm-only (both hands are a palmistry idea). */}
+        {kind === 'palm' ? <SecondHandOfferCard onPress={() => router.push('/primer?hand=left' as Href)} /> : null}
+        <TrustFooter onMethodology={() => router.push('/methodology')} photoDeletedAt={photoDeletedAt} kind={kind} />
+        {/* Cross-sell the OTHER reading: a palm reveal offers the face (gated on F1.6 until built), a
+            face reveal offers the palm (always available). */}
+        {kind === 'face' ? (
+          <PalmOfferCard onPress={() => router.push('/primer' as Href)} />
+        ) : FACE_READING_ENABLED ? (
+          <FaceOfferCard onPress={() => router.push('/face')} />
+        ) : null}
 
         {reading.disclaimer ? (
           <Text variant="caption" tone="tertiary" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
@@ -283,27 +298,32 @@ function FeatureIcon({
   );
 }
 
-function SectionCard({ section, geometry, readingId, index }: { section: ReadingSection; geometry: LineGeometry; readingId?: string; index: number }) {
+function SectionCard({ section, geometry, kind, readingId, index }: { section: ReadingSection; geometry: LineGeometry; kind: ReadingKind; readingId?: string; index: number }) {
   const theme = useTheme();
   // Each free section rendered into the reveal is a funnel step (F0.T12) — only for a real reading.
   useEffect(() => {
     if (readingId) track('reveal_section_viewed', { reading_id: readingId, section: section.key, index });
   }, [readingId, section.key, index]);
-  // A per-section mini palm (audit F1.1) — YOUR lines, with THIS section's line lit in the accent.
-  // At ≤96px the silhouette is forced on + strokes doubled (F0.T14), so the mini reads as a hand.
+  // Palm: a per-section mini palm (audit F1.1) — YOUR lines, with THIS section's line lit in the
+  // accent (≤96px forces the silhouette on + doubles strokes, F0.T14, so the mini reads as a hand).
+  // Face: no line geometry exists, so the marker is a themed feature-icon tile.
   const line = SECTION_LINE[section.key];
   return (
     <Card elevation="sm" style={{ marginBottom: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
         <View style={{ width: 64, alignItems: 'center' }}>
-          <PalmDiagram
-            geometry={geometry}
-            size={64}
-            animate={false}
-            highlightedLine={line}
-            signatureLines={line ? [line] : []}
-            accessibilityLabel={line ? `Your ${section.title.toLowerCase()}` : ''}
-          />
+          {kind === 'face' ? (
+            <FeatureIcon icon={FACE_SECTION_ICON[section.key] ?? 'face'} size={56} />
+          ) : (
+            <PalmDiagram
+              geometry={geometry}
+              size={64}
+              animate={false}
+              highlightedLine={line}
+              signatureLines={line ? [line] : []}
+              accessibilityLabel={line ? `Your ${section.title.toLowerCase()}` : ''}
+            />
+          )}
         </View>
         <View style={{ flex: 1 }}>
           <Text variant="heading">{section.title}</Text>
@@ -313,7 +333,7 @@ function SectionCard({ section, geometry, readingId, index }: { section: Reading
             </Text>
           ) : null}
           <Text variant="caption" tone="tertiary" style={{ marginTop: theme.spacing.sm }}>
-            {traditionFootnote(section)}
+            {traditionFootnote(section, kind)}
           </Text>
         </View>
       </View>
@@ -364,12 +384,14 @@ function LockedCard({ section, onUnlock }: { section: ReadingSection; onUnlock: 
   );
 }
 
-function TrustFooter({ onMethodology, photoDeletedAt }: { onMethodology: () => void; photoDeletedAt?: string | null }) {
+function TrustFooter({ onMethodology, photoDeletedAt, kind }: { onMethodology: () => void; photoDeletedAt?: string | null; kind: ReadingKind }) {
   const theme = useTheme();
   return (
     <View style={{ alignItems: 'center', gap: theme.spacing.sm, marginVertical: theme.spacing.lg }}>
       <Text variant="small" tone="secondary" style={{ textAlign: 'center' }}>
-        Same palm, same reading. Rescan anytime — your lines don&apos;t lie.
+        {kind === 'face'
+          ? 'Same face, same reading. Rescan anytime — your features don’t change.'
+          : 'Same palm, same reading. Rescan anytime — your lines don’t lie.'}
       </Text>
       <PrivacyBadge label={deletedLabel(photoDeletedAt)} />
       <Pressable onPress={onMethodology} accessibilityRole="link">
@@ -414,6 +436,47 @@ function FaceOfferCard({ onPress }: { onPress: () => void }) {
         Run the same reading on your face — proportions, features, and what they reveal.
       </Text>
       <Button label="Read my face" variant="secondary" onPress={onPress} />
+    </Card>
+  );
+}
+
+/** The face reveal's hero (audit F1.6). A physiognomy reading has no line geometry to self-draw, so
+ *  the palm's traced-hand hero becomes a themed face motif — an honest signal (no fabricated
+ *  landmarks), clearly distinct from the palm layout. */
+function FaceHero() {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        width: 220,
+        height: 220,
+        borderRadius: theme.radii.pill,
+        backgroundColor: theme.colors.accentMuted,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Icon name="face" size={112} color={theme.colors.accent} decorative />
+    </View>
+  );
+}
+
+/** The face reveal's cross-sell — the mirror of {@link FaceOfferCard}: offer the palm reading (always
+ *  available) so the loop runs both ways. */
+function PalmOfferCard({ onPress }: { onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Card elevation="sm" style={{ marginBottom: theme.spacing.xl }}>
+      <View style={{ flexDirection: 'row', gap: theme.spacing.md, alignItems: 'center' }}>
+        <FeatureIcon icon="palm" tone="heritage" />
+        <Text variant="heading" style={{ flex: 1 }}>
+          Your palm tells the other half
+        </Text>
+      </View>
+      <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.sm, marginBottom: theme.spacing.md }}>
+        Read the lines of your hand — heart, head, life and fate — for the reading your face can’t give.
+      </Text>
+      <Button label="Read my palm" variant="secondary" onPress={onPress} />
     </Card>
   );
 }

@@ -34,9 +34,9 @@ describe('reading history (P6.T4)', () => {
       expect(visibleReadings(PREVIEW_HISTORY, true)).toHaveLength(PREVIEW_HISTORY.length);
     });
 
-    it('is gated by default — the flag ships false until the face reveal path exists', () => {
-      expect(FACE_READING_ENABLED).toBe(false);
-      expect(visibleReadings(PREVIEW_HISTORY).some((r) => r.kind === 'face')).toBe(false);
+    it('face reading is enabled (F1.T7) — the default keeps face rows', () => {
+      expect(FACE_READING_ENABLED).toBe(true);
+      expect(visibleReadings(PREVIEW_HISTORY).some((r) => r.kind === 'face')).toBe(true);
     });
   });
 });

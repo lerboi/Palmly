@@ -1,4 +1,5 @@
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
+import type { IconName } from '@/components/ui';
 
 /** A stored reading's narrative (Backend §6.3 / `reading_sections.v1`). */
 export interface ReadingSection {
@@ -66,10 +67,35 @@ const TRADITION_CONCEPT: Record<string, string> = {
   markings: 'Crosses, stars, and grilles are what the tradition calls the special markings.',
 };
 
+/**
+ * The face (面相 / physiognomy) analogue of {@link TRADITION_CONCEPT}, keyed on the section keys the
+ * server's `faceSkeletons` emits (`face_shape` / `proportion` / `eyes` / `eyebrows` / `nose` /
+ * `mouth` / `ears` / `canthus`). Named classical concepts, English, no CJK, no health claims — the
+ * physiognomy authenticity signal for the face reveal (audit F1.6, mvp §4.2).
+ */
+const FACE_TRADITION_CONCEPT: Record<string, string> = {
+  face_shape: 'Face shape is physiognomy’s first reading — the five elemental faces: wood, fire, earth, metal, water.',
+  proportion: 'The three courts and five eyes are the classical measure of a balanced face.',
+  eyes: 'The eyes are read first in physiognomy — the feature the tradition weighs most.',
+  eyebrows: 'The brows are the face’s canopy — the tradition reads their shape for temperament.',
+  nose: 'The nose is the face’s mountain — its bridge and tip read for drive.',
+  mouth: 'The mouth and its corners are read for warmth and expression.',
+  ears: 'The ears frame the face — their set and size are an old physiognomy sign.',
+  canthus: 'The under-eye — the tradition’s “silkworm” — is read for vitality and warmth.',
+};
+
+/** The feature-icon each face section shows in its card (the palm path lights a mini line diagram;
+ *  a face reading has no line geometry, so it shows a themed icon tile). Falls back to `face`. */
+export const FACE_SECTION_ICON: Record<string, IconName> = {
+  face_shape: 'elements',
+  proportion: 'sparkle',
+};
+
 /** A "what this means in the tradition" footnote citing a named classical concept (authenticity
- *  signal, audit F1.1). Falls back to the section's grounding tag when the key is unmapped. */
-export function traditionFootnote(section: ReadingSection): string {
-  const named = TRADITION_CONCEPT[section.key];
+ *  signal, audit F1.1). Kind-aware: palmistry for palm readings, physiognomy for face. Falls back
+ *  to the section's grounding tag when the key is unmapped. */
+export function traditionFootnote(section: ReadingSection, kind: 'palm' | 'face' = 'palm'): string {
+  const named = (kind === 'face' ? FACE_TRADITION_CONCEPT : TRADITION_CONCEPT)[section.key];
   if (named) return named;
   const feature = (section.tags[0] ?? section.key).split('.')[0].replace(/_/g, ' ');
   return `In the tradition, this reads from your ${feature}.`;
@@ -143,6 +169,60 @@ export const PREVIEW_READING: Reading = {
       depth_level: 2,
       tags: ['markings.star'],
       feature_refs: ['markings.star'],
+    },
+  ],
+  disclaimer: 'For reflection and entertainment.',
+};
+
+/**
+ * A representative FACE reading for `/dev` previews + device-free screenshot verification (audit
+ * F1.6). Section keys mirror the server's `faceSkeletons` (`face_shape` / `proportion` / `eyes`
+ * free, `nose` / `mouth` locked) so the `/dev` layout matches a real `worker-narrative` face row.
+ * English titles only — no CJK in the default UI.
+ */
+export const PREVIEW_FACE_READING: Reading = {
+  headline: 'An Earth face — steady, and easy to trust.',
+  summary: 'Broad and balanced, your face reads like settled ground: dependable, patient, and quietly warm — people lean on you without being asked.',
+  sections: [
+    {
+      key: 'face_shape',
+      title: 'Your Elemental Face',
+      body: 'A full, square-set face marks the Earth type: grounded and reliable, you steady the room, and you would rather build slowly than chase fast.',
+      depth_level: 1,
+      tags: ['face_shape.earth'],
+      feature_refs: ['face_shape.earth'],
+    },
+    {
+      key: 'proportion',
+      title: 'Balance & Proportion',
+      body: 'Even three courts and a classic five-eyes width: the tradition reads this balance as a level temperament — you weigh things fairly and rarely tip to extremes.',
+      depth_level: 1,
+      tags: ['three_courts.even', 'five_eyes_spacing.classic'],
+      feature_refs: ['three_courts.even'],
+    },
+    {
+      key: 'eyes',
+      title: 'Your Eyes',
+      body: 'Calm, wide-set eyes: you take the long view and are slow to alarm, and people find your gaze reassuring rather than searching.',
+      depth_level: 1,
+      tags: ['eyes.shape.calm', 'eyes.set.wide'],
+      feature_refs: ['eyes.set.wide'],
+    },
+    {
+      key: 'nose',
+      title: 'Your Nose',
+      body: '',
+      depth_level: 2,
+      tags: ['nose.bridge.even'],
+      feature_refs: ['nose.bridge.even'],
+    },
+    {
+      key: 'mouth',
+      title: 'Your Mouth',
+      body: '',
+      depth_level: 2,
+      tags: ['mouth.shape.full'],
+      feature_refs: ['mouth.shape.full'],
     },
   ],
   disclaimer: 'For reflection and entertainment.',
