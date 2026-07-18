@@ -39,6 +39,12 @@
       ],
       "expo-localization",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Palmly uses your photos so you can upload a palm photo to read."
+        }
+      ],
+      [
         "@sentry/react-native",
         {
           "organization": "makeitai",

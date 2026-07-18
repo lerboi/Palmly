@@ -25,7 +25,7 @@ export default function Welcome() {
       <AppHeader
         onBack={() => router.back()}
         right={
-          <Button label="Skip" variant="ghost" size="md" onPress={() => router.push('/primer' as Href)} />
+          <Button label="Skip" variant="ghost" size="md" onPress={() => router.push('/hand-select' as Href)} />
         }
       />
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>

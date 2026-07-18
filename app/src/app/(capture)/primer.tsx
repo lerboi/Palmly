@@ -1,16 +1,24 @@
+import { useState } from 'react';
 import { Platform, View } from 'react-native';
-import { router, type Href } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { AppHeader, Button, Card, Icon, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
+import { uploadPickedScan, type Hand } from '@/lib/scan';
+import { captureError, track } from '@/lib/analytics';
 
 /**
  * Capture B — camera primer + consent (UIUX §2.2, Backend §9, redesign R13 / v2 V11). Shown at the
  * moment of intent (not launch). The three reassurance rows double as the versioned biometric-
- * consent text (kept verbatim). A branded hero + staggered entrance. Native camera permission is
- * device-only, so "Allow camera" is wired to the capture route for layout verification and the
- * on-device system-prompt leg is marked [~]. English, no CJK.
+ * consent text (kept verbatim). A branded hero + staggered entrance.
+ *
+ * The A3 hand answer arrives as `?hand=…` (hand-select → here) and is threaded onward: "Allow camera"
+ * forwards it to the capture screen; "Upload a photo instead" is the real, device-free door into the
+ * live pipeline — it opens the photo library, runs scan-create → PUT → scan-ingest, and lands on
+ * `/analyzing?scanId=…`. Native camera permission stays device-only ([~]); the on-device library
+ * pick is verified on the web export. English, no CJK.
  */
 const REASSURANCE: { icon: IconName; text: string }[] = [
   { icon: 'camera', text: 'Analyzed on the spot — your palm never leaves as a photo.' },
@@ -26,6 +34,31 @@ export default function Primer() {
     shouldAnimate
       ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base)
       : undefined;
+
+  const params = useLocalSearchParams<{ hand?: string }>();
+  const hand: Hand | undefined = params.hand === 'left' || params.hand === 'right' ? params.hand : undefined;
+  const handSuffix = hand ? `?hand=${hand}` : '';
+
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onUploadInstead = async () => {
+    setError(null);
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 });
+    if (result.canceled || !result.assets?.[0]) return; // user backed out — no-op
+    setUploading(true);
+    try {
+      track('capture_started', { kind: 'palm', hand });
+      const { scanId } = await uploadPickedScan({ kind: 'palm', hand, imageUri: result.assets[0].uri });
+      track('upload_ok', { scan_id: scanId, kind: 'palm' });
+      router.push(`/analyzing?scanId=${scanId}` as Href);
+    } catch (e) {
+      captureError(e, { where: 'primer.upload' });
+      setError('That didn’t upload — check your connection and try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <Screen>
@@ -71,12 +104,24 @@ export default function Primer() {
       </View>
 
       <Animated.View entering={enter(2)} style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
-        <Button label="Allow camera" variant="primary" fullWidth onPress={() => router.push('/palm' as Href)} />
+        {error ? (
+          <Text variant="caption" color={theme.colors.danger} style={{ textAlign: 'center' }}>
+            {error}
+          </Text>
+        ) : null}
+        <Button
+          label="Allow camera"
+          variant="primary"
+          fullWidth
+          disabled={uploading}
+          onPress={() => router.push(`/palm${handSuffix}` as Href)}
+        />
         <Button
           label="Upload a photo instead"
           variant="secondary"
           fullWidth
-          onPress={() => router.push('/analyzing' as Href)}
+          loading={uploading}
+          onPress={onUploadInstead}
         />
       </Animated.View>
     </Screen>

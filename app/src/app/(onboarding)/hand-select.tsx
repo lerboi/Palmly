@@ -63,7 +63,7 @@ export default function HandSelect() {
         variant="primary"
         fullWidth
         style={{ marginBottom: theme.spacing.md }}
-        onPress={() => router.push('/primer' as Href)}
+        onPress={() => router.push(`/primer?hand=${hand}` as Href)}
       />
     </Screen>
   );
