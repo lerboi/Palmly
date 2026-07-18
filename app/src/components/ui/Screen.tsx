@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { View, ScrollView, StyleSheet, type ViewStyle } from 'react-native';
+import { View, ScrollView, StyleSheet, type NativeScrollEvent, type NativeSyntheticEvent, type ViewStyle } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme';
 
@@ -11,6 +11,10 @@ export interface ScreenProps {
   edges?: readonly Edge[];
   /** Horizontal padding from the spacing scale. Default `lg` (16). */
   padded?: boolean;
+  /** Scroll listener (only with `scroll`) — e.g. to gate a FAB entrance or emit scroll-depth. */
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  /** Scroll event cadence in ms (only with `scroll`). Default 16 (~per frame). */
+  scrollEventThrottle?: number;
   style?: ViewStyle;
   contentStyle?: ViewStyle;
 }
@@ -24,6 +28,8 @@ export function Screen({
   scroll = false,
   edges = ['top', 'bottom', 'left', 'right'],
   padded = true,
+  onScroll,
+  scrollEventThrottle,
   style,
   contentStyle,
 }: ScreenProps) {
@@ -40,6 +46,8 @@ export function Screen({
           style={styles.fill}
           contentContainerStyle={[{ paddingVertical: theme.spacing.lg }, pad, contentStyle]}
           showsVerticalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={scrollEventThrottle ?? 16}
         >
           {children}
         </ScrollView>

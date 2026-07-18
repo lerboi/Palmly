@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import Animated, {
   Easing,
@@ -71,6 +71,25 @@ export function RevealView({ reading, geometry, state = 'ready', readingId, onBa
   const enter = (i: number) =>
     shouldAnimate ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base) : undefined;
 
+  // The share seal appears only once the reader scrolls past the hero/first section (audit F0.12) —
+  // an earned affordance, not a timer pop. The same handler fires the reveal scroll-depth funnel
+  // (F0.T12's deferred event), each threshold once. Declared before the early returns (rules-of-hooks).
+  const [scrolledPast, setScrolledPast] = useState(false);
+  const firedDepths = useRef<Set<number>>(new Set());
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+    if (!scrolledPast && contentOffset.y > 240) setScrolledPast(true);
+    if (readingId && contentSize.height > 0) {
+      const pct = ((contentOffset.y + layoutMeasurement.height) / contentSize.height) * 100;
+      for (const t of [25, 50, 75, 100]) {
+        if (pct >= t && !firedDepths.current.has(t)) {
+          firedDepths.current.add(t);
+          track('reveal_scroll_depth', { reading_id: readingId, pct: t });
+        }
+      }
+    }
+  };
+
   if (state === 'pending') return <PendingReveal geometry={geometry} onBack={back} />;
   if (state === 'error' || !reading) return <ErrorReveal geometry={geometry} onBack={back} onRetry={onRetry} />;
 
@@ -81,7 +100,11 @@ export function RevealView({ reading, geometry, state = 'ready', readingId, onBa
 
   return (
     <View style={{ flex: 1 }}>
-      <Screen scroll>
+      <Screen
+        scroll
+        onScroll={onScroll}
+        contentStyle={{ paddingBottom: theme.spacing.xxl + 56 }}
+      >
         <AppHeader onBack={back} />
         {/* ── Hero: the palm draws itself, then the editorial headline rises ── */}
         <View style={{ alignItems: 'center', marginBottom: theme.spacing.xl }}>
@@ -138,8 +161,8 @@ export function RevealView({ reading, geometry, state = 'ready', readingId, onBa
         ) : null}
       </Screen>
 
-      {/* ── Persistent share affordance: a branded corner-seal (claret), not a generic FAB ── */}
-      <SealFab onPress={() => router.push(shareHref)} shouldAnimate={shouldAnimate} />
+      {/* ── Share affordance: a branded corner-seal (claret), earned once you've read past the hero ── */}
+      {scrolledPast ? <SealFab onPress={() => router.push(shareHref)} shouldAnimate={shouldAnimate} /> : null}
     </View>
   );
 }
@@ -374,7 +397,7 @@ function SealFab({ onPress, shouldAnimate }: { onPress: () => void; shouldAnimat
 
   return (
     <Animated.View
-      entering={shouldAnimate ? FadeIn.delay(theme.motion.duration.slow).duration(theme.motion.duration.base) : undefined}
+      entering={shouldAnimate ? FadeIn.duration(theme.motion.duration.base) : undefined}
       style={[{ position: 'absolute', right: theme.spacing.lg, bottom: theme.spacing.xl }, scaleStyle]}
     >
       <Pressable
