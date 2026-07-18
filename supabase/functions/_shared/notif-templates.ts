@@ -96,18 +96,18 @@ function onboarding(day: 1 | 2 | 3, c: NotifContext): Rendered {
 const EN: Catalog = {
   reading_ready: (c) => {
     const id = clean(c.reading_id ?? c.scan_id);
-    return { title: 'Your lines have been read 🖋', body: 'Come see what they say.', deep_link: id ? `palmly://reading/${id}` : 'palmly://home', dedupe_key: `reading_ready:${id || 'latest'}` };
+    return { title: 'Your lines have been read 🖋', body: 'Come see what they say.', deep_link: id ? `palmly://reading/${id}` : 'palmly://fortune', dedupe_key: `reading_ready:${id || 'latest'}` };
   },
   compat_complete: (c) => {
     const who = clean(c.name, 'your match');
     const score = num(c.score);
     const pair = clean(c.pair_id);
-    return { title: 'The thread is tied 🧧', body: score ? `You and ${who} scored ${score}.` : `Your reading with ${who} is ready.`, deep_link: pair ? `palmly://compat/${pair}` : 'palmly://home', dedupe_key: `compat_complete:${pair || who}` };
+    return { title: 'The thread is tied 🧧', body: score ? `You and ${who} scored ${score}.` : `Your reading with ${who} is ready.`, deep_link: pair ? `palmly://compat/${pair}` : 'palmly://fortune', dedupe_key: `compat_complete:${pair || who}` };
   },
   invite_accepted: (c) => {
     const who = clean(c.name, 'Your friend');
     const pair = clean(c.pair_id);
-    return { title: `${who} just scanned their palm`, body: 'Your result is minutes away.', deep_link: pair ? `palmly://compat/${pair}` : 'palmly://home', dedupe_key: `invite_accepted:${pair || who}` };
+    return { title: `${who} just scanned their palm`, body: 'Your result is minutes away.', deep_link: pair ? `palmly://compat/${pair}` : 'palmly://fortune', dedupe_key: `invite_accepted:${pair || who}` };
   },
   daily_fortune: (c) => {
     const day = clean(c.fortune_date);
