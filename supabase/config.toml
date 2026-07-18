@@ -483,6 +483,17 @@ import_map = "./functions/deno.json"
 verify_jwt = false
 import_map = "./functions/deno.json"
 
+# scan-create: user mode — quota + scans row + signed upload URL. verify_jwt identifies whose scan.
+[functions.scan-create]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
+# scan-ingest: user mode (deliberate deviation from §4's secret-webhook wording — pg_net is
+# banned/parked; this is a client-invoked confirm endpoint). verify_jwt is the ownership gate.
+[functions.scan-ingest]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
 [functions.account-merge]
 verify_jwt = true
 import_map = "./functions/deno.json"
