@@ -20,6 +20,7 @@ import { useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
 import { composeShareText, createInvite, type CreatedInvite, type Framing } from '@/lib/invite';
 import { savePendingCompat } from '@/lib/pendingCompat';
+import { maybeAskFirstCompatPush } from '@/lib/notifications';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -161,6 +162,8 @@ export function ShareView({
       }
     }
     track('share_completed', { channel, card_variant: 'feed', with_invite: invite });
+    // Sanctioned push moment (F1.T10): the first compat invite send. Once ever, device-only.
+    if (variant === 'compat' && invite) void maybeAskFirstCompatPush();
     try {
       await Share.share({ message: composeShareText(headline, url) });
     } catch {

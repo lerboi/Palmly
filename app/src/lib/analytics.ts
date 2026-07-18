@@ -32,7 +32,7 @@ export type AnalyticsEventMap = {
 
   // ── Capture funnel (P1 — "is capture effortless?") ──
   camera_primer_viewed: Record<string, never>;
-  permission_result: { granted: boolean };
+  permission_result: { granted: boolean; kind?: 'camera' | 'push' };
   capture_started: { kind: 'palm' | 'face'; hand?: 'left' | 'right' };
   capture_state_dwell: { kind: 'palm' | 'face'; state: string; ms: number };
   capture_completed: { kind: 'palm' | 'face'; method: 'auto' | 'manual'; duration_ms: number };

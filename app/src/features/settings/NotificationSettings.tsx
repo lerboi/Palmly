@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { AppHeader, Screen, Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 import { loadNotifPrefs, saveNotifPref, type NotifPref, type NotifPrefs } from '@/lib/privacy';
+import { getPushPermission, openSystemNotificationSettings, type PushPermission } from '@/lib/notifications';
 import { SettingGroup, SettingRow } from './settingsUi';
 
 /**
@@ -22,10 +23,12 @@ export function NotificationSettings() {
   const theme = useTheme();
   const router = useRouter();
   const [prefs, setPrefs] = useState<NotifPrefs>({ daily_fortune: true, social: true, offers: false });
+  const [pushStatus, setPushStatus] = useState<PushPermission>('undetermined');
 
   useEffect(() => {
     let active = true;
     loadNotifPrefs().then((p) => active && setPrefs(p));
+    getPushPermission().then((s) => active && setPushStatus(s));
     return () => {
       active = false;
     };
@@ -43,6 +46,21 @@ export function NotificationSettings() {
   return (
     <Screen scroll>
       <AppHeader title="Notifications" onBack={() => router.back()} />
+
+      <SettingGroup title="System">
+        <SettingRow
+          first
+          leadingIcon="bell"
+          label="System notifications"
+          value={pushStatus === 'granted' ? 'On' : pushStatus === 'denied' ? 'Off — tap to enable' : 'Not set yet'}
+          onPress={pushStatus === 'denied' ? openSystemNotificationSettings : undefined}
+        />
+      </SettingGroup>
+      {pushStatus === 'denied' ? (
+        <Text variant="caption" tone="secondary" style={{ marginHorizontal: theme.spacing.xs, marginBottom: theme.spacing.md }}>
+          Notifications are off in your system settings — turn them on to get your daily fortune and match alerts.
+        </Text>
+      ) : null}
 
       <SettingGroup title="What you’ll hear about">
         <SettingRow first leadingIcon="sparkle" label="Daily fortune" right={sw(prefs.daily_fortune, toggle('daily_fortune'))} />

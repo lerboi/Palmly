@@ -42,7 +42,7 @@ Sources: **UIUX §8** (instrumentation map) · **Backend §14** (events) · **mv
 |---|---|
 | App | `app_opened` |
 | Onboarding funnel | `onboarding_step_viewed{step}`, `onboarding_skipped{at}`, `hand_selected{hand}` |
-| Capture funnel | `camera_primer_viewed`, `permission_result{granted}`, `capture_started`, `capture_state_dwell`, `capture_completed`, `capture_abandoned`, `upload_ok` |
+| Capture funnel | `camera_primer_viewed`, `permission_result{granted,kind}` (kind: camera \| push — F1.T10 push moments), `capture_started`, `capture_state_dwell`, `capture_completed`, `capture_abandoned`, `upload_ok` |
 | Reveal (wow) | `reading_ready`, `analyzing_notify_me`, `reveal_viewed`, `reveal_section_viewed`, `reveal_scroll_depth`, `reveal_time_spent`, `consistency_survey` |
 | Viral loop (K-factor) | `share_sheet_opened`, `share_completed`, `invite_created`, `invite_clicked`, `invite_installed`, `invite_accepted`, `pair_reveal_viewed` |
 | Paywall funnel | `paywall_viewed`, `paywall_page_viewed`, `paywall_dismissed`, `purchase_completed`, `winback_converted` |

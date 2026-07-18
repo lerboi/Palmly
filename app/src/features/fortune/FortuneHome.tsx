@@ -10,6 +10,7 @@ import { useReducedMotion, useTheme } from '@/theme';
 import { useAccountIdentity } from '@/lib/account';
 import { loadPendingCompat, type PendingCompat } from '@/lib/pendingCompat';
 import { elapsedLabel } from '@/lib/compatCopy';
+import { dismissFortuneOptIn, fortuneOptInDismissed, getPushPermission, requestPushPermission } from '@/lib/notifications';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { FortuneCard } from './FortuneCard';
 import { type Fortune, almanacDate } from './fortune';
@@ -57,6 +58,27 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
   const nudgeElapsed = pending ? elapsedLabel(pending.sentAtISO, ts) : undefined;
   const showThread = !!(pending || partnerName);
 
+  // Daily-fortune push opt-in (sanctioned moment #2, F1.T10) — shown once, in-context on the home the
+  // fortune lives on (never at launch), until enabled or dismissed. The OS ask is device-only.
+  const [showOptIn, setShowOptIn] = useState(false);
+  useEffect(() => {
+    let active = true;
+    Promise.all([getPushPermission(), fortuneOptInDismissed()]).then(([status, dismissed]) => {
+      if (active) setShowOptIn(status === 'undetermined' && !dismissed);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const onEnablePush = () => {
+    setShowOptIn(false);
+    void requestPushPermission('fortune_optin');
+  };
+  const onDismissPush = () => {
+    setShowOptIn(false);
+    void dismissFortuneOptIn();
+  };
+
   return (
     <Screen scroll>
       <View style={{ marginBottom: theme.spacing.lg, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
@@ -87,6 +109,7 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
         <>
           {streak > 0 ? <StreakStrip streak={streak} /> : null}
           <FortuneCard fortune={fortune} premium={premium} onUnlock={() => router.push('/paywall?trigger=fortune_full' as Href)} />
+          {showOptIn ? <NotifyOptInCard onEnable={onEnablePush} onDismiss={onDismissPush} /> : null}
           {showThread ? (
             <RedThreadRow
               name={nudgeName}
@@ -196,6 +219,28 @@ function RedThreadRow({ name, elapsed, onPress, index }: { name: string; elapsed
         </Text>
       </View>
       <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
+    </Card>
+  );
+}
+
+/** Daily-fortune push opt-in (F1.T10 sanctioned moment) — a calm, dismissible in-context ask. */
+function NotifyOptInCard({ onEnable, onDismiss }: { onEnable: () => void; onDismiss: () => void }) {
+  const theme = useTheme();
+  return (
+    <Card elevation="sm" style={{ marginBottom: theme.spacing.md, gap: theme.spacing.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+        <Icon name="bell" size={22} color={theme.colors.accent} decorative />
+        <View style={{ flex: 1 }}>
+          <Text variant="bodyMedium">Get your fortune each morning</Text>
+          <Text variant="caption" tone="secondary">
+            A gentle daily notification — the almanac, tuned to you. One a day, quiet hours respected.
+          </Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+        <Button label="Turn on" variant="secondary" onPress={onEnable} />
+        <Button label="Not now" variant="ghost" onPress={onDismiss} />
+      </View>
     </Card>
   );
 }

@@ -3,6 +3,7 @@ import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { AnalyzingView } from '@/features/reading/AnalyzingView';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { useScanStatus } from '@/lib/useScanStatus';
+import { requestPushPermission } from '@/lib/notifications';
 import { track } from '@/lib/analytics';
 
 /**
@@ -41,7 +42,10 @@ export default function Analyzing() {
 
   const onNotifyMe = () => {
     track('analyzing_notify_me', id ? { scan_id: id } : {});
-    router.replace('/' as Href); // free the user; a push (F1.T10) will bring them back to the reveal
+    // The 75s overrun is a sanctioned push moment (F1.T10): ask, then free the user home so a push can
+    // bring them back to the reveal. The OS prompt + token are device-only; on web this no-ops.
+    void requestPushPermission('analyzing_overrun');
+    router.replace('/' as Href);
   };
 
   return (

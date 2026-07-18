@@ -142,7 +142,7 @@ export default function Primer() {
             // The reassurance rows ARE the biometric-consent text (Backend §9) — log the version the
             // user accepted, then proceed. The OS permission grant/denial is the device leg (F1.T3).
             void recordCameraConsent();
-            track('permission_result', { granted: true });
+            track('permission_result', { granted: true, kind: 'camera' });
             router.push(`/palm${handSuffix}` as Href);
           }}
         />
