@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Platform, type StyleProp, type ViewStyle } from 'react-native';
-import Svg, { Defs, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
+import Svg, { Defs, G, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 import Animated, {
   Easing,
   useAnimatedProps,
@@ -10,14 +10,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useTheme, useReducedMotion } from '@/theme';
-import { buildDiagram, ENGLISH_LINE_LABEL, LINE_LABEL, type DiagramStroke, type LineGeometry } from './geometry';
+import { buildDiagram, handSilhouette, ENGLISH_LINE_LABEL, LINE_LABEL, type DiagramStroke, type LineGeometry } from './geometry';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
-
-// A soft, stylized palm silhouette (1000-frame) drawn faintly behind the lines so the creases
-// read as a hand, not floating strokes. Purely decorative negative space — not from geometry.
-const HAND_SILHOUETTE =
-  'M235 560 C210 470 218 420 246 414 C250 356 250 298 286 298 C322 298 322 356 324 414 L352 414 C356 338 360 250 400 250 C440 250 444 340 446 420 L474 420 C478 348 486 270 520 272 C554 274 552 352 548 424 L574 424 C584 372 606 330 634 346 C664 364 646 454 626 522 C704 548 764 622 744 728 C716 858 560 942 430 930 C300 918 250 840 232 720 C152 700 150 612 235 560 Z';
 
 export interface PalmDiagramProps {
   /** The user's stored `line_geometry` (Backend §6.2), points in a 0–1000 frame. */
@@ -75,8 +70,12 @@ export function PalmDiagram({
   // The single accent for the highlighted / signature line(s) — the brand vermilion by default.
   const hl = highlightColor ?? colors.accent;
   const hlStop2 = highlightColor && highlightColor !== colors.accent ? hl : colors.accentPressed;
-  // Auto-drop the silhouette on thumbnails (≤64px) — it only muddies the small frame.
-  const showSilhouette = silhouette && size > 64;
+  // Minis (≤96px — pair/compat/history/hand-select) FORCE the silhouette on and thicken the ink so
+  // the hand + creases read, instead of dropping to faint scratch marks (audit F0.11).
+  const isMini = size <= 96;
+  const showSilhouette = isMini || silhouette;
+  const miniK = isMini ? 2 : 1;
+  const sil = showSilhouette ? handSilhouette(geometry) : null;
 
   // Bloom: the highlighted line's glow eases in as its stroke lands (after its staggered delay),
   // then settles at rest. Fail-safe / web / reduce-motion → the settled end-state (full glow).
@@ -110,18 +109,15 @@ export function PalmDiagram({
         </LinearGradient>
       </Defs>
 
-      {/* Faint hand silhouette — negative space so the lines read as a palm (off on thumbnails). */}
-      {showSilhouette ? (
-        <Path
-          d={HAND_SILHOUETTE}
-          transform={`scale(${size / 1000})`}
-          fill={colors.textPrimary}
-          fillOpacity={0.04}
-          stroke={colors.textSecondary}
-          strokeOpacity={0.14}
-          strokeWidth={u(2)}
-          strokeLinejoin="round"
-        />
+      {/* Geometry-derived hand silhouette — a palm + four fingers + a thumb that always ENCLOSES the
+          creases (they can't overshoot). Fill-only subpaths inside one low-opacity group so overlaps
+          merge without seams. Minis lift the opacity so the hand still reads at ≤96px. */}
+      {sil ? (
+        <G opacity={isMini ? 0.1 : 0.05} transform={`scale(${size / 1000})`}>
+          {sil.parts.map((d, i) => (
+            <Path key={`sil-${i}`} d={d} fill={colors.textPrimary} />
+          ))}
+        </G>
       ) : null}
 
       {/* Soft wide underlay → an engraved/embossed feel; the highlighted glow blooms in. */}
@@ -161,7 +157,7 @@ export function PalmDiagram({
           drawDur={drawDur}
           shouldAnimate={shouldAnimate}
           color={s.highlighted ? 'url(#palmAccent)' : colors.textPrimary}
-          width={u(s.highlighted ? 7 : 4.5)}
+          width={u((s.highlighted ? 7 : 4.5) * miniK)}
         />
       ))}
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Platform, Pressable, View } from 'react-native';
+import { AccessibilityInfo, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Ellipse, Path } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import Animated, {
   Easing,
   useAnimatedProps,
@@ -38,9 +38,14 @@ const OVERLAY = {
 export type CaptureState = 'searching' | 'ready' | 'captured';
 export type CaptureMode = 'palm' | 'face';
 
-// A soft hand outline for the palm guide (centered in the 320 guide box).
+// A credible upright five-digit hand outline for the palm guide (single closed path, 320 box) —
+// four fingers with valleys + an articulated thumb, so it frames a real hand, not a cartoon paw
+// (audit F0.11 / UIUX §2.3).
 const PALM_GUIDE =
-  'M70 285 C40 235 45 175 62 130 C68 96 74 90 88 92 C90 60 92 32 112 34 C132 36 130 74 132 96 L150 96 C154 52 160 20 186 22 C212 24 214 66 212 108 L230 110 C240 74 258 52 282 66 C300 78 286 150 262 176 C300 200 322 244 300 290 Z';
+  'M118 298 C96 250 78 250 74 214 C66 200 50 200 44 196 C36 188 30 176 34 168 Q40 156 52 152 ' +
+  'C64 148 70 150 92 150 L96 78 Q106 66 116 78 L118 150 Q128 160 138 150 L146 52 Q156 40 166 52 ' +
+  'L168 150 Q177 160 186 150 L194 68 Q204 56 214 68 L216 150 Q224 160 232 152 L240 98 Q249 88 258 98 ' +
+  'L256 158 C252 230 240 270 202 298 C180 312 140 312 118 298 Z';
 
 interface CaptureViewProps {
   mode: CaptureMode;
@@ -73,6 +78,18 @@ export function CaptureView({
 
   return (
     <View style={{ flex: 1, backgroundColor: OVERLAY.feed }}>
+      {/* Paper-toned radial vignette over the flat feed stand-in (UIUX §2.3) — a warm centre glow
+          fading to a soft dark edge, so the placeholder reads with depth, not as a flat block. */}
+      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" pointerEvents="none">
+        <Defs>
+          <RadialGradient id="feedVignette" cx="50%" cy="42%" r="72%">
+            <Stop offset="0" stopColor="#FAF9F7" stopOpacity={0.05} />
+            <Stop offset="0.55" stopColor="#17181D" stopOpacity={0} />
+            <Stop offset="1" stopColor="#0A0B0F" stopOpacity={0.45} />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#feedVignette)" />
+      </Svg>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         {/* Top: single instruction pill (never stacked, §2.3). */}
         <View style={{ alignItems: 'center', paddingTop: theme.spacing.lg }}>

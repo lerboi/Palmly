@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
-import type { LineGeometry } from '@/components/palm-diagram/geometry';
+import { differentiateGeometry, type LineGeometry } from '@/components/palm-diagram/geometry';
 import { AppHeader, Button, Card, Icon, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
@@ -68,7 +68,9 @@ export function PairRevealView({
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  const partner = partnerGeometry ?? geometry;
+  // The partner must never look like a mirrored clone of you (audit F0.11): use their real geometry
+  // when known, else derive a visibly different hand (mirror + deterministic nudge).
+  const partner = partnerGeometry ?? differentiateGeometry(geometry);
 
   return (
     <Screen scroll>
@@ -88,7 +90,6 @@ export function PairRevealView({
               animate
               silhouette={false}
               accessibilityLabel={`${data.partnerName}'s palm`}
-              style={{ transform: [{ scaleX: -1 }] }}
             />
           </Animated.View>
         </View>

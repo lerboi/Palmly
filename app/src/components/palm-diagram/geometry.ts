@@ -26,6 +26,7 @@ export const ENGLISH_LINE_LABEL: Record<string, string> = {
 
 const r1 = (n: number): number => Math.round(n * 10) / 10;
 const isMajor = (l: string): boolean => (MAJOR_LINES as readonly string[]).includes(l);
+const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);
 
 /** Catmull-Rom → cubic bezier so a few sampled points read as a smooth engraved crease. */
 export function smoothPath(pts: Point[]): string {
@@ -118,5 +119,131 @@ export function buildDiagram(geometry: LineGeometry, opts: DiagramOptions = {}):
     }
     out.push({ line, d: smoothPath(mapped), highlighted, length: r1(length), label: labelObj });
   }
+  return out;
+}
+
+// ── Hand silhouette (audit F0.11 — the #1 craft fix) ──────────────────────────────────────────────
+
+export interface HandSilhouette {
+  /** Filled subpaths (1000-frame) — a palm + four fingers + a thumb. Rendered as separate fills
+   *  inside one low-opacity group so overlaps merge cleanly (no winding/seam artifacts). */
+  parts: string[];
+  /** The palm rectangle (1000-frame). Every line point is guaranteed to sit inside it — the
+   *  containment invariant so engraved lines can never overshoot the hand. */
+  palm: { x0: number; y0: number; x1: number; y1: number };
+}
+
+/** Bounding box of every point across all lines (1000-frame); a centered default for empty geometry. */
+function pointsBounds(geometry: LineGeometry): { x0: number; y0: number; x1: number; y1: number } {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const pts of Object.values(geometry)) {
+    if (!Array.isArray(pts)) continue;
+    for (const p of pts) {
+      if (!Array.isArray(p) || p.length < 2) continue;
+      x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]);
+      x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
+    }
+  }
+  if (!Number.isFinite(x0)) return { x0: 300, y0: 320, x1: 700, y1: 760 };
+  return { x0, y0, x1, y1 };
+}
+
+/** A rounded-rectangle subpath (clockwise). */
+function roundRect(x0: number, y0: number, x1: number, y1: number, r: number): string {
+  const rr = Math.min(r, (x1 - x0) / 2, (y1 - y0) / 2);
+  return [
+    `M ${r1(x0 + rr)} ${r1(y0)}`,
+    `L ${r1(x1 - rr)} ${r1(y0)} Q ${r1(x1)} ${r1(y0)} ${r1(x1)} ${r1(y0 + rr)}`,
+    `L ${r1(x1)} ${r1(y1 - rr)} Q ${r1(x1)} ${r1(y1)} ${r1(x1 - rr)} ${r1(y1)}`,
+    `L ${r1(x0 + rr)} ${r1(y1)} Q ${r1(x0)} ${r1(y1)} ${r1(x0)} ${r1(y1 - rr)}`,
+    `L ${r1(x0)} ${r1(y0 + rr)} Q ${r1(x0)} ${r1(y0)} ${r1(x0 + rr)} ${r1(y0)} Z`,
+  ].join(' ');
+}
+
+/** A digit: a capsule from `base` (flat — sinks into the palm) to `tip` (rounded), radius `r`. */
+function capsule(bx: number, by: number, tx: number, ty: number, r: number): string {
+  const dx = tx - bx, dy = ty - by;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = dx / len, ny = dy / len; // axis base→tip
+  const px = -ny, py = nx; // perpendicular
+  const k = r * 1.33; // cubic control → ~semicircular tip cap
+  return [
+    `M ${r1(bx + px * r)} ${r1(by + py * r)}`,
+    `L ${r1(tx + px * r)} ${r1(ty + py * r)}`,
+    `C ${r1(tx + px * r + nx * k)} ${r1(ty + py * r + ny * k)} ${r1(tx - px * r + nx * k)} ${r1(ty - py * r + ny * k)} ${r1(tx - px * r)} ${r1(ty - py * r)}`,
+    `L ${r1(bx - px * r)} ${r1(by - py * r)} Z`,
+  ].join(' ');
+}
+
+/**
+ * Build a credible upright five-digit hand silhouette (1000-frame) whose PALM encloses every line
+ * point, so the engraved creases can never overshoot the hand (audit F0.11). The palm is the inflated
+ * crease bounding box (clamped for proportion, then re-expanded so containment always holds); four
+ * fingers rise into the headroom above it (middle longest, a slight outward fan) and an articulated
+ * thumb comes off the lower-left. Pure — unit-testable; the returned `palm` is the containment
+ * invariant the tests assert. Replaces the old hand-tuned "mitten" that let lines float past its edge.
+ */
+export function handSilhouette(geometry: LineGeometry): HandSilhouette {
+  const F = 1000;
+  const b = pointsBounds(geometry);
+  const W0 = Math.max(b.x1 - b.x0, F * 0.12);
+  const H0 = Math.max(b.y1 - b.y0, F * 0.12);
+  // Inflate the crease bbox to a palm, clamped to keep the hand well-proportioned…
+  let L = clamp(b.x0 - W0 * 0.16, F * 0.06, F * 0.28);
+  let R = clamp(b.x1 + W0 * 0.1, F * 0.72, F * 0.95);
+  let T = clamp(b.y0 - H0 * 0.1, F * 0.24, F * 0.44);
+  let B = clamp(b.y1 + H0 * 0.06, F * 0.72, F * 0.97);
+  // …then re-expand so the palm STRICTLY encloses every point regardless of the clamps.
+  const eps = F * 0.008;
+  L = Math.min(L, b.x0 - eps);
+  R = Math.max(R, b.x1 + eps);
+  T = Math.min(T, b.y0 - eps);
+  B = Math.max(B, b.y1 + eps);
+
+  const Wp = R - L, Hp = B - T;
+  const cxMid = (L + R) / 2;
+  const palm = roundRect(L, T, R, B, Wp * 0.16);
+
+  // Four fingers rising into the headroom (the frame-top → palm-top gap).
+  const headroom = T;
+  const bandL = L + Wp * 0.14, bandR = R - Wp * 0.01;
+  const slot = (bandR - bandL) / 4;
+  const rf = (slot * 0.68) / 2;
+  const lenFrac = [0.8, 0.95, 0.87, 0.66]; // index · middle · ring · pinky
+  const fingers = lenFrac.map((frac, i) => {
+    const cx = bandL + slot * i + slot / 2;
+    const baseY = T + rf * 0.9; // sunk into the palm so the flat base merges
+    const tipY = Math.max(F * 0.03, T - headroom * frac * 0.9);
+    const lean = (cx - cxMid) * 0.14; // slight outward fan
+    return capsule(cx, baseY, cx + lean, tipY, rf);
+  });
+
+  // An articulated thumb off the lower-left, angled up-and-out.
+  const thumb = capsule(
+    L + Wp * 0.1, T + Hp * 0.44,
+    Math.max(F * 0.03, L - Wp * 0.05), T + Hp * 0.04,
+    Wp * 0.085,
+  );
+
+  return { parts: [palm, ...fingers, thumb], palm: { x0: r1(L), y0: r1(T), x1: r1(R), y1: r1(B) } };
+}
+
+/**
+ * Derive a visibly DIFFERENT partner geometry from a base (audit F0.11 — the pair must never look
+ * cloned). Mirrors horizontally and applies a small DETERMINISTIC per-line nudge + wobble (no RNG,
+ * so it's stable across renders/tests). Pure.
+ */
+export function differentiateGeometry(geometry: LineGeometry): LineGeometry {
+  const out: LineGeometry = {};
+  Object.keys(geometry).forEach((line, li) => {
+    const pts = geometry[line];
+    if (!Array.isArray(pts)) return;
+    const ox = (li % 2 === 0 ? -1 : 1) * (12 + li * 6);
+    const oy = (li % 2 === 0 ? 1 : -1) * (18 + li * 9);
+    out[line] = pts.map(([x, y], pi) => {
+      const wobble = Math.sin((pi + li) * 1.3) * 10;
+      return [clamp(1000 - x + ox + wobble, 20, 980), clamp(y + oy, 20, 980)] as Point;
+    });
+  });
   return out;
 }
