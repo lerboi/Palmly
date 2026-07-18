@@ -65,7 +65,8 @@ export default function Primer() {
       track('capture_started', { kind: 'palm', hand });
       const { scanId } = await uploadPickedScan({ kind: 'palm', hand, imageUri: result.assets[0].uri });
       track('upload_ok', { scan_id: scanId, kind: 'palm' });
-      router.push(`/analyzing?scanId=${scanId}` as Href);
+      // Thread the local image URI so the analyzing loader shows THEIR hand under the tracing (F1.4).
+      router.push(`/analyzing?scanId=${scanId}&capturedUri=${encodeURIComponent(result.assets[0].uri)}` as Href);
     } catch (e) {
       captureError(e, { where: 'primer.upload' });
       setError('That didn’t upload — check your connection and try again.');

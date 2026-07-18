@@ -10,8 +10,11 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Icon, Text } from '@/components/ui';
+import { Button, Icon, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
+import { captureInstruction, type CaptureMode, type CaptureState } from './capture';
+
+export { captureInstruction, CORRECTIVE_STATES, CAPTURE_STATES, type CaptureMode, type CaptureState } from './capture';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -35,9 +38,6 @@ const OVERLAY = {
   track: 'rgba(255,255,255,0.16)',
 } as const;
 
-export type CaptureState = 'searching' | 'ready' | 'captured';
-export type CaptureMode = 'palm' | 'face';
-
 // A credible upright five-digit hand outline for the palm guide (single closed path, 320 box) —
 // four fingers with valleys + an articulated thumb, so it frames a real hand, not a cartoon paw
 // (audit F0.11 / UIUX §2.3).
@@ -50,25 +50,33 @@ const PALM_GUIDE =
 interface CaptureViewProps {
   mode: CaptureMode;
   state: CaptureState;
-  instruction: string;
   handSide?: 'left' | 'right';
+  /** The native module's hand landmarks (0–1 normalized points), drawn as a faint skeleton. Device-only. */
+  landmarks?: [number, number][];
   onShutter?: () => void;
   onSwitchHand?: () => void;
   onHelp?: () => void;
+  /** Review actions (§2.3): keep the frozen crop or retake. */
+  onConfirm?: () => void;
+  onRetake?: () => void;
 }
 
 export function CaptureView({
   mode,
   state,
-  instruction,
   handSide = 'right',
+  landmarks,
   onShutter,
   onSwitchHand,
   onHelp,
+  onConfirm,
+  onRetake,
 }: CaptureViewProps) {
   const theme = useTheme();
+  const instruction = captureInstruction(state, mode, handSide);
+  const isReview = state === 'review';
   const ready = state === 'ready' || state === 'captured';
-  const guideColor = ready ? theme.colors.accent : OVERLAY.guide;
+  const guideColor = ready || isReview ? theme.colors.accent : OVERLAY.guide;
   const ringTarget = state === 'captured' ? 1 : state === 'ready' ? 0.7 : 0;
 
   // Announce the guidance to screen readers whenever it changes (the pill is also a live region).
@@ -107,7 +115,7 @@ export function CaptureView({
               maxWidth: '88%',
             }}
           >
-            {state === 'captured' ? (
+            {state === 'captured' || isReview ? (
               <Icon name="check" size={18} color={theme.colors.success} decorative />
             ) : null}
             <Text variant="bodyMedium" color={OVERLAY.pillText}>
@@ -141,44 +149,56 @@ export function CaptureView({
                 strokeDasharray={state === 'searching' ? '10 10' : undefined}
               />
             )}
+            {/* The native module's landmarks render as faint fingertip nodes — the "we can see you"
+                signal (§2.3). Device-only: `landmarks` is undefined in the web/stand-in render. */}
+            {landmarks?.map((p, i) => (
+              <Circle key={`lm-${i}`} cx={p[0] * 320} cy={p[1] * 320} r={3.5} fill={theme.colors.accent} fillOpacity={0.7} />
+            ))}
           </Svg>
         </View>
 
-        {/* Bottom controls: help · shutter (+ auto-capture ring) · hand toggle. */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: theme.spacing.xl,
-            paddingBottom: theme.spacing.lg,
-          }}
-        >
-          <ControlButton onPress={onHelp} accessibilityLabel="Help">
-            <Icon name="help" size={24} color={OVERLAY.onControl} />
-          </ControlButton>
-
-          <Shutter target={ringTarget} accent={theme.colors.accent} animate={ready} onPress={onShutter} />
-
-          {mode === 'palm' ? (
-            <PressScale>
-              <Pressable
-                onPress={onSwitchHand}
-                accessibilityRole="button"
-                accessibilityLabel={`Switch hand, currently ${handSide}`}
-                style={controlStyle}
-              >
-                <Text variant="caption" color={OVERLAY.onControl}>
-                  {handSide === 'right' ? 'Right' : 'Left'}
-                </Text>
-              </Pressable>
-            </PressScale>
-          ) : (
-            <ControlButton onPress={onSwitchHand} accessibilityLabel="Flip camera">
-              <Icon name="camera" size={22} color={OVERLAY.onControl} decorative />
+        {/* Bottom: the review step (§2.3) swaps in Retake / Use photo; otherwise help · shutter · toggle. */}
+        {isReview ? (
+          <View style={{ flexDirection: 'row', gap: theme.spacing.md, paddingHorizontal: theme.spacing.xl, paddingBottom: theme.spacing.lg }}>
+            <Button label="Retake" variant="secondary" onPress={onRetake} style={{ flex: 1 }} />
+            <Button label="Use photo" variant="primary" onPress={onConfirm} style={{ flex: 1 }} />
+          </View>
+        ) : (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: theme.spacing.xl,
+              paddingBottom: theme.spacing.lg,
+            }}
+          >
+            <ControlButton onPress={onHelp} accessibilityLabel="Help">
+              <Icon name="help" size={24} color={OVERLAY.onControl} />
             </ControlButton>
-          )}
-        </View>
+
+            <Shutter target={ringTarget} accent={theme.colors.accent} animate={ready} onPress={onShutter} />
+
+            {mode === 'palm' ? (
+              <PressScale>
+                <Pressable
+                  onPress={onSwitchHand}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Switch hand, currently ${handSide}`}
+                  style={controlStyle}
+                >
+                  <Text variant="caption" color={OVERLAY.onControl}>
+                    {handSide === 'right' ? 'Right' : 'Left'}
+                  </Text>
+                </Pressable>
+              </PressScale>
+            ) : (
+              /* Face's flip-camera control is not wired (face capture is gated in F1.T6) — a spacer
+                 keeps the shutter centred rather than a dead tap (audit F1.4). */
+              <View style={controlStyle} />
+            )}
+          </View>
+        )}
       </SafeAreaView>
     </View>
   );

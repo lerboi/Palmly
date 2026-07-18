@@ -1,26 +1,34 @@
 import { useState } from 'react';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
-import { CaptureView } from '@/features/capture/CaptureView';
+import { CaptureView, type CaptureState } from '@/features/capture/CaptureView';
 
 /**
- * Capture C — guided palm capture (UIUX §2.3, redesign R13). Shown in the "ready → hold still"
- * state (the signature auto-capture moment). The live camera + landmark state machine are
- * device-only ([~]); the shutter advances to analyzing for the flow walk-through.
- *
- * The toggle honours the A3 hand answer threaded in as `?hand=…` (a left-handed user is shown a
- * left-hand capture, not the old hardcoded right) — so the promised hand is the one on screen.
+ * Capture C — guided palm capture (UIUX §2.3, audit F1.4). The live camera + landmark state machine
+ * are device-only ([~]) so the stand-in sits at `ready`; the manual shutter exercises the real
+ * capture → freeze → review → analyzing choreography device-free. Help opens the do/don't sheet
+ * (the "?" is no longer a dead tap). The toggle honours the A3 hand answer threaded in as `?hand=…`.
  */
 export default function PalmCapture() {
   const params = useLocalSearchParams<{ hand?: string }>();
   const [handSide, setHandSide] = useState<'left' | 'right'>(params.hand === 'left' ? 'left' : 'right');
+  const [state, setState] = useState<CaptureState>('ready');
+
+  const onShutter = () => {
+    // Auto-capture choreography (§2.3): shutter → freeze-frame → review ("Looks sharp / Retake").
+    setState('captured');
+    setTimeout(() => setState('review'), 500);
+  };
+
   return (
     <CaptureView
       mode="palm"
-      state="ready"
-      instruction="Hold still…"
+      state={state}
       handSide={handSide}
       onSwitchHand={() => setHandSide((h) => (h === 'right' ? 'left' : 'right'))}
-      onShutter={() => router.push('/analyzing' as Href)}
+      onShutter={onShutter}
+      onHelp={() => router.push('/capture-help' as Href)}
+      onConfirm={() => router.push('/analyzing' as Href)}
+      onRetake={() => setState('ready')}
     />
   );
 }

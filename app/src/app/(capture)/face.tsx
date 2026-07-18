@@ -11,8 +11,8 @@ export default function FaceCapture() {
     <CaptureView
       mode="face"
       state="searching"
-      instruction="Center your face in the oval"
       onShutter={() => router.push('/analyzing' as Href)}
+      onHelp={() => router.push('/capture-help' as Href)}
     />
   );
 }

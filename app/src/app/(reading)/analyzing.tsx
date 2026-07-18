@@ -19,7 +19,7 @@ import { track } from '@/lib/analytics';
  * beat is a device follow-up (P5 / F1.T4); the real per-scan geometry only exists post-extraction.
  */
 export default function Analyzing() {
-  const { scanId } = useLocalSearchParams<{ scanId?: string }>();
+  const { scanId, capturedUri } = useLocalSearchParams<{ scanId?: string; capturedUri?: string }>();
   const id = scanId ?? null;
   const { status, failureReason, error } = useScanStatus(id);
 
@@ -49,6 +49,7 @@ export default function Analyzing() {
       geometry={PREVIEW_GEOMETRY}
       status={status}
       elapsedMs={elapsedMs}
+      capturedImageUri={typeof capturedUri === 'string' ? capturedUri : undefined}
       failureReason={failureReason}
       connectionError={error}
       onNotifyMe={onNotifyMe}

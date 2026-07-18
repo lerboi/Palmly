@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Image, Platform, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Animated, {
   Easing,
@@ -36,6 +36,9 @@ export interface AnalyzingViewProps {
   geometry: LineGeometry;
   status: ScanStatus | null;
   elapsedMs: number;
+  /** The just-captured/uploaded photo (a local URI) shown faintly UNDER the tracing — the "we're
+   *  working on MY hand" trust beat (audit §7 P5 / F1.4). Absent → the diagram alone. */
+  capturedImageUri?: string;
   failureReason?: string | null;
   /** Non-null when the status fetch is currently failing — the hook keeps re-polling; the loader
    *  shows a quiet "retrying" caption so a bad connection is never a silent hang. */
@@ -60,6 +63,7 @@ export function AnalyzingView({
   geometry,
   status,
   elapsedMs,
+  capturedImageUri,
   failureReason,
   connectionError,
   onNotifyMe,
@@ -122,6 +126,15 @@ export function AnalyzingView({
       <AppHeader onBack={onBack} />
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.xxl }}>
         <ProgressRing progress={progress} diagramSize={232}>
+          {/* The user's OWN photo sits faintly under the tracing — "we're working on MY hand"
+              (audit §7 P5). The picker path has the local URI client-side; camera-path URI is [~]. */}
+          {capturedImageUri ? (
+            <Image
+              source={{ uri: capturedImageUri }}
+              accessibilityLabel=""
+              style={{ position: 'absolute', width: 196, height: 196, borderRadius: 98, opacity: 0.28, alignSelf: 'center', top: 18 }}
+            />
+          ) : null}
           <PalmDiagram
             geometry={visibleGeometry(geometry, stage)}
             size={232}
