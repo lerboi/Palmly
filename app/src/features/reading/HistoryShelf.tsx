@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
@@ -25,10 +25,28 @@ export interface HistoryShelfProps {
  */
 export function HistoryShelf({ readings, showUnchanged = false, now }: HistoryShelfProps) {
   const [nowTs] = useState(() => now ?? Date.now());
+  const theme = useTheme();
+  const router = useRouter();
   return (
     <Screen scroll>
-      {/* One privacy signal for the whole shelf — not repeated per row (redesign §2). */}
-      <AppHeader title="Your readings" right={<PrivacyBadge />} />
+      {/* One privacy signal for the whole shelf — not repeated per row (redesign §2). The gear
+          un-orphans Settings from the readings surface (audit F0.7). */}
+      <AppHeader
+        title="Your readings"
+        right={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+            <Pressable
+              onPress={() => router.push('/settings')}
+              accessibilityRole="button"
+              accessibilityLabel="Settings"
+              hitSlop={8}
+            >
+              <Icon name="settings" size={22} color={theme.colors.textSecondary} decorative />
+            </Pressable>
+            <PrivacyBadge />
+          </View>
+        }
+      />
       {showUnchanged ? <UnchangedBanner /> : null}
       {readings.length === 0 ? (
         <EmptyState />

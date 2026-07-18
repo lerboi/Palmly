@@ -7,6 +7,7 @@ import { Button, Logomark, Screen, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { loadClaimContext } from '@/lib/claim';
+import { hasFirstReadingComplete } from '@/lib/session';
 
 /**
  * Root landing (redesign R11, v2 V9) — the brand moment. A faint ghost-hand echoes the welcome
@@ -24,15 +25,24 @@ export default function Index() {
       ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base)
       : undefined;
 
-  // First-open recipient branch (audit F0.5 (d)) — takes precedence over the launcher: a token in the
-  // initial URL (`palmly://…?token=`) redirects immediately; a persisted claim context (a reload
-  // after landing) re-offers `/claim` once AsyncStorage resolves. The returning-user `/fortune`
-  // redirect lands in F0.T10 and sits below this branch.
+  // First-open routing (audit F0.5 (d) + F0.7). Precedence: (1) an invite — a token in the initial
+  // URL (`palmly://…?token=`) redirects synchronously, or a persisted claim context re-offers
+  // `/claim`; (2) a returning user (has seen a real reveal) → the daily-fortune home; (3) else the
+  // launcher. The async checks resolve fast; until then the launcher shows (no blank flash).
   const params = useLocalSearchParams<{ token?: string }>();
-  const [hasPersistedClaim, setHasPersistedClaim] = useState<boolean | null>(null);
+  const [asyncRoute, setAsyncRoute] = useState<'claim' | 'fortune' | null>(null);
   useEffect(() => {
     let active = true;
-    loadClaimContext().then((ctx) => active && setHasPersistedClaim(!!ctx));
+    (async () => {
+      const claim = await loadClaimContext();
+      if (!active) return;
+      if (claim) {
+        setAsyncRoute('claim');
+        return;
+      }
+      const returning = await hasFirstReadingComplete();
+      if (active) setAsyncRoute(returning ? 'fortune' : null);
+    })();
     return () => {
       active = false;
     };
@@ -41,9 +51,8 @@ export default function Index() {
   if (typeof params.token === 'string' && params.token) {
     return <Redirect href={`/claim?token=${params.token}` as Href} />;
   }
-  if (hasPersistedClaim) {
-    return <Redirect href={'/claim' as Href} />;
-  }
+  if (asyncRoute === 'claim') return <Redirect href={'/claim' as Href} />;
+  if (asyncRoute === 'fortune') return <Redirect href={'/fortune' as Href} />;
 
   return (
     <Screen>

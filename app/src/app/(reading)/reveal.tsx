@@ -4,6 +4,7 @@ import { RevealView, type RevealState } from '@/features/reading/RevealView';
 import { PREVIEW_GEOMETRY, type Reading } from '@/features/reading/reveal';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { loadReading } from '@/lib/readings';
+import { setFirstReadingComplete } from '@/lib/session';
 import { track } from '@/lib/analytics';
 
 /**
@@ -47,6 +48,7 @@ export default function Reveal() {
         setGeometry(res.geometry);
         setLoadedId(res.id);
         setState('ready');
+        void setFirstReadingComplete(); // returning-user redirect (F0.7): this user now has a reading
         track('reveal_viewed', { reading_id: res.id, kind: res.kind });
       })
       .catch(() => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
@@ -40,16 +40,26 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
 
   return (
     <Screen scroll>
-      <View style={{ marginBottom: theme.spacing.lg }}>
-        <Text variant="display">{date.weekday}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-          <Text variant="bodyLarge" tone="secondary">
-            {date.gregorian}
-          </Text>
-          <Text variant="caption" tone="tertiary">
-            · {date.pillarEn} day
-          </Text>
+      <View style={{ marginBottom: theme.spacing.lg, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <View style={{ flex: 1 }}>
+          <Text variant="display">{date.weekday}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+            <Text variant="bodyLarge" tone="secondary">
+              {date.gregorian}
+            </Text>
+            <Text variant="caption" tone="tertiary">
+              · {date.pillarEn} day
+            </Text>
+          </View>
         </View>
+        <Pressable
+          onPress={() => router.push('/settings')}
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+          hitSlop={8}
+        >
+          <Icon name="settings" size={24} color={theme.colors.textSecondary} decorative />
+        </Pressable>
       </View>
 
       {showFirstRun ? (
