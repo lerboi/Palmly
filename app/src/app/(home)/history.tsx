@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { HistoryShelf } from '@/features/reading/HistoryShelf';
-import type { ReadingSummary } from '@/features/reading/history';
+import { visibleReadings, type ReadingSummary } from '@/features/reading/history';
 import { loadHistory } from '@/lib/readings';
 
 /**
@@ -15,7 +15,7 @@ export default function History() {
   useEffect(() => {
     let active = true;
     loadHistory()
-      .then((rows) => active && setReadings(rows))
+      .then((rows) => active && setReadings(visibleReadings(rows)))
       .catch(() => active && setReadings([]));
     return () => {
       active = false;

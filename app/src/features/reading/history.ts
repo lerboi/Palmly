@@ -1,4 +1,5 @@
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
+import { FACE_READING_ENABLED } from '@/lib/capabilities';
 import { PREVIEW_GEOMETRY } from './reveal';
 
 /** A row in the readings shelf (UIUX §2.11 — palm/face cards, re-openable). */
@@ -8,6 +9,16 @@ export interface ReadingSummary {
   headline: string;
   createdAt: string; // ISO
   geometry: LineGeometry;
+}
+
+/**
+ * The rows a production shelf may show. While the face reveal content path is gated (audit F1.6,
+ * `FACE_READING_ENABLED = false`), face rows are dropped so tapping one can't open a palm-shaped
+ * reveal; F1.T7 flips the flag and every kind returns. `faceEnabled` is injected so both branches
+ * are unit-testable — production call sites use the build-time default.
+ */
+export function visibleReadings(rows: ReadingSummary[], faceEnabled: boolean = FACE_READING_ENABLED): ReadingSummary[] {
+  return faceEnabled ? rows : rows.filter((r) => r.kind !== 'face');
 }
 
 /** A compact relative date ("Today" / "Yesterday" / "3 days ago" / "Mar 4"). `now` is injected so it's testable. */

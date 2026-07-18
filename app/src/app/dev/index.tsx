@@ -64,8 +64,10 @@ const GROUPS: { title: string; routes: { href: string; label: string }[] }[] = [
     title: 'dev — state previews',
     routes: [
       { href: '/dev/analyzing-failed', label: 'analyzing · failed' },
+      { href: '/dev/reveal-ready', label: 'reveal · ready (face gated)' },
       { href: '/dev/reveal-pending', label: 'reveal · pending' },
       { href: '/dev/reveal-error', label: 'reveal · error' },
+      { href: '/dev/history', label: 'history · populated (face gated)' },
       { href: '/dev/share-compat', label: 'share · compatibility' },
       { href: '/dev/chat-typing', label: 'chat · typing' },
       { href: '/dev/chat-empty', label: 'chat · first-run' },

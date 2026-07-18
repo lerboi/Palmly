@@ -19,6 +19,7 @@ import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
 import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
+import { FACE_READING_ENABLED } from '@/lib/capabilities';
 import { type Reading, type ReadingSection, SECTION_LINE, freeSections, lockedSections, traditionFootnote } from './reveal';
 
 export type RevealState = 'ready' | 'pending' | 'error';
@@ -158,7 +159,8 @@ export function RevealView({ reading, geometry, state = 'ready', readingId, phot
 
         <SecondHandOfferCard onPress={() => router.push('/primer?hand=left' as Href)} />
         <TrustFooter onMethodology={() => router.push('/methodology')} photoDeletedAt={photoDeletedAt} />
-        <FaceOfferCard onPress={() => router.push('/face')} />
+        {/* Face door gated until the face reveal content path exists (audit F1.6); F1.T7 re-enables it. */}
+        {FACE_READING_ENABLED ? <FaceOfferCard onPress={() => router.push('/face')} /> : null}
 
         {reading.disclaimer ? (
           <Text variant="caption" tone="tertiary" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
