@@ -18,20 +18,25 @@ const LIFE = 'M19.5 12.5 C14 18.5 13 28 18.5 36';
 const HEAD = 'M11.5 24.5 C20 21.5 29.5 22.5 35.5 26';
 const HEART = 'M12 18.5 C20 14 30 15 36.5 19.5';
 
-// Quiet Cosmos hexes (skin #2).
+// Vermilion & Motion hexes (skin #3 — the active brand; kept in sync with `vermilionSkin` in
+// src/theme/tokens.ts). Indigo is fully retired. The mark carries the color (ink head/life + a
+// single vermilion heart whisper, matching Logomark's `ink` tone); the FIELD stays neutral — the
+// icon tile is NOT flooded red (v2 §3.1 guardrail).
 const C = {
-  accent: '#4B57C4',
-  onAccent: '#FFFFFF',
-  ink: '#1A1A1F',
-  heritage: '#C2554A',
-  heritageOnDark: '#E0A79E',
-  paper: '#FAF9F7',
+  ink: '#1A1A1F', // textPrimary (light) — head + life lines
+  paper: '#FAF9F7', // bg (light) — the neutral icon/splash field
+  vermilion: '#D13B27', // accent (light) — the heart-line whisper
+  coral: '#FF7C63', // accent (dark) — the heart whisper on the dark splash
+  lightMark: '#F4F4F6', // textPrimary (dark) — head + life lines on the dark splash
+  darkField: '#14151A', // bg (dark) — reference only; the dark splash bg is set in app.json
 };
 
 /**
  * @param {{name:string,size:number,bg:string,mark:string,heart:string,inner:number,w:number}} s
  */
 function html(s) {
+  // The heart line is heaviest — the engraved focal stroke that carries the accent (Logomark parity).
+  const wHeart = (s.w * 1.2).toFixed(2);
   return `<!doctype html><html><head><meta charset="utf-8"><style>
     html,body{margin:0;padding:0}
     .wrap{width:${s.size}px;height:${s.size}px;display:flex;align-items:center;justify-content:center;background:${s.bg}}
@@ -40,24 +45,25 @@ function html(s) {
     <svg viewBox="0 0 48 48" fill="none" stroke-linecap="round">
       <path d="${LIFE}" stroke="${s.mark}" stroke-width="${s.w}"/>
       <path d="${HEAD}" stroke="${s.mark}" stroke-width="${s.w}"/>
-      <path d="${HEART}" stroke="${s.heart}" stroke-width="${s.w}"/>
+      <path d="${HEART}" stroke="${s.heart}" stroke-width="${wHeart}"/>
     </svg>
   </div></body></html>`;
 }
 
 const ASSETS = [
-  // iOS app icon — full-bleed indigo, near-white mark, heritage heart line.
-  { name: 'icon.png', size: 1024, bg: C.accent, mark: C.onAccent, heart: C.heritageOnDark, inner: 660, w: 3.4 },
-  // Android adaptive foreground — transparent, mark sits on the #FAF9F7 adaptive bg → ink/accent mark.
-  { name: 'android-icon-foreground.png', size: 1024, bg: 'transparent', mark: C.accent, heart: C.heritage, inner: 520, w: 3.4 },
-  // Android monochrome (themed icons) — single solid silhouette.
+  // iOS app icon — NEUTRAL paper tile (opaque; iOS icons can't be transparent), ink head/life + a
+  // vermilion heart whisper. The mark carries the color; the field stays neutral (v2 §3.1).
+  { name: 'icon.png', size: 1024, bg: C.paper, mark: C.ink, heart: C.vermilion, inner: 660, w: 3.4 },
+  // Android adaptive foreground — transparent; sits on the #FAF9F7 adaptive bg → ink mark + vermilion heart.
+  { name: 'android-icon-foreground.png', size: 1024, bg: 'transparent', mark: C.ink, heart: C.vermilion, inner: 520, w: 3.4 },
+  // Android monochrome (themed icons) — single solid silhouette; Android tints it, so it stays black.
   { name: 'android-icon-monochrome.png', size: 1024, bg: 'transparent', mark: '#000000', heart: '#000000', inner: 520, w: 3.6 },
-  // Splash mark (light bg) — indigo mark on transparent (bg color set in app.json).
-  { name: 'splash-icon.png', size: 512, bg: 'transparent', mark: C.accent, heart: C.heritage, inner: 300, w: 3.2 },
-  // Splash mark (dark bg) — light mark.
-  { name: 'splash-icon-dark.png', size: 512, bg: 'transparent', mark: '#EDEDF2', heart: C.heritageOnDark, inner: 300, w: 3.2 },
-  // Web favicon.
-  { name: 'favicon.png', size: 64, bg: 'transparent', mark: C.accent, heart: C.heritage, inner: 52, w: 3.6 },
+  // Splash mark (light bg #FAF9F7, set in app.json) — ink mark + vermilion heart on transparent.
+  { name: 'splash-icon.png', size: 512, bg: 'transparent', mark: C.ink, heart: C.vermilion, inner: 300, w: 3.2 },
+  // Splash mark (dark bg #14151A, set in app.json) — light mark + coral heart.
+  { name: 'splash-icon-dark.png', size: 512, bg: 'transparent', mark: C.lightMark, heart: C.coral, inner: 300, w: 3.2 },
+  // Web favicon — a solid vermilion mini-mark (reads on any tab background).
+  { name: 'favicon.png', size: 64, bg: 'transparent', mark: C.vermilion, heart: C.vermilion, inner: 52, w: 3.6 },
 ];
 
 function shoot(file, out, size, transparent) {
