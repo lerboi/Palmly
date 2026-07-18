@@ -22,3 +22,27 @@ export async function hasFirstReadingComplete(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Paywall decline record (audit F1.2). Written locally when the user dismisses the paywall — the
+ * trigger the server's already-deployed `winback` notification template consumes (a 24h nudge). Kept
+ * client-side (no schema change); a future task can sync it. Stores an ISO timestamp passed by the
+ * caller (the render layer can't call the purity-banned `Date.now()`).
+ */
+const PAYWALL_DECLINED_KEY = 'palmly.paywall_declined_at.v1';
+
+export async function setPaywallDeclined(at: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PAYWALL_DECLINED_KEY, at);
+  } catch {
+    /* best-effort */
+  }
+}
+
+export async function getPaywallDeclinedAt(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(PAYWALL_DECLINED_KEY);
+  } catch {
+    return null;
+  }
+}

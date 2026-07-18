@@ -18,3 +18,23 @@ export async function configureRevenueCat(userId: string): Promise<void> {
   // Purchases.configure({ apiKey: ..., appUserID: userId }) — wired on-device (H1) with the SDK.
   void userId;
 }
+
+export interface RestoreResult {
+  /** True only when a prior purchase was found + re-applied (never true pre-H8). */
+  restored: boolean;
+  /** A warm, honest message to show the user — NEVER the sales screen (audit §3.8). */
+  message: string;
+}
+
+/**
+ * Restore purchases (audit F1.2). Pre-H8 there is no store to query, so this returns an HONEST
+ * "coming with launch" message instead of routing a paying user back to the paywall. On device
+ * (H8) the body becomes `Purchases.restorePurchases()` → re-apply the `premium` entitlement.
+ */
+export async function restorePurchases(): Promise<RestoreResult> {
+  if (!revenueCatConfigured()) {
+    return { restored: false, message: 'Purchases arrive with launch — there’s nothing to restore just yet.' };
+  }
+  // TODO(H8): const info = await Purchases.restorePurchases(); check info.entitlements.active.premium.
+  return { restored: false, message: 'No previous purchase found on this account.' };
+}

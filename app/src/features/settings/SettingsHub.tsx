@@ -1,10 +1,11 @@
 import Constants from 'expo-constants';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 
 import { Icon, AppHeader, Screen, Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 import { signOutAccount, useAccountIdentity } from '@/lib/account';
+import { restorePurchases } from '@/lib/revenuecat';
 import { SettingGroup, SettingRow } from './settingsUi';
 
 /**
@@ -42,7 +43,13 @@ export function SettingsHub({ premium = false }: { premium?: boolean }) {
 
       <SettingGroup title="Subscription">
         <PlanRow premium={premium} onPress={() => router.push('/paywall?trigger=settings' as Href)} />
-        <SettingRow leadingIcon="history" label="Restore purchases" onPress={() => router.push('/paywall?trigger=settings' as Href)} />
+        {/* Restore must NOT route a paying user to the sales screen (audit F1.2) — it queries the
+            store (RC stub until H8) and reports honestly. */}
+        <SettingRow
+          leadingIcon="history"
+          label="Restore purchases"
+          onPress={() => void restorePurchases().then((r) => Alert.alert('Restore purchases', r.message))}
+        />
       </SettingGroup>
 
       <SettingGroup title="Preferences">

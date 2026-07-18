@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, View } from 'react-native';
+import { Platform, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { Button, Card, Icon, Logomark, Screen, Text } from '@/components/ui';
@@ -25,9 +26,14 @@ export interface PaywallViewProps {
   lockedLine?: string;
   /** Human names of what's still locked, e.g. `['fate line', 'rare markings']`. */
   lockedNames?: string[];
+  /** Hero copy matched to the tapped tease/trigger (audit F1.2). Defaults to the locked-line pitch. */
+  heroTitle?: string;
+  heroSubtitle?: string;
   onClose?: () => void;
   onPurchase?: (planId: string) => void;
   onRestore?: () => void;
+  /** Terms · Privacy links (App-Review requirement on auto-renew screens — audit F1.2). */
+  onLegal?: (section: 'terms' | 'privacy') => void;
 }
 
 /** What Premium adds — each with a feature-matched icon (not a row of identical checks). */
@@ -52,14 +58,22 @@ export function PaywallView({
   geometry,
   lockedLine = 'fate_line',
   lockedNames = ['deep-dive lines'],
+  heroTitle,
+  heroSubtitle,
   onClose,
   onPurchase,
   onRestore,
+  onLegal,
 }: PaywallViewProps) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
   const [selected, setSelected] = useState(defaultPlanId ?? plans[0]?.id);
+  // On a narrow phone (≤360px, e.g. 320) shrink the hero so BOTH plan cards clear the fixed CTA —
+  // and a bottom scrim over the scroll area signals there's more below (audit §3.8, no dark pattern).
+  const { width } = useWindowDimensions();
+  const compact = width <= 360;
+  const heroSize = compact ? 112 : 168;
   const enter = (i: number) =>
     shouldAnimate ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base) : undefined;
 
@@ -80,11 +94,12 @@ export function PaywallView({
         <Logomark size={28} variant="stamp" tone="heritage" accessibilityLabel="Palmly seal" />
       </View>
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: theme.spacing.lg }}>
+      <View style={{ flex: 1 }}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: theme.spacing.xxl }}>
         {/* Personalized hero — their palm, the locked line lit, their line names. */}
-        <View style={{ alignItems: 'center', marginBottom: theme.spacing.lg }}>
+        <View style={{ alignItems: 'center', marginBottom: compact ? theme.spacing.md : theme.spacing.lg }}>
           {geometry ? (
-            <PalmDiagram geometry={geometry} size={168} highlightedLine={lockedLine} animate />
+            <PalmDiagram geometry={geometry} size={heroSize} highlightedLine={lockedLine} animate />
           ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.sm }}>
             <Icon name="sparkle" size={18} color={theme.colors.premium} decorative />
@@ -93,10 +108,10 @@ export function PaywallView({
             </Text>
           </View>
           <Text variant="title" style={{ textAlign: 'center', marginTop: theme.spacing.sm }}>
-            Your palm has more to say
+            {heroTitle ?? 'Your palm has more to say'}
           </Text>
           <Text variant="bodyLarge" tone="secondary" style={{ textAlign: 'center', marginTop: theme.spacing.sm, maxWidth: 320 }}>
-            Your {joinNames(lockedNames)} are still hidden — unlock the full read.
+            {heroSubtitle ?? `Your ${joinNames(lockedNames)} are still hidden — unlock the full read.`}
           </Text>
         </View>
 
@@ -139,9 +154,22 @@ export function PaywallView({
           ))}
         </View>
       </ScrollView>
+        {/* Bottom scroll scrim — a fade cue that the plans continue below (the 320px scroll fix). */}
+        <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 36 }}>
+          <Svg width="100%" height="100%">
+            <Defs>
+              <SvgLinearGradient id="pwScrim" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor={theme.colors.background} stopOpacity={0} />
+                <Stop offset="1" stopColor={theme.colors.background} stopOpacity={0.92} />
+              </SvgLinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill="url(#pwScrim)" />
+          </Svg>
+        </View>
+      </View>
 
-      {/* Footer — CTA, then the restore link separated from the legal line. */}
-      <View style={{ gap: theme.spacing.md, marginTop: theme.spacing.sm, marginBottom: theme.spacing.md }}>
+      {/* Footer — CTA, restore, then the App-Review-required Terms · Privacy line. */}
+      <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm, marginBottom: theme.spacing.md }}>
         <Button
           label="Unlock Palmly Premium"
           variant="primary"
@@ -157,6 +185,16 @@ export function PaywallView({
           <Text variant="caption" tone="tertiary">
             No trial · cancel anytime
           </Text>
+          {/* Terms · Privacy — Apple requires these on an auto-renew purchase screen (audit F1.2). */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
+            <Pressable onPress={() => onLegal?.('terms')} accessibilityRole="link" hitSlop={8}>
+              <Text variant="caption" tone="secondary">Terms</Text>
+            </Pressable>
+            <Text variant="caption" tone="tertiary">·</Text>
+            <Pressable onPress={() => onLegal?.('privacy')} accessibilityRole="link" hitSlop={8}>
+              <Text variant="caption" tone="secondary">Privacy</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </Screen>
