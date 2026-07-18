@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Platform, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
@@ -46,7 +46,7 @@ function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: num
   return (
     <Card
       elevation="sm"
-      onPress={() => router.push('/reveal')}
+      onPress={() => router.push(`/reveal?readingId=${reading.id}` as Href)}
       accessibilityLabel={`Open ${isPalm ? 'palm' : 'face'} reading: ${reading.headline}`}
       pressedTint="accent"
       entranceIndex={index}

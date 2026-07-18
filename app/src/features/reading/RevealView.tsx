@@ -22,7 +22,8 @@ import { type Reading, type ReadingSection, freeSections, lockedSections, tradit
 export type RevealState = 'ready' | 'pending' | 'error';
 
 export interface RevealViewProps {
-  reading: Reading;
+  /** Optional in `pending`/`error` (those states only draw the geometry) — required in `ready`. */
+  reading?: Reading;
   geometry: LineGeometry;
   /** `pending` while the reading loads, `error` on load failure (redesign R15). Default `ready`. */
   state?: RevealState;
@@ -65,7 +66,7 @@ export function RevealView({ reading, geometry, state = 'ready', onBack, onRetry
     shouldAnimate ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base) : undefined;
 
   if (state === 'pending') return <PendingReveal geometry={geometry} onBack={back} />;
-  if (state === 'error') return <ErrorReveal geometry={geometry} onBack={back} onRetry={onRetry} />;
+  if (state === 'error' || !reading) return <ErrorReveal geometry={geometry} onBack={back} onRetry={onRetry} />;
 
   const free = freeSections(reading);
   const locked = lockedSections(reading);

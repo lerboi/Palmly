@@ -19,7 +19,8 @@ export function relativeDate(iso: string, now: number): string {
   if (days === 1) return 'Yesterday';
   if (days < 7) return `${days} days ago`;
   if (days < 30) return `${Math.floor(days / 7)} week${days < 14 ? '' : 's'} ago`;
-  return new Date(then).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  // `undefined` locale → the device/runtime default (device locale on native), not a hardcoded en-US.
+  return new Date(then).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 // ── Preview shelf for device-free web-screenshot verification (P6.T4). ──
