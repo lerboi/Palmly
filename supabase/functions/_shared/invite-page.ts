@@ -137,7 +137,7 @@ ${WHEEL_SVG}
 <hr>
 <section class="about">
 <p>Palmly reads the lines of your palm into a reflective reading — <b>for reflection and fun</b>, not fortune-telling.</p>
-<p class="privacy">Your photo is analyzed, then deleted — usually within a day.</p>
+<p class="privacy">Your photo is deleted right after your reading — always within 24 hours.</p>
 <p class="code">Invite code: <b>${esc(o.fallbackCode)}</b></p>
 </section>
 </main>

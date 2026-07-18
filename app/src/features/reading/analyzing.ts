@@ -1,5 +1,6 @@
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import type { ScanStatus } from '@/lib/useScanStatus';
+import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
 
 /** The analyzing loader's UX stages (UIUX §2.4) — the product visibly working on *their* hand. */
 export interface AnalyzingStage {
@@ -60,7 +61,7 @@ export function failureHint(reason: string | null | undefined): string {
 export const SOCIAL_PROOF = [
   'Read from your lines, not your birthday',
   'Rooted in centuries of palmistry',
-  'Your photo is deleted after your reading',
+  CANONICAL_DELETION_SHORT,
 ];
 
 /** Rotate the social-proof line over time (redesign v2 V12 — the array now actually cycles). */

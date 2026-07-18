@@ -9,6 +9,7 @@ import { useReducedMotion, useTheme } from '@/theme';
 import { uploadPickedScan, type Hand } from '@/lib/scan';
 import { loadClaimContext } from '@/lib/claim';
 import { recordCameraConsent } from '@/lib/consent';
+import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
 import { captureError, track } from '@/lib/analytics';
 
 /**
@@ -24,7 +25,7 @@ import { captureError, track } from '@/lib/analytics';
  */
 const REASSURANCE: { icon: IconName; text: string }[] = [
   { icon: 'camera', text: 'Analyzed on the spot — your palm never leaves as a photo.' },
-  { icon: 'shield', text: 'Your photo is deleted after your reading.' },
+  { icon: 'shield', text: CANONICAL_DELETION_SHORT },
   { icon: 'lock', text: 'Never shared, never used to identify you.' },
 ];
 

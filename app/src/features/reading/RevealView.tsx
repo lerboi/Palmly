@@ -18,6 +18,7 @@ import { AppHeader, Button, Card, Icon, Logomark, PrivacyBadge, Screen, Text } f
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
+import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
 import { type Reading, type ReadingSection, SECTION_LINE, freeSections, lockedSections, traditionFootnote } from './reveal';
 
 export type RevealState = 'ready' | 'pending' | 'error';
@@ -53,7 +54,7 @@ function deletedLabel(ts?: string | null): string {
 const PENDING_LINES = [
   'Tracing your lines…',
   'Cross-checking the classics…',
-  'Your photo is deleted after your reading',
+  CANONICAL_DELETION_SHORT,
 ];
 
 /**

@@ -5,6 +5,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AppHeader, Icon, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
+import { CANONICAL_DELETION_PROMISE } from '@/lib/trustCopy';
 import { PrivacyTrustCard } from './settingsUi';
 
 interface StepDef {
@@ -23,7 +24,7 @@ const STEPS: StepDef[] = [
   {
     icon: 'palm',
     title: 'We trace your lines',
-    body: 'Your major lines — heart, head, life and fate — are traced into an engraved diagram. From here we work only from that diagram; your photo is deleted within a day.',
+    body: 'Your major lines — heart, head, life and fate — are traced into an engraved diagram. From here we work only from that diagram — never the photo.',
   },
   {
     icon: 'elements',
@@ -56,7 +57,10 @@ export function MethodologyScreen() {
         ))}
       </View>
 
-      <PrivacyTrustCard headline="Your photo is deleted after your reading">
+      <PrivacyTrustCard headline="Your photo is never kept">
+        <Text variant="body" tone="secondary">
+          {CANONICAL_DELETION_PROMISE}
+        </Text>
         <Text variant="body" tone="secondary">
           Same palm, same reading — your lines don’t lie.
         </Text>
