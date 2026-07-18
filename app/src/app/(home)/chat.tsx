@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useRouter, type Href } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { ChatThread } from '@/features/chat/ChatThread';
 import { STARTER_CHIPS, type ChatMessage } from '@/features/chat/chat';
 import { assistantMessage, sendChat } from '@/features/chat/chatSend';
@@ -21,6 +21,7 @@ import { track } from '@/lib/analytics';
 export default function Chat() {
   const { premium } = useEntitlement();
   const router = useRouter();
+  const { q } = useLocalSearchParams<{ q?: string }>(); // fortune→chat bridge prefill (F1.10)
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chips, setChips] = useState<string[]>(STARTER_CHIPS);
   const [typing, setTyping] = useState(false);
@@ -68,5 +69,5 @@ export default function Chat() {
     });
   };
 
-  return <ChatThread premium={premium} messages={messages} chips={chips} typing={typing} onSend={onSend} />;
+  return <ChatThread premium={premium} messages={messages} chips={chips} typing={typing} onSend={onSend} initialInput={typeof q === 'string' ? q : undefined} />;
 }

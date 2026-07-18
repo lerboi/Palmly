@@ -38,6 +38,9 @@ export interface RevealViewProps {
   readingId?: string;
   /** When the source photo was deleted/uploaded — powers the timestamped privacy badge (F1.1). */
   photoDeletedAt?: string | null;
+  /** This reveal came from a repeat scan that resolved `matched` (F1.10) — surface the consistency
+   *  micro-survey ("does this match your last reading?"). */
+  matched?: boolean;
   onBack?: () => void;
   onRetry?: () => void;
 }
@@ -69,7 +72,7 @@ const PENDING_LINES = [
  * hook, a branded **seal** share affordance, and a single trust footer. English-first, no decorative
  * CJK. A living pending state + an honest error state.
  */
-export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', readingId, photoDeletedAt, onBack, onRetry }: RevealViewProps) {
+export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', readingId, photoDeletedAt, matched = false, onBack, onRetry }: RevealViewProps) {
   const theme = useTheme();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -136,6 +139,13 @@ export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', 
             </Animated.View>
           ) : null}
         </View>
+
+        {/* Repeat-scan consistency micro-survey (F1.10) — only when this reveal came from a `matched` resolve. */}
+        {matched && readingId ? (
+          <Animated.View entering={enter(n++)}>
+            <ConsistencySurvey readingId={readingId} />
+          </Animated.View>
+        ) : null}
 
         {/* ── Free section cards; the compatibility hook lives inside the reading (P2) ── */}
         {free.map((section, i) => (
@@ -477,6 +487,37 @@ function PalmOfferCard({ onPress }: { onPress: () => void }) {
         Read the lines of your hand — heart, head, life and fate — for the reading your face can’t give.
       </Text>
       <Button label="Read my palm" variant="secondary" onPress={onPress} />
+    </Card>
+  );
+}
+
+/** Repeat-scan consistency micro-survey (audit F1.10, Backend §6.6.4) — a one-tap 3-option prompt
+ *  shown when a scan resolved `matched`; fires `consistency_survey` and thanks the user. */
+function ConsistencySurvey({ readingId }: { readingId: string }) {
+  const theme = useTheme();
+  const [answered, setAnswered] = useState(false);
+  const answer = (response: 'consistent' | 'inconsistent' | 'unsure') => {
+    track('consistency_survey', { reading_id: readingId, response });
+    setAnswered(true);
+  };
+  return (
+    <Card elevation="sm" style={{ marginBottom: theme.spacing.md, gap: theme.spacing.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+        <FeatureIcon icon="check" tone="heritage" size={40} />
+        <View style={{ flex: 1 }}>
+          <Text variant="heading">You&apos;ve scanned this before</Text>
+          <Text variant="caption" tone="secondary">
+            {answered ? 'Thanks — that helps us keep your readings consistent.' : 'Does this reading match what you remember?'}
+          </Text>
+        </View>
+      </View>
+      {answered ? null : (
+        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+          <Button label="Spot on" variant="secondary" onPress={() => answer('consistent')} />
+          <Button label="A bit off" variant="ghost" onPress={() => answer('inconsistent')} />
+          <Button label="Not sure" variant="ghost" onPress={() => answer('unsure')} />
+        </View>
+      )}
     </Card>
   );
 }

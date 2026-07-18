@@ -66,6 +66,7 @@ const GROUPS: { title: string; routes: { href: string; label: string }[] }[] = [
       { href: '/dev/analyzing-failed', label: 'analyzing · failed' },
       { href: '/dev/reveal-ready', label: 'reveal · ready (palm)' },
       { href: '/dev/reveal-face', label: 'reveal · ready (face)' },
+      { href: '/dev/reveal-matched', label: 'reveal · matched (survey)' },
       { href: '/dev/reveal-pending', label: 'reveal · pending' },
       { href: '/dev/reveal-error', label: 'reveal · error' },
       { href: '/dev/history', label: 'history · populated (palm + face)' },

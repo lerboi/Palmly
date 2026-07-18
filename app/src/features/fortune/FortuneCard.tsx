@@ -12,7 +12,7 @@ import { DIRECTION_ARROW, type Fortune } from './fortune';
  * claret is reserved for the red-thread, §3.2), the career/love/wealth lines, and the lucky
  * direction/colour/hours (U4 gating), each section staggering in. English-first, no CJK.
  */
-export function FortuneCard({ fortune, premium, onUnlock }: { fortune: Fortune; premium: boolean; onUnlock?: () => void }) {
+export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fortune; premium: boolean; onUnlock?: () => void; onAsk?: (prefill: string) => void }) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
@@ -74,6 +74,19 @@ export function FortuneCard({ fortune, premium, onUnlock }: { fortune: Fortune; 
             <Lucky label="Colour" value={fortune.lucky_color} />
             <Lucky label="Hours" value={fortune.lucky_hours} />
           </Animated.View>
+
+          {/* Fortune → chat bridge (audit §7 P4) — pre-fills the grounded chat with today's almanac. */}
+          {onAsk ? (
+            <Animated.View entering={unfold(3)} style={{ alignItems: 'flex-start' }}>
+              <Button
+                label="Ask about today"
+                variant="ghost"
+                size="md"
+                icon={<Icon name="chat" size={16} color={theme.colors.accent} decorative />}
+                onPress={() => onAsk(`Why is ${fortune.lucky_direction} my lucky direction today?`)}
+              />
+            </Animated.View>
+          ) : null}
         </View>
       )}
     </Card>

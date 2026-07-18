@@ -27,6 +27,8 @@ export interface ChatThreadProps {
   typing?: boolean;
   /** Send a composed question (F1.10). Absent → the input is a static preview (/dev routes). */
   onSend?: (text: string) => void;
+  /** Pre-fill the input (the fortune→chat bridge chip passes today's question, F1.10). */
+  initialInput?: string;
   onBack?: () => void;
 }
 
@@ -37,15 +39,16 @@ export interface ChatThreadProps {
  * crossfades to the answer, and the chips / send / input have micro-interactions. Non-premium sees the
  * unlock gate. English-first, no CJK. The SSE stream is device-gated; here it's the thread + typing.
  */
-export function ChatThread({ premium, messages, chips, typing = false, onSend, onBack }: ChatThreadProps) {
+export function ChatThread({ premium, messages, chips, typing = false, onSend, initialInput, onBack }: ChatThreadProps) {
   const theme = useTheme();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
   const back = onBack ?? (() => router.back());
   const empty = messages.length === 0;
-  // Composed question (F1.10). Declared before the early return (rules-of-hooks). A chip taps into it.
-  const [input, setInput] = useState('');
+  // Composed question (F1.10). Declared before the early return (rules-of-hooks). A chip taps into it;
+  // the fortune bridge seeds it via `initialInput`.
+  const [input, setInput] = useState(initialInput ?? '');
   const submit = () => {
     const t = input.trim();
     if (t && onSend) {

@@ -4,6 +4,7 @@ import { AnalyzingView } from '@/features/reading/AnalyzingView';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { useScanStatus } from '@/lib/useScanStatus';
 import { requestPushPermission } from '@/lib/notifications';
+import { setLastScanMatched } from '@/lib/session';
 import { track } from '@/lib/analytics';
 
 /**
@@ -33,9 +34,16 @@ export default function Analyzing() {
     return () => clearInterval(timer);
   }, []);
 
-  // Auto-advance to the reveal once the reading is ready.
+  // Auto-advance to the reveal once the reading is ready. A `matched` resolve (a repeat of a palm/face
+  // they've read before, Backend §6.6) records the real consistency signal + threads `?matched=1` so
+  // the reveal can surface the "consistent?" micro-survey (F1.10); a fresh `complete` clears it.
   useEffect(() => {
-    if (id && (status === 'complete' || status === 'matched')) {
+    if (!id) return;
+    if (status === 'matched') {
+      void setLastScanMatched(true);
+      router.replace(`/reveal?scanId=${id}&matched=1` as Href);
+    } else if (status === 'complete') {
+      void setLastScanMatched(false);
       router.replace(`/reveal?scanId=${id}` as Href);
     }
   }, [id, status]);

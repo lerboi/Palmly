@@ -46,3 +46,27 @@ export async function getPaywallDeclinedAt(): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * Whether the user's LATEST scan resolved `matched` — a repeat of a palm/face they've read before
+ * (Backend §6.6 consistency; audit F1.10). Set true on a `matched` resolve, false on a fresh
+ * `complete`, so the history "your palm is unchanged" brag is EARNED by the real signal, not
+ * hardcoded. Local-only (no schema change); the signal originates at the analyzing→reveal seam.
+ */
+const LAST_SCAN_MATCHED_KEY = 'palmly.last_scan_matched.v1';
+
+export async function setLastScanMatched(matched: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(LAST_SCAN_MATCHED_KEY, matched ? '1' : '0');
+  } catch {
+    /* best-effort */
+  }
+}
+
+export async function getLastScanMatched(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(LAST_SCAN_MATCHED_KEY)) === '1';
+  } catch {
+    return false;
+  }
+}

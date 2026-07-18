@@ -16,7 +16,7 @@ import { track } from '@/lib/analytics';
  * decorative shape shown while loading/failed.
  */
 export default function Reveal() {
-  const { readingId, scanId } = useLocalSearchParams<{ readingId?: string; scanId?: string }>();
+  const { readingId, scanId, matched } = useLocalSearchParams<{ readingId?: string; scanId?: string; matched?: string }>();
   const [reloads, setReloads] = useState(0);
   const key = `${readingId ?? ''}|${scanId ?? ''}|${reloads}`;
 
@@ -72,6 +72,7 @@ export default function Reveal() {
       kind={kind}
       readingId={loadedId}
       photoDeletedAt={photoDeletedAt}
+      matched={matched === '1'}
       onRetry={() => setReloads((r) => r + 1)}
     />
   );
