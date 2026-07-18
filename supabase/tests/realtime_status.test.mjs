@@ -19,17 +19,29 @@ const B = '55555555-5555-5555-5555-555555555555';
 const one = async (c, sql, p = []) => (await c.query(sql, p)).rows[0];
 const n = async (c, sql, p = []) => (await c.query(sql, p)).rows[0].n;
 
-/** Ensure a partition of realtime.messages covers now() so broadcast inserts land + are observable. */
+/** Ensure a partition of realtime.messages covers now() so broadcast inserts land + are observable.
+ *  On deployed staging, Supabase already manages daily `messages_YYYY_MM_DD` partitions, so we detect
+ *  one covering today and do NOTHING — the connection's `postgres` role is NOT a member of
+ *  `supabase_realtime_admin` there (SET ROLE → 42501), and it doesn't need to be. Only a partition-less
+ *  local `supabase start` (where postgres IS a member of the owner role) falls through to create one. */
 async function ensureTodayPartition(c) {
+  const { covered } = await one(
+    c,
+    `select exists(
+       select 1 from pg_class pc join pg_namespace nsp on nsp.oid = pc.relnamespace
+       where nsp.nspname='realtime' and pc.relname = 'messages_' || to_char(now(), 'YYYY_MM_DD')
+     ) covered`,
+  );
+  if (covered) return; // a real daily partition already covers now() → observe the broadcast in it
   const { d0, d1 } = await one(c, `select date_trunc('day', now())::date::text d0, (date_trunc('day', now())+interval '1 day')::date::text d1`);
   await c.query('savepoint part');
   try {
-    await c.query('set local role supabase_realtime_admin'); // postgres is a member of the owner role
+    await c.query('set local role supabase_realtime_admin'); // postgres is a member of the owner role (local only)
     await c.query(`create table realtime.messages_p5t7_test partition of realtime.messages for values from ('${d0}') to ('${d1}')`);
     await c.query('reset role');
   } catch (e) {
     await c.query('rollback to savepoint part'); // a real partition already covers today → fine
-    if (!/overlap|already exists/i.test(e.message)) throw e;
+    if (!/overlap|already exists|permission denied/i.test(e.message)) throw e;
   }
 }
 
