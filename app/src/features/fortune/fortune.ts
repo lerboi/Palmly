@@ -31,6 +31,40 @@ function pillarIndex(date: Date): number {
   return (((jdn + 49) % 60) + 60) % 60;
 }
 
+// ── Birth-date → fortune bucket (audit F1.3). Mirrors supabase/functions/_shared/pillar.ts EXACTLY
+//    so the client reads the same `fortune_templates` row the backend generated. Parses the
+//    YYYY-MM-DD components directly (no timezone drift), keyed on the pinyin day pillar. ──
+const STEM_PY = ['jia', 'yi', 'bing', 'ding', 'wu', 'ji', 'geng', 'xin', 'ren', 'gui'];
+const BRANCH_PY = ['zi', 'chou', 'yin', 'mao', 'chen', 'si', 'wu', 'wei', 'shen', 'you', 'xu', 'hai'];
+const STEM_ELEMENT = ['wood', 'wood', 'fire', 'fire', 'earth', 'earth', 'metal', 'metal', 'water', 'water'] as const;
+export const GENERIC_BUCKET = 'generic';
+
+/** The 0–59 sexagenary index for a YYYY-MM-DD birth date, or null if unparseable. */
+function birthPillarIndex(birthDate: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthDate.trim());
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const jdn = gregorianToJDN(y, mo, d);
+  return (((jdn + 49) % 60) + 60) % 60;
+}
+
+/** The fortune bucket for a birth date — the pinyin day pillar (e.g. 'jiazi'), or the generic bucket. */
+export function pillarBucket(birthDate: string | null | undefined): string {
+  if (!birthDate) return GENERIC_BUCKET;
+  const idx = birthPillarIndex(birthDate);
+  if (idx === null) return GENERIC_BUCKET;
+  return STEM_PY[idx % 10] + BRANCH_PY[idx % 12];
+}
+
+/** The jsonb stored on `profiles.element_profile` at birth-date capture (mirrors the backend). */
+export function elementProfile(birthDate: string | null | undefined): Record<string, unknown> {
+  const idx = birthDate ? birthPillarIndex(birthDate) : null;
+  if (idx === null) return { bucket: GENERIC_BUCKET };
+  const s = idx % 10;
+  return { element: STEM_ELEMENT[s], yin_yang: s % 2 === 0 ? 'yang' : 'yin', day_pillar_index: idx, bucket: STEM_PY[s] + BRANCH_PY[idx % 12] };
+}
+
 /** The ganzhi day pillar (stem+branch) for a calendar date — same anchor as the backend `dayPillar`. */
 export function dayPillarCn(date: Date): string {
   const index = pillarIndex(date);

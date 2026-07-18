@@ -8,6 +8,7 @@ import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { uploadPickedScan, type Hand } from '@/lib/scan';
 import { loadClaimContext } from '@/lib/claim';
+import { recordCameraConsent } from '@/lib/consent';
 import { captureError, track } from '@/lib/analytics';
 
 /**
@@ -135,7 +136,13 @@ export default function Primer() {
           variant="primary"
           fullWidth
           disabled={uploading}
-          onPress={() => router.push(`/palm${handSuffix}` as Href)}
+          onPress={() => {
+            // The reassurance rows ARE the biometric-consent text (Backend §9) — log the version the
+            // user accepted, then proceed. The OS permission grant/denial is the device leg (F1.T3).
+            void recordCameraConsent();
+            track('permission_result', { granted: true });
+            router.push(`/palm${handSuffix}` as Href);
+          }}
         />
         <Button
           label="Upload a photo instead"
