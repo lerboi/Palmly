@@ -22,6 +22,7 @@ export default function Reveal() {
   const [state, setState] = useState<RevealState>('pending');
   const [reading, setReading] = useState<Reading | undefined>(undefined);
   const [geometry, setGeometry] = useState<LineGeometry>(PREVIEW_GEOMETRY);
+  const [loadedId, setLoadedId] = useState<string | undefined>(undefined);
 
   // Reset to the loading state when the target (or a retry) changes — during render, not in an
   // effect (React's adjust-state-on-prop-change pattern), so the pending state shows immediately.
@@ -30,6 +31,7 @@ export default function Reveal() {
     setTrackedKey(key);
     setState('pending');
     setReading(undefined);
+    setLoadedId(undefined);
   }
 
   useEffect(() => {
@@ -43,6 +45,7 @@ export default function Reveal() {
         }
         setReading(res.reading);
         setGeometry(res.geometry);
+        setLoadedId(res.id);
         setState('ready');
         track('reveal_viewed', { reading_id: res.id, kind: res.kind });
       })
@@ -59,6 +62,7 @@ export default function Reveal() {
       reading={reading}
       geometry={geometry}
       state={state}
+      readingId={loadedId}
       onRetry={() => setReloads((r) => r + 1)}
     />
   );

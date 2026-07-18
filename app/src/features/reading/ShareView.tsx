@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, Share, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import Svg, { Circle, Path } from 'react-native-svg';
 import Animated, {
   Easing,
@@ -16,6 +17,8 @@ import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { AppHeader, Button, Icon, Logomark, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
+import { track } from '@/lib/analytics';
+import { composeShareText, createInvite, type CreatedInvite } from '@/lib/invite';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -39,6 +42,8 @@ function useCountUp(target: number, active: boolean): number {
   return n;
 }
 
+export type ShareSource = 'reveal' | 'home' | 'face' | 'compat';
+
 export interface ShareViewProps {
   geometry: LineGeometry;
   /** The one-line shareable essence (redesign §2.6). */
@@ -51,16 +56,14 @@ export interface ShareViewProps {
   chips?: string[];
   /** Which preview to open on (default `solo`, per §2.6). */
   initialVariant?: Variant;
+  /** The reading this share is for — threaded into the minted invite's context (audit F0.4). */
+  readingId?: string;
+  /** Where the sheet was opened from (analytics `share_sheet_opened.source`). */
+  source?: ShareSource;
   onClose?: () => void;
 }
 
 type Variant = 'solo' | 'compat';
-
-const CHANNELS: { icon: IconName; label: string }[] = [
-  { icon: 'chat', label: 'Message' },
-  { icon: 'thread', label: 'Copy link' },
-  { icon: 'share', label: 'More' },
-];
 
 /**
  * The custom share sheet (UIUX §2.6/§2.7, redesign R16 / v2 V14) — a preview card with the traced
@@ -78,6 +81,8 @@ export function ShareView({
   blurb = 'A rare, easy resonance — you steady each other.',
   chips = ['Emotion', 'Mind', 'Energy', 'Destiny'],
   initialVariant = 'solo',
+  readingId,
+  source = 'reveal',
   onClose,
 }: ShareViewProps) {
   const theme = useTheme();
@@ -85,6 +90,65 @@ export function ShareView({
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
   const [variant, setVariant] = useState<Variant>(initialVariant);
   const [invite, setInvite] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  // Mint the invite AT MOST ONCE (pre-mint on open / toggle-on) — the promise is cached so every
+  // channel reuses the same link. A failure clears the cache so a later tap can retry.
+  const mintRef = useRef<Promise<CreatedInvite> | null>(null);
+  const ensureInvite = useCallback((): Promise<CreatedInvite> => {
+    if (!mintRef.current) {
+      mintRef.current = createInvite({ readingId, kind: 'compatibility', channel: 'link' })
+        .then((inv) => {
+          track('invite_created', { channel: 'link', kind: 'compatibility' });
+          return inv;
+        })
+        .catch((e) => {
+          mintRef.current = null;
+          throw e;
+        });
+    }
+    return mintRef.current;
+  }, [readingId]);
+
+  // Emit once the sheet is opened.
+  useEffect(() => {
+    track('share_sheet_opened', readingId ? { source, reading_id: readingId } : { source });
+  }, [source, readingId]);
+
+  // Pre-mint whenever the invite toggle is on AND there's a real reading (so "Copy link" / "Share"
+  // are instant). Gating on readingId keeps the /dev fixture previews from minting real invites; the
+  // on-demand mint in the handlers still covers a share with no reading yet (e.g. pair pre-F0.T9).
+  useEffect(() => {
+    if (invite && readingId) void ensureInvite().catch(() => {});
+  }, [invite, readingId, ensureInvite]);
+
+  const onCopyLink = async () => {
+    try {
+      const { url } = await ensureInvite();
+      await Clipboard.setStringAsync(url);
+      setCopied(true);
+      track('share_completed', { channel: 'copy', card_variant: 'feed', with_invite: invite });
+    } catch {
+      /* mint / clipboard unavailable — leave the un-copied state, no crash */
+    }
+  };
+
+  const onShare = async (channel: string) => {
+    let url: string | undefined;
+    if (invite) {
+      try {
+        url = (await ensureInvite()).url;
+      } catch {
+        /* share the essence without a link rather than block the share */
+      }
+    }
+    track('share_completed', { channel, card_variant: 'feed', with_invite: invite });
+    try {
+      await Share.share({ message: composeShareText(headline, url) });
+    } catch {
+      /* native OS sheet is device-only ([~]); web / dismissed → no-op */
+    }
+  };
 
   return (
     <Screen>
@@ -127,11 +191,12 @@ export function ShareView({
         <Toggle on={invite} />
       </Pressable>
 
-      {/* Channel row — real, tappable, branded. */}
+      {/* Channel row — real, tappable. Message/More open the OS share sheet; Copy writes the link
+          to the clipboard and flips to a confirmed state. (Branded market-ordered row is F1.T9.) */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginVertical: theme.spacing.md }}>
-        {CHANNELS.map((ch) => (
-          <ChannelButton key={ch.label} icon={ch.icon} label={ch.label} onPress={onClose ?? (() => {})} />
-        ))}
+        <ChannelButton icon="chat" label="Message" onPress={() => onShare('message')} />
+        <ChannelButton icon="thread" label={copied ? 'Link copied ✓' : 'Copy link'} onPress={onCopyLink} />
+        <ChannelButton icon="share" label="More" onPress={() => onShare('more')} />
       </View>
 
       <Button
@@ -140,7 +205,7 @@ export function ShareView({
         fullWidth
         icon={<Icon name="share" size={18} color={theme.colors.onAccent} decorative />}
         style={{ marginBottom: theme.spacing.md }}
-        onPress={onClose}
+        onPress={() => onShare('share')}
       />
     </Screen>
   );

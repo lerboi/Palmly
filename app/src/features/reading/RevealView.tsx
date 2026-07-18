@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import Animated, {
   Easing,
   FadeIn,
@@ -27,6 +27,8 @@ export interface RevealViewProps {
   geometry: LineGeometry;
   /** `pending` while the reading loads, `error` on load failure (redesign R15). Default `ready`. */
   state?: RevealState;
+  /** The reading's id — threaded into the share sheet so the invite carries the real reading (F0.4). */
+  readingId?: string;
   onBack?: () => void;
   onRetry?: () => void;
 }
@@ -56,12 +58,15 @@ const PENDING_LINES = [
  * hook, a branded **seal** share affordance, and a single trust footer. English-first, no decorative
  * CJK. A living pending state + an honest error state.
  */
-export function RevealView({ reading, geometry, state = 'ready', onBack, onRetry }: RevealViewProps) {
+export function RevealView({ reading, geometry, state = 'ready', readingId, onBack, onRetry }: RevealViewProps) {
   const theme = useTheme();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
   const back = onBack ?? (() => router.back());
+  const shareHref = `/share${readingId ? `?readingId=${readingId}` : ''}` as Href;
+  const shareCompatHref =
+    `/share?${readingId ? `readingId=${readingId}&` : ''}initialVariant=compat` as Href;
   const enter = (i: number) =>
     shouldAnimate ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base) : undefined;
 
@@ -102,7 +107,7 @@ export function RevealView({ reading, geometry, state = 'ready', onBack, onRetry
             </Animated.View>
             {i === 1 ? (
               <Animated.View entering={enter(n++)}>
-                <CompareCard onPress={() => router.push('/share')} />
+                <CompareCard onPress={() => router.push(shareCompatHref)} />
               </Animated.View>
             ) : null}
           </View>
@@ -133,7 +138,7 @@ export function RevealView({ reading, geometry, state = 'ready', onBack, onRetry
       </Screen>
 
       {/* ── Persistent share affordance: a branded corner-seal (claret), not a generic FAB ── */}
-      <SealFab onPress={() => router.push('/share')} shouldAnimate={shouldAnimate} />
+      <SealFab onPress={() => router.push(shareHref)} shouldAnimate={shouldAnimate} />
     </View>
   );
 }

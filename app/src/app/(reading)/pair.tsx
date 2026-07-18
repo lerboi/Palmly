@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { PairRevealView, type PairData } from '@/features/reading/PairRevealView';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 
@@ -32,7 +32,7 @@ export default function Pair() {
       geometry={PREVIEW_GEOMETRY}
       onBack={() => router.back()}
       onFullReading={() => router.push('/reveal')}
-      onShare={() => router.push('/share')}
+      onShare={() => router.push('/share?initialVariant=compat' as Href)}
     />
   );
 }
