@@ -6,6 +6,7 @@ import { Button, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
 import { RedThread } from '@/features/reading/ShareView';
 import { useReducedMotion, useTheme } from '@/theme';
 import { ClaimError, claimInvite, loadClaimContext, normalizeCode, saveClaimContext, type ClaimContext } from '@/lib/claim';
+import { useAccountIdentity } from '@/lib/account';
 import { track } from '@/lib/analytics';
 
 /**
@@ -28,6 +29,7 @@ export default function Claim() {
   const [persisted, setPersisted] = useState<ClaimContext | null>(null);
   const inviterName = params.inviter || persisted?.inviterName || 'A friend';
 
+  const { isAnonymous } = useAccountIdentity();
   const [codeMode, setCodeMode] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -73,10 +75,16 @@ export default function Claim() {
     }
   };
 
+  // Compat-accept is the one place identity is structurally required (UIUX §2.9, audit F0.8): so the
+  // inviter's pair carries a name, an anonymous recipient must claim an account first (non-skippable).
+  const openAccountGate = () =>
+    router.push(`/account?reason=compat&mandatory=1&inviter=${encodeURIComponent(inviterName)}` as Href);
+
   const onAccept = () => {
     if (persisted?.claimed) return goCapture(); // already claimed → straight to capture, no re-claim
-    if (token) return void doClaim({ token }, 'web');
-    return goCapture(); // landed with no token (e.g. direct /claim) — just capture
+    if (!token) return goCapture(); // landed with no token (e.g. direct /claim) — just capture
+    if (isAnonymous) return openAccountGate(); // link identity, then re-tap to claim
+    return void doClaim({ token }, 'web');
   };
 
   return (
@@ -148,7 +156,7 @@ export default function Claim() {
               fullWidth
               loading={busy}
               disabled={code.replace('-', '').length < 10}
-              onPress={() => void doClaim({ code }, 'manual_code')}
+              onPress={() => (isAnonymous ? openAccountGate() : void doClaim({ code }, 'manual_code'))}
             />
             <Button label="Back" variant="ghost" onPress={() => { setCodeMode(false); setError(null); }} />
           </>

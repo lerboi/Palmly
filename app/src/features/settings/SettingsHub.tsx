@@ -1,9 +1,10 @@
 import Constants from 'expo-constants';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 
 import { Icon, AppHeader, Screen, Text } from '@/components/ui';
 import { useTheme } from '@/theme';
+import { signOutAccount, useAccountIdentity } from '@/lib/account';
 import { SettingGroup, SettingRow } from './settingsUi';
 
 /**
@@ -15,11 +16,29 @@ import { SettingGroup, SettingRow } from './settingsUi';
  */
 export function SettingsHub({ premium = false }: { premium?: boolean }) {
   const router = useRouter();
+  const { isAnonymous, label } = useAccountIdentity();
   const version = Constants.expoConfig?.version ?? '1.0.0';
 
   return (
     <Screen scroll>
       <AppHeader title="Settings" onBack={() => router.back()} />
+
+      <SettingGroup title="Account">
+        {isAnonymous ? (
+          <SettingRow
+            first
+            leadingIcon="sparkle"
+            label="Claim your account"
+            caption="Keep your readings, fortune & matches — even on a new phone"
+            onPress={() => router.push('/account?reason=settings' as Href)}
+          />
+        ) : (
+          <>
+            <SettingRow first leadingIcon="shield" label="Signed in as" value={label ?? 'your account'} />
+            <SettingRow leadingIcon="back" label="Sign out" onPress={() => void signOutAccount().then(() => router.replace('/'))} />
+          </>
+        )}
+      </SettingGroup>
 
       <SettingGroup title="Subscription">
         <PlanRow premium={premium} onPress={() => router.push('/paywall')} />

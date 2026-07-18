@@ -75,6 +75,16 @@ evidence).
   anonymous_provider_disabled`). Throwaway test user cleaned up. The profile trigger + app code were
   already done; this completes P3.T6's server side (the on-device relaunch-reuse check still needs H1).
 
+- [ ] **H5b — Enable account-linking providers (Apple / Google / phone-SMS).** The account sheet
+  (F0.T11) is fully built and calls `linkIdentity({provider})` (Apple/Google) + `updateUser({phone})`
+  → `verifyOtp` (phone). Until the providers are configured they return a warm "isn't available yet"
+  line instead of linking. In the Supabase dashboard → Authentication → Providers: enable **Apple**
+  (Services ID + key — needs H7's Apple Developer account) and **Google** (OAuth client id/secret from
+  Google Cloud console), and under Phone enable an **SMS provider** (e.g. Twilio: account SID + auth
+  token + messaging service SID). Add each provider's redirect URL (`palmly://settings` scheme + the
+  hosted callback) to the allow-list. Once configured, the F0.T11 `[~]` live round-trip and F0.G's
+  anonymous-recipient claim leg unblock. (Anonymous sign-in itself is already on — H5.)
+
 - [ ] **H6 — Cloudflare Turnstile + domain `palmly.app`.** Buy the domain; in Cloudflare create a
   Turnstile widget. Put `EXPO_PUBLIC_TURNSTILE_SITE_KEY` (client) + `TURNSTILE_SECRET_KEY` (server)
   per ENVIRONMENT.md. **Needed at P3.T6** (anonymous-auth invisible CAPTCHA) and **P8.T3** (teaser DNS).

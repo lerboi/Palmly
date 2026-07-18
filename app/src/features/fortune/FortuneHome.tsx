@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import { Button, Card, Icon, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
+import { useAccountIdentity } from '@/lib/account';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { FortuneCard } from './FortuneCard';
 import { type Fortune, almanacDate } from './fortune';
@@ -33,6 +34,7 @@ export interface FortuneHomeProps {
 export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRun, now }: FortuneHomeProps) {
   const theme = useTheme();
   const router = useRouter();
+  const { isAnonymous } = useAccountIdentity();
   const [ts] = useState(() => now ?? Date.now());
   const date = almanacDate(new Date(ts));
   // No fortune to show (loading, or the day's row isn't generated) → the calm first-run state.
@@ -71,6 +73,9 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
           {partnerName ? <RedThreadRow name={partnerName} onPress={() => router.push('/share')} index={0} /> : null}
           <RowLink icon="history" label="Your readings" onPress={() => router.push('/history')} index={1} />
           <RowLink icon="chat" label="Ask about your reading" premiumLocked={!premium} onPress={() => router.push('/chat')} index={2} />
+          {isAnonymous ? (
+            <RowLink icon="sparkle" label="Claim your account" onPress={() => router.push('/account?reason=fortune' as Href)} index={3} />
+          ) : null}
         </>
       )}
     </Screen>

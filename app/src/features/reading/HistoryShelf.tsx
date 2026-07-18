@@ -6,6 +6,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import { AppHeader, Button, Card, Icon, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
+import { useAccountIdentity } from '@/lib/account';
 import { type ReadingSummary, relativeDate } from './history';
 
 export interface HistoryShelfProps {
@@ -51,7 +52,10 @@ export function HistoryShelf({ readings, showUnchanged = false, now }: HistorySh
       {readings.length === 0 ? (
         <EmptyState />
       ) : (
-        readings.map((r, i) => <ReadingRow key={r.id} reading={r} now={nowTs} index={i} />)
+        <>
+          <ClaimAccountBanner />
+          {readings.map((r, i) => <ReadingRow key={r.id} reading={r} now={nowTs} index={i} />)}
+        </>
       )}
     </Screen>
   );
@@ -116,6 +120,35 @@ function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: num
           </View>
           <Text variant="bodyMedium" numberOfLines={2} style={{ marginTop: theme.spacing.xs }}>
             {reading.headline}
+          </Text>
+        </View>
+        <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
+      </View>
+    </Card>
+  );
+}
+
+/** Anon-only "keep your readings forever" nudge (audit F0.8, UIUX §2.9) — the save/history account
+ *  trigger. Skippable: it's a gentle row, never a wall. Hidden once the account is linked. */
+function ClaimAccountBanner() {
+  const theme = useTheme();
+  const router = useRouter();
+  const { isAnonymous } = useAccountIdentity();
+  if (!isAnonymous) return null;
+  return (
+    <Card
+      elevation="sm"
+      onPress={() => router.push('/account?reason=save' as Href)}
+      accessibilityLabel="Keep your readings forever — create a free account"
+      pressedTint="accent"
+      style={{ marginBottom: theme.spacing.md }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+        <Icon name="sparkle" size={22} color={theme.colors.accent} decorative />
+        <View style={{ flex: 1 }}>
+          <Text variant="bodyMedium">Keep your readings forever</Text>
+          <Text variant="caption" tone="secondary" style={{ marginTop: 2 }}>
+            Create a free account so they follow you to any phone.
           </Text>
         </View>
         <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
