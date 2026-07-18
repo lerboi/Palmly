@@ -17,6 +17,8 @@ export interface ScanStatusState {
   status: ScanStatus | null;
   failureReason: string | null;
   loading: boolean;
+  /** Last fetch error (surfaced, not swallowed) — the re-poll keeps retrying, so this recovers. */
+  error: string | null;
 }
 
 /**
@@ -30,7 +32,7 @@ export interface ScanStatusState {
  * a physical device — Human-tasks H1.
  */
 export function useScanStatus(scanId: string | null): ScanStatusState {
-  const [state, setState] = useState<ScanStatusState>({ status: null, failureReason: null, loading: true });
+  const [state, setState] = useState<ScanStatusState>({ status: null, failureReason: null, loading: true, error: null });
   const [trackedId, setTrackedId] = useState<string | null>(scanId);
   const statusRef = useRef<ScanStatus | null>(null);
 
@@ -38,7 +40,7 @@ export function useScanStatus(scanId: string | null): ScanStatusState {
   // adjust-state-on-prop-change pattern), so the loader shows immediately for the new scan.
   if (scanId !== trackedId) {
     setTrackedId(scanId);
-    setState({ status: null, failureReason: null, loading: true });
+    setState({ status: null, failureReason: null, loading: true, error: null });
   }
 
   useEffect(() => {
@@ -52,11 +54,18 @@ export function useScanStatus(scanId: string | null): ScanStatusState {
       // after we've already fetched `complete`).
       if (isTerminalStatus(statusRef.current) && !isTerminalStatus(status)) return;
       statusRef.current = status;
-      setState({ status, failureReason, loading: false });
+      setState({ status, failureReason, loading: false, error: null });
     };
 
     const fetchCurrent = async () => {
-      const { data } = await supabase.from('scans').select('status, failure_reason').eq('id', scanId).single();
+      const { data, error } = await supabase.from('scans').select('status, failure_reason').eq('id', scanId).single();
+      if (!active) return;
+      if (error) {
+        // Surface the error but keep any status already shown — the re-poll below retries, so a
+        // dropped socket / transient failure recovers rather than hanging silently behind the loader.
+        setState((s) => ({ ...s, loading: false, error: error.message }));
+        return;
+      }
       if (data) applyStatus(data.status as ScanStatus, (data.failure_reason as string | null) ?? null);
     };
 
@@ -77,8 +86,16 @@ export function useScanStatus(scanId: string | null): ScanStatusState {
     // fetch immediately too, so UI shows state without waiting for the socket to connect.
     void fetchCurrent();
 
+    // Re-poll while non-terminal — a broadcast that never arrives (dropped socket, missing
+    // realtime partition) can then never strand the loader; terminal states stop polling.
+    const poll = setInterval(() => {
+      if (isTerminalStatus(statusRef.current)) return;
+      void fetchCurrent();
+    }, 10_000);
+
     return () => {
       active = false;
+      clearInterval(poll);
       void supabase.removeChannel(channel);
     };
   }, [scanId]);

@@ -37,6 +37,9 @@ export interface AnalyzingViewProps {
   status: ScanStatus | null;
   elapsedMs: number;
   failureReason?: string | null;
+  /** Non-null when the status fetch is currently failing — the hook keeps re-polling; the loader
+   *  shows a quiet "retrying" caption so a bad connection is never a silent hang. */
+  connectionError?: string | null;
   onNotifyMe?: () => void;
   onRetry?: () => void;
   onUploadInstead?: () => void;
@@ -58,6 +61,7 @@ export function AnalyzingView({
   status,
   elapsedMs,
   failureReason,
+  connectionError,
   onNotifyMe,
   onRetry,
   onUploadInstead,
@@ -161,6 +165,13 @@ export function AnalyzingView({
             </Text>
             <Button label={NOTIFY_CTA} variant="tonal" onPress={onNotifyMe} />
           </View>
+        ) : null}
+
+        {/* A failing status fetch never hangs silently — the hook keeps re-polling; say so quietly. */}
+        {connectionError ? (
+          <Text variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>
+            Trouble reaching the server — still trying…
+          </Text>
         ) : null}
       </View>
     </Screen>

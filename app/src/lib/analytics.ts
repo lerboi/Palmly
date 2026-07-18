@@ -34,6 +34,9 @@ export type AnalyticsEventMap = {
 
   // ── Reading + reveal ("is the wow landing?") ──
   reading_ready: { scan_id: string; kind: 'palm' | 'face'; latency_ms?: number };
+  // Analyzing loader overran 75s and the user opted to be freed + notified (F1.T10 upgrades this to
+  // a real push-permission ask).
+  analyzing_notify_me: { scan_id?: string };
   reveal_viewed: { reading_id: string; kind: 'palm' | 'face' };
   reveal_section_viewed: { reading_id: string; section: string; index: number };
   reveal_scroll_depth: { reading_id: string; pct: number };

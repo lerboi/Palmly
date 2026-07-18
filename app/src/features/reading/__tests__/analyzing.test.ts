@@ -1,4 +1,5 @@
 import {
+  FAILURE_DEFAULT,
   SOCIAL_PROOF,
   STAGES,
   failureHint,
@@ -35,9 +36,20 @@ describe('analyzing loader logic (P6.T1)', () => {
     expect(Object.keys(visibleGeometry(PREVIEW_GEOMETRY, 2)).sort()).toEqual(['head_line', 'heart_line', 'life_line']);
   });
 
-  it('gives a specific hint for a non-hand failure', () => {
+  it('maps the real backend failure_reason vocabulary to specific, warm hints', () => {
+    // Values the pipeline actually emits (supabase/functions/_shared/extraction.ts).
     expect(failureHint('not_a_hand')).toContain('palm');
+    expect(failureHint('not_a_face')).toContain('face');
+    // gemini_finish_<reason> is a prefix family (safety / max_tokens / recitation / …).
+    const geminiHint = failureHint('gemini_finish_safety');
+    expect(geminiHint).toBe(failureHint('gemini_finish_max_tokens'));
+    expect(geminiHint).toContain('interrupted');
+    expect(failureHint('invalid_json')).toBe(failureHint('schema_invalid'));
+    expect(failureHint('invalid_json')).toContain('unclear');
+    // A reason the pipeline can't emit, and no reason at all, both fall back to the warm generic.
     expect(failureHint('timeout')).not.toContain('palm');
+    expect(failureHint(null)).toBe(FAILURE_DEFAULT);
+    expect(failureHint(undefined)).toBe(FAILURE_DEFAULT);
   });
 
   it('rotates the social-proof line over time and wraps', () => {

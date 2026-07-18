@@ -39,16 +39,26 @@ export const NOTIFY_COPY = 'We’ll notify you the moment it’s ready.';
 export const NOTIFY_CTA = 'Notify me when it’s ready';
 export const FAILURE_TITLE = 'We couldn’t see your lines clearly';
 export const FAILURE_DEFAULT = 'Let’s try again with a bit more light.';
+/**
+ * Warm, specific hint keyed on the pipeline's **real** failure_reason vocabulary
+ * (`supabase/functions/_shared/extraction.ts`): `not_a_hand`, `not_a_face`,
+ * `gemini_finish_<reason>` (prefix), `invalid_json`, `schema_invalid`. Anything the pipeline can't
+ * emit falls back to the warm lighting line — we never invent reasons like "blur"/"dark".
+ */
 export function failureHint(reason: string | null | undefined): string {
-  if (reason?.includes('not_a_hand')) return 'That didn’t look like a palm — frame your hand in the guide and try again.';
+  if (!reason) return FAILURE_DEFAULT;
+  if (reason.includes('not_a_hand')) return 'That didn’t look like a palm — frame your hand in the guide and try again.';
+  if (reason.includes('not_a_face')) return 'That didn’t look like a face — center your face in the guide and try again.';
+  if (reason.startsWith('gemini_finish_')) return 'Something interrupted the reading — give it another try.';
+  if (reason === 'invalid_json' || reason === 'schema_invalid') return 'The reading came back unclear — one more try should do it.';
   return FAILURE_DEFAULT;
 }
 
-/** One rotating social-proof line beneath the stage message. Authority framed without ethnicity
- *  (redesign §2/§6): "rooted in centuries" / "cross-checking the classics", not "3000 years of
- *  Chinese palmistry". */
+/** One rotating social-proof line beneath the stage message. Honest pre-launch phrasing only — no
+ *  fabricated counts (the old "1.2M palms read" is gone); authority framed without ethnicity
+ *  (redesign §2/§6): "rooted in centuries", not "3000 years of Chinese palmistry". */
 export const SOCIAL_PROOF = [
-  '1.2M palms read',
+  'Read from your lines, not your birthday',
   'Rooted in centuries of palmistry',
   'Your photo is deleted after your reading',
 ];
