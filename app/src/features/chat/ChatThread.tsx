@@ -25,6 +25,8 @@ export interface ChatThreadProps {
   chips: string[];
   /** Assistant is composing a reply — shows the typing indicator (device SSE stream). */
   typing?: boolean;
+  /** Send a composed question (F1.10). Absent → the input is a static preview (/dev routes). */
+  onSend?: (text: string) => void;
   onBack?: () => void;
 }
 
@@ -35,13 +37,22 @@ export interface ChatThreadProps {
  * crossfades to the answer, and the chips / send / input have micro-interactions. Non-premium sees the
  * unlock gate. English-first, no CJK. The SSE stream is device-gated; here it's the thread + typing.
  */
-export function ChatThread({ premium, messages, chips, typing = false, onBack }: ChatThreadProps) {
+export function ChatThread({ premium, messages, chips, typing = false, onSend, onBack }: ChatThreadProps) {
   const theme = useTheme();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
   const back = onBack ?? (() => router.back());
   const empty = messages.length === 0;
+  // Composed question (F1.10). Declared before the early return (rules-of-hooks). A chip taps into it.
+  const [input, setInput] = useState('');
+  const submit = () => {
+    const t = input.trim();
+    if (t && onSend) {
+      onSend(t);
+      setInput('');
+    }
+  };
 
   if (!premium) {
     return (
@@ -92,7 +103,7 @@ export function ChatThread({ premium, messages, chips, typing = false, onBack }:
               contentContainerStyle={{ alignItems: 'center', paddingLeft: theme.spacing.lg, paddingRight: theme.spacing.xxl, gap: theme.spacing.sm, paddingBottom: theme.spacing.sm }}
             >
               {chips.map((c, i) => (
-                <Chip key={c} label={c} index={i} shouldAnimate={shouldAnimate} />
+                <Chip key={c} label={c} index={i} shouldAnimate={shouldAnimate} onInject={() => setInput(c)} />
               ))}
             </ScrollView>
             <View pointerEvents="none" style={{ position: 'absolute', right: 0, top: 0, height: 44, width: theme.spacing.xxl }}>
@@ -109,7 +120,7 @@ export function ChatThread({ premium, messages, chips, typing = false, onBack }:
           </View>
 
           {/* input bar */}
-          <InputBar />
+          <InputBar value={input} onChangeText={setInput} onSubmit={submit} />
         </View>
       </KeyboardAvoidingView>
     </Screen>
@@ -322,8 +333,8 @@ function TypingDot({ index }: { index: number }) {
   );
 }
 
-/** A suggestion chip — press-spring + a staggered entrance + a spoken label. */
-function Chip({ label, index, shouldAnimate }: { label: string; index: number; shouldAnimate: boolean }) {
+/** A suggestion chip — taps its text into the input (F1.10); press-spring + staggered entrance. */
+function Chip({ label, index, shouldAnimate, onInject }: { label: string; index: number; shouldAnimate: boolean; onInject?: () => void }) {
   const theme = useTheme();
   const { style, onPressIn, onPressOut } = usePressScale(0.95);
   const entering = shouldAnimate
@@ -334,6 +345,7 @@ function Chip({ label, index, shouldAnimate }: { label: string; index: number; s
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
+        onPress={onInject}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         style={{
@@ -351,11 +363,12 @@ function Chip({ label, index, shouldAnimate }: { label: string; index: number; s
   );
 }
 
-/** The input bar — a focus transition on the field + a press-spring send button. */
-function InputBar() {
+/** The input bar — controlled field (F1.10) + a press-spring send button; Enter submits. */
+function InputBar({ value, onChangeText, onSubmit }: { value: string; onChangeText: (t: string) => void; onSubmit: () => void }) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const send = usePressScale(0.9);
+  const canSend = value.trim().length > 0;
   return (
     <View
       style={{
@@ -370,6 +383,10 @@ function InputBar() {
       <TextInput
         placeholder="Ask about your lines…"
         placeholderTextColor={theme.colors.textTertiary}
+        value={value}
+        onChangeText={onChangeText}
+        onSubmitEditing={onSubmit}
+        returnKeyType="send"
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={{
@@ -389,13 +406,15 @@ function InputBar() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Send"
+          disabled={!canSend}
+          onPress={onSubmit}
           onPressIn={send.onPressIn}
           onPressOut={send.onPressOut}
           style={{
             width: controlHeight.md,
             height: controlHeight.md,
             borderRadius: controlHeight.md / 2,
-            backgroundColor: theme.colors.accent,
+            backgroundColor: canSend ? theme.colors.accent : theme.colors.border,
             alignItems: 'center',
             justifyContent: 'center',
           }}

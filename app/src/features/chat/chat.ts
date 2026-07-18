@@ -27,6 +27,14 @@ export function citationLabel(featureKeys: string[]): string {
   return `Cites your ${list}`;
 }
 
+/** Starter follow-ups shown before the first answer (F1.10) — generic, reading-agnostic openers; the
+ *  server returns grounded chips after each reply. */
+export const STARTER_CHIPS = [
+  'What stands out most in my reading?',
+  'What should I watch for this year?',
+  'How do my lines shape how I love?',
+];
+
 // ── Preview thread + chips for device-free web-screenshot verification (P9.T6). ──
 // Chips are follow-ups the user has NOT asked yet (distinct from the thread above).
 export const PREVIEW_CHIPS = [
