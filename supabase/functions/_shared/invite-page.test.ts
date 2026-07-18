@@ -20,6 +20,9 @@ Deno.test('buildInvitePage: per-invite OG tags for messenger previews', () => {
   const html = buildInvitePage(base);
   assertStringIncludes(html, '<meta property="og:title" content="Mei 🤝 You — palm compatibility">');
   assertStringIncludes(html, '<meta property="og:image" content="https://cdn.palmly.app/cards/x_feed.png">');
+  // Dimension hints (1080×1350 feed_4x5) so messengers reserve the right aspect box (audit F0.4).
+  assertStringIncludes(html, '<meta property="og:image:width" content="1080">');
+  assertStringIncludes(html, '<meta property="og:image:height" content="1350">');
   assertStringIncludes(html, '<meta property="og:url" content="https://palmly.app/i/TOK">');
   assertStringIncludes(html, 'twitter:card" content="summary_large_image"');
 });

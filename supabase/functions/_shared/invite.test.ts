@@ -1,5 +1,5 @@
 import { assert, assertEquals } from '@std/assert';
-import { deriveShortCode, generateInviteToken, hashToken, INVITE_NAME_MAX, inviteUrl, isAllowedCardUrl, sanitizeInviteContext, SHORT_CODE_HEX } from './invite.ts';
+import { deriveShortCode, generateInviteToken, hashToken, INVITE_NAME_MAX, inviteReferrer, inviteUrl, isAllowedCardUrl, sanitizeInviteContext, SHORT_CODE_HEX } from './invite.ts';
 
 Deno.test('hashToken: deterministic SHA-256 hex (64 chars)', async () => {
   const a = await hashToken('abc');
@@ -25,8 +25,31 @@ Deno.test('generateInviteToken: url-safe token + matching hash; tokens are uniqu
   }
 });
 
-Deno.test('inviteUrl: builds the palmly.app/i/{token} link (raw token only in the link)', () => {
-  assertEquals(inviteUrl('TOKEN123'), 'https://palmly.app/i/TOKEN123');
+Deno.test('inviteUrl: env-driven base — override wins, else the deployed functions origin, else palmly.app', () => {
+  const prevBase = Deno.env.get('INVITE_BASE_URL');
+  const prevSupa = Deno.env.get('SUPABASE_URL');
+  try {
+    Deno.env.delete('INVITE_BASE_URL');
+    Deno.env.delete('SUPABASE_URL');
+    assertEquals(inviteUrl('TOKEN123'), 'https://palmly.app/i/TOKEN123', 'no env → last-resort domain default');
+
+    Deno.env.set('SUPABASE_URL', 'https://ref.supabase.co');
+    assertEquals(inviteUrl('TOKEN123'), 'https://ref.supabase.co/functions/v1/invite-page/TOKEN123', 'staging: the deployed invite-page origin (works before palmly.app exists)');
+
+    Deno.env.set('INVITE_BASE_URL', 'https://palmly.app/i');
+    assertEquals(inviteUrl('TOKEN123'), 'https://palmly.app/i/TOKEN123', 'explicit override wins (the domain, once it verifies)');
+  } finally {
+    if (prevBase === undefined) Deno.env.delete('INVITE_BASE_URL');
+    else Deno.env.set('INVITE_BASE_URL', prevBase);
+    if (prevSupa === undefined) Deno.env.delete('SUPABASE_URL');
+    else Deno.env.set('SUPABASE_URL', prevSupa);
+  }
+});
+
+Deno.test('inviteReferrer: a query-string carrying the raw token; the recipient parses it back out', () => {
+  const token = 'abc-DEF_1234567890';
+  assertEquals(inviteReferrer(token), `token=${token}`);
+  assertEquals(new URLSearchParams(inviteReferrer(token)).get('token'), token, 'round-trips via URLSearchParams (same shape as the scheme deep link ?token=)');
 });
 
 // ── M6: invite context is attacker-controlled and renders on the TRUSTED domain ──────────────────

@@ -27,8 +27,31 @@ export async function generateInviteToken(): Promise<{ token: string; tokenHash:
   return { token, tokenHash: await hashToken(token) };
 }
 
-export const INVITE_BASE_URL = 'https://palmly.app/i';
-export const inviteUrl = (token: string): string => `${INVITE_BASE_URL}/${token}`;
+/**
+ * The base an invite link is built on (audit F0.4) — env-driven so minted links resolve TODAY:
+ *  - `INVITE_BASE_URL` override → use it (palmly.app/i once the domain verifies, D1),
+ *  - else the deployed functions origin's `invite-page` (staging works before palmly.app exists),
+ *  - else `palmly.app/i` (pure unit tests with no env).
+ * `invite-page` reads the token from either `/…/{token}` (last path segment) or `?token=`, so the
+ * `${base}/${token}` form works for both the domain and the functions origin.
+ */
+export function inviteBaseUrl(): string {
+  const override = Deno.env.get('INVITE_BASE_URL');
+  if (override) return override.replace(/\/+$/, '');
+  const supa = Deno.env.get('SUPABASE_URL');
+  if (supa) return `${supa.replace(/\/+$/, '')}/functions/v1/invite-page`;
+  return 'https://palmly.app/i';
+}
+export const inviteUrl = (token: string): string => `${inviteBaseUrl()}/${token}`;
+
+/**
+ * The Android Play-Store install-referrer value carrying the invite token (audit F0.4). A query-
+ * string (`token=<token>`) so the recipient client parses it uniformly with the scheme deep link's
+ * `?token=` (F0.8) and passes the raw token to `invite-claim`. The token is base64url (no `=`), so a
+ * single `URLSearchParams` parse round-trips it. The CALLER url-encodes this whole value for the
+ * `&referrer=` param; Play delivers it decoded.
+ */
+export const inviteReferrer = (token: string): string => `token=${token}`;
 
 /**
  * Short, human-typable fallback code shown on the teaser (§8.2). Derived from the token_hash

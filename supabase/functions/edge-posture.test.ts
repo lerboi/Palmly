@@ -77,7 +77,7 @@ Deno.test('posture: every function directory declares a verify_jwt in config.tom
   // A function with no config block silently takes the platform default, which is exactly the kind
   // of "nobody decided this" that the matrix exists to prevent. readPostures() asserts per-function;
   // this pins the count so a whole function cannot vanish from the matrix unnoticed.
-  assertEquals(p.length, 19, `expected 19 functions, found ${p.length}: ${p.map((x) => x.fn).join(', ')}`);
+  assertEquals(p.length, 20, `expected 20 functions, found ${p.length}: ${p.map((x) => x.fn).join(', ')}`);
   assert(!p.some((x) => x.fn === 'hello'), 'the hello skeleton is gone (B20) and must not come back');
 });
 
@@ -85,7 +85,7 @@ Deno.test('posture: a user-mode handler MUST have verify_jwt=true — else a for
   const userFns = (await readPostures()).filter((x) => x.modes.includes('user'));
   assertEquals(
     userFns.map((x) => x.fn),
-    ['account-delete', 'account-merge', 'chat-send', 'compat-request', 'image-delete', 'invite-claim', 'invite-create', 'scan-create', 'scan-ingest'],
+    ['account-delete', 'account-merge', 'chat-send', 'compat-request', 'image-delete', 'invite-claim', 'invite-create', 'scan-create', 'scan-ingest', 'share-card-publish'],
     'the user-mode set changed — if that is intentional, this list is the place to say so',
   );
   for (const f of userFns) {

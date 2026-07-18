@@ -4,13 +4,13 @@
 // renders the per-invite OG preview. Expired/revoked/unknown tokens get a graceful shell.
 import { createContext } from '../_shared/context.ts';
 import { withErrorEnvelope } from '../_shared/http.ts';
-import { deriveShortCode, hashToken, inviteUrl } from '../_shared/invite.ts';
+import { deriveShortCode, hashToken, inviteReferrer, inviteUrl } from '../_shared/invite.ts';
 import { buildInviteGonePage, buildInvitePage, isLinkPreviewBot, type SharePlatform } from '../_shared/invite-page.ts';
 
 const APP_STORE_URL = 'https://apps.apple.com/app/palmly/id0000000000'; // TODO(H7): real Apple app id
 const WEB_URL = 'https://palmly.app';
 const OG_DEFAULT = 'https://palmly.app/og-default.png';
-const playUrl = (token: string) => `https://play.google.com/store/apps/details?id=com.palmly.app&referrer=${encodeURIComponent(`token=${token}`)}`;
+const playUrl = (token: string) => `https://play.google.com/store/apps/details?id=com.palmly.app&referrer=${encodeURIComponent(inviteReferrer(token))}`;
 
 function detectUA(ua: string): { platform: SharePlatform; isWeChat: boolean } {
   const u = ua.toLowerCase();

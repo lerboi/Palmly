@@ -120,6 +120,8 @@ export function buildInvitePage(o: InvitePageOpts): string {
 <meta property="og:title" content="${esc(og.title)}">
 <meta property="og:description" content="${esc(og.description)}">
 <meta property="og:image" content="${esc(o.cardImageUrl)}">
+<meta property="og:image:width" content="1080">
+<meta property="og:image:height" content="1350">
 <meta property="og:url" content="${esc(o.inviteUrl)}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(og.title)}">

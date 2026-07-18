@@ -462,6 +462,15 @@ import_map = "./functions/deno.json"
 [functions.card-render]
 verify_jwt = false
 import_map = "./functions/deno.json"
+# The resvg wasm + Noto fonts are read at runtime via `new URL(import.meta.url)`, NOT imported, so
+# the bundler only includes them when declared here. static_files require a LOCAL (Docker) bundle —
+# a `--use-api` (no-Docker) deploy silently drops them and the render path 500s on a missing wasm.
+static_files = [
+  "./functions/card-render/index_bg.wasm",
+  "./functions/card-render/fonts/NotoSans-Regular.ttf",
+  "./functions/card-render/fonts/NotoSerif-SemiBold.ttf",
+  "./functions/card-render/fonts/NotoSerifSC-Regular.otf",
+]
 
 [functions.cleanup]
 verify_jwt = false
@@ -521,5 +530,12 @@ verify_jwt = true
 import_map = "./functions/deno.json"
 
 [functions.invite-create]
+verify_jwt = true
+import_map = "./functions/deno.json"
+
+# share-card-publish: user mode — publish the CALLER'S own pre-rendered card to the CDN. MUST be
+# verify_jwt=true: the ownership check trusts ctx.userId, which is only safe when the gateway has
+# verified the JWT signature (resolveAuth does not re-verify it).
+[functions.share-card-publish]
 verify_jwt = true
 import_map = "./functions/deno.json"
