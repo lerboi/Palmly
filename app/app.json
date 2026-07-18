@@ -8,7 +8,8 @@
     "scheme": "palmly",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.palmly.app"
+      "bundleIdentifier": "com.palmly.app",
+      "associatedDomains": ["applinks:palmly.app"]
     },
     "android": {
       "package": "com.palmly.app",
@@ -17,7 +18,15 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [{ "scheme": "https", "host": "palmly.app", "pathPrefix": "/i" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "output": "static",

@@ -1,20 +1,21 @@
-import { Platform, View } from 'react-native';
-import { router, type Href } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Platform, TextInput, View } from 'react-native';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { Button, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
 import { RedThread } from '@/features/reading/ShareView';
 import { useReducedMotion, useTheme } from '@/theme';
+import { ClaimError, claimInvite, loadClaimContext, normalizeCode, saveClaimContext, type ClaimContext } from '@/lib/claim';
+import { track } from '@/lib/analytics';
 
 /**
- * Recipient claim landing (UIUX §2.10, redesign R16d / v2 V10) — the personalized entry an invited
- * user lands on: the two avatars **fade in** and the red thread **draws** between them, then a
- * privacy trust line and a single explainer → capture. Below it, the "enter code" recovery path.
- * The two avatars are symmetric (inviter initial vs the Palmly brand mark for "you"), both in the
- * accent — the claret is reserved for the thread (§3.2). English, no CJK. Inviter name resolves
- * from the deferred deep-link context on device.
+ * Recipient claim landing (UIUX §2.10, audit F0.5) — the personalized entry an invited user lands
+ * on: two avatars + the red thread, the inviter's name from the deep-link cosmetic param (or the
+ * persisted context, else "A friend"), and the explicit accept that CLAIMS the invite. `invite-claim`
+ * is single-use with no resolve-only mode, so the claim fires ONLY on the accept tap — never on
+ * open. A reload re-offers this screen from the persisted context without re-claiming (a 409 on a
+ * re-claim after success falls through to `/primer`). The "enter code" recovery is a one-field sheet.
  */
-const INVITER = 'Mei';
-
 export default function Claim() {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
@@ -22,14 +23,70 @@ export default function Claim() {
   const zoom = (i: number) =>
     shouldAnimate ? ZoomIn.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base) : undefined;
 
+  const params = useLocalSearchParams<{ token?: string; inviter?: string }>();
+  const token = typeof params.token === 'string' ? params.token : undefined;
+  const [persisted, setPersisted] = useState<ClaimContext | null>(null);
+  const inviterName = params.inviter || persisted?.inviterName || 'A friend';
+
+  const [codeMode, setCodeMode] = useState(false);
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load any persisted context, and persist the un-claimed token so a reload re-offers this landing.
+  useEffect(() => {
+    let active = true;
+    loadClaimContext().then((ctx) => {
+      if (active) setPersisted(ctx);
+      if (token && !ctx?.claimed) void saveClaimContext({ token, inviterName: params.inviter || ctx?.inviterName || 'A friend', claimed: false });
+    });
+    return () => {
+      active = false;
+    };
+  }, [token, params.inviter]);
+
+  const goCapture = () => router.replace('/primer' as Href);
+
+  const doClaim = async (input: { token: string } | { code: string }, source: string) => {
+    setError(null);
+    setBusy(true);
+    try {
+      const result = await claimInvite(input);
+      await saveClaimContext({
+        ...('token' in input ? { token: input.token } : {}),
+        inviterName: result.inviterName,
+        pairId: result.pairId,
+        claimed: true,
+      });
+      track('invite_accepted', { pair_id: result.pairId, source });
+      goCapture();
+    } catch (e) {
+      if (e instanceof ClaimError && e.status === 409) {
+        goCapture(); // already claimed (by us earlier) — proceed with the persisted context
+      } else if (e instanceof ClaimError && (e.status === 404 || e.status === 410)) {
+        setError('This invite has expired or was already used — but you can still read your own palm.');
+      } else {
+        setError('Something went wrong. Please try again, or read your own palm.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onAccept = () => {
+    if (persisted?.claimed) return goCapture(); // already claimed → straight to capture, no re-claim
+    if (token) return void doClaim({ token }, 'web');
+    return goCapture(); // landed with no token (e.g. direct /claim) — just capture
+  };
+
   return (
     <Screen>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
           <Animated.View entering={zoom(0)}>
-            <Avatar accessibilityLabel={`${INVITER}, who invited you`}>
+            <Avatar accessibilityLabel={`${inviterName}, who invited you`}>
               <Text variant="heading" color={theme.colors.accent}>
-                {INVITER[0]}
+                {inviterName[0]}
               </Text>
             </Avatar>
           </Animated.View>
@@ -42,7 +99,7 @@ export default function Claim() {
         </View>
 
         <Text variant="display" style={{ textAlign: 'center', marginTop: theme.spacing.xl }}>
-          {INVITER} is waiting
+          {inviterName} is waiting
         </Text>
         <Text
           variant="bodyLarge"
@@ -55,8 +112,52 @@ export default function Claim() {
       </View>
 
       <View style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
-        <Button label="Scan my palm" variant="primary" fullWidth onPress={() => router.push('/primer' as Href)} />
-        <Button label="Have an invite? Enter code" variant="ghost" onPress={() => router.push('/primer' as Href)} />
+        {error ? (
+          <Text variant="caption" color={theme.colors.danger} style={{ textAlign: 'center' }}>
+            {error}
+          </Text>
+        ) : null}
+
+        {codeMode ? (
+          <>
+            <TextInput
+              value={code}
+              onChangeText={(t) => setCode(normalizeCode(t))}
+              placeholder="ABCDE-12345"
+              placeholderTextColor={theme.colors.textTertiary}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={11}
+              accessibilityLabel="Invite code"
+              style={{
+                fontFamily: theme.fonts.body,
+                fontSize: theme.typography.bodyLarge.fontSize,
+                textAlign: 'center',
+                letterSpacing: 2,
+                color: theme.colors.textPrimary,
+                backgroundColor: theme.colors.surfaceSunken,
+                borderRadius: theme.radii.lg,
+                borderWidth: theme.strokes.hairline,
+                borderColor: theme.colors.border,
+                paddingVertical: theme.spacing.md,
+              }}
+            />
+            <Button
+              label="Continue"
+              variant="primary"
+              fullWidth
+              loading={busy}
+              disabled={code.replace('-', '').length < 10}
+              onPress={() => void doClaim({ code }, 'manual_code')}
+            />
+            <Button label="Back" variant="ghost" onPress={() => { setCodeMode(false); setError(null); }} />
+          </>
+        ) : (
+          <>
+            <Button label="Scan my palm" variant="primary" fullWidth loading={busy} onPress={onAccept} />
+            <Button label="Have an invite? Enter code" variant="ghost" onPress={() => setCodeMode(true)} />
+          </>
+        )}
       </View>
     </Screen>
   );

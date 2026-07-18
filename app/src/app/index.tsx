@@ -1,10 +1,12 @@
+import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import { router, type Href } from 'expo-router';
+import { Redirect, router, useLocalSearchParams, type Href } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import { Button, Logomark, Screen, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { loadClaimContext } from '@/lib/claim';
 
 /**
  * Root landing (redesign R11, v2 V9) — the brand moment. A faint ghost-hand echoes the welcome
@@ -21,6 +23,27 @@ export default function Index() {
     shouldAnimate
       ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base)
       : undefined;
+
+  // First-open recipient branch (audit F0.5 (d)) — takes precedence over the launcher: a token in the
+  // initial URL (`palmly://…?token=`) redirects immediately; a persisted claim context (a reload
+  // after landing) re-offers `/claim` once AsyncStorage resolves. The returning-user `/fortune`
+  // redirect lands in F0.T10 and sits below this branch.
+  const params = useLocalSearchParams<{ token?: string }>();
+  const [hasPersistedClaim, setHasPersistedClaim] = useState<boolean | null>(null);
+  useEffect(() => {
+    let active = true;
+    loadClaimContext().then((ctx) => active && setHasPersistedClaim(!!ctx));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (typeof params.token === 'string' && params.token) {
+    return <Redirect href={`/claim?token=${params.token}` as Href} />;
+  }
+  if (hasPersistedClaim) {
+    return <Redirect href={'/claim' as Href} />;
+  }
 
   return (
     <Screen>

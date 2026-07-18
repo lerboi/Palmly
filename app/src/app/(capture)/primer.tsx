@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -7,6 +7,7 @@ import { AppHeader, Button, Card, Icon, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { uploadPickedScan, type Hand } from '@/lib/scan';
+import { loadClaimContext } from '@/lib/claim';
 import { captureError, track } from '@/lib/analytics';
 
 /**
@@ -41,6 +42,17 @@ export default function Primer() {
 
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Recipient context (audit F0.5): when the user arrived from an invite claim, name the match they
+  // are about to reveal so the capture reads as "scan to match with «Name»", not a cold camera ask.
+  const [inviterName, setInviterName] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    loadClaimContext().then((ctx) => active && setInviterName(ctx?.inviterName ?? null));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const onUploadInstead = async () => {
     setError(null);
@@ -80,6 +92,14 @@ export default function Primer() {
             <Icon name="camera" size={44} color={theme.colors.accent} decorative />
           </Animated.View>
         </View>
+
+        {inviterName ? (
+          <Animated.View entering={enter(0)}>
+            <Text variant="caption" color={theme.colors.accent} style={{ textAlign: 'center', marginBottom: theme.spacing.xs }}>
+              Scan to reveal your match with {inviterName}
+            </Text>
+          </Animated.View>
+        ) : null}
 
         <Animated.View entering={enter(0)}>
           <Text variant="title" style={{ textAlign: 'center' }}>
