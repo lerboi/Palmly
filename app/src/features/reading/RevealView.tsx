@@ -18,7 +18,7 @@ import { AppHeader, Button, Card, Icon, Logomark, PrivacyBadge, Screen, Text } f
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
-import { type Reading, type ReadingSection, freeSections, lockedSections, traditionFootnote } from './reveal';
+import { type Reading, type ReadingSection, SECTION_LINE, freeSections, lockedSections, traditionFootnote } from './reveal';
 
 export type RevealState = 'ready' | 'pending' | 'error';
 
@@ -30,20 +30,24 @@ export interface RevealViewProps {
   state?: RevealState;
   /** The reading's id — threaded into the share sheet so the invite carries the real reading (F0.4). */
   readingId?: string;
+  /** When the source photo was deleted/uploaded — powers the timestamped privacy badge (F1.1). */
+  photoDeletedAt?: string | null;
   onBack?: () => void;
   onRetry?: () => void;
 }
 
-/** Section key → feature line-icon (redesign §2 — distinct per section, no repeated `sparkle`). */
-const SECTION_ICON: Record<string, IconName> = {
-  hand_shape: 'palm',
-  heart: 'heart',
-  head: 'mind',
-  life: 'life',
-  fate: 'path',
-  mounts: 'streak',
-  markings: 'sparkle',
-};
+/** "Photo deleted · 2:41 PM" — a deterministic time format (pure; `new Date(<string>)` is not the
+ *  purity-banned argless `new Date()`/`Date.now()`). Falls back to the bare label when absent. */
+function deletedLabel(ts?: string | null): string {
+  if (!ts) return 'Photo deleted';
+  const t = new Date(ts);
+  if (Number.isNaN(t.getTime())) return 'Photo deleted';
+  let h = t.getHours();
+  const m = t.getMinutes().toString().padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `Photo deleted · ${h}:${m} ${ampm}`;
+}
 
 /** Rotating reassurance for the living "drawing" pending state. */
 const PENDING_LINES = [
@@ -59,7 +63,7 @@ const PENDING_LINES = [
  * hook, a branded **seal** share affordance, and a single trust footer. English-first, no decorative
  * CJK. A living pending state + an honest error state.
  */
-export function RevealView({ reading, geometry, state = 'ready', readingId, onBack, onRetry }: RevealViewProps) {
+export function RevealView({ reading, geometry, state = 'ready', readingId, photoDeletedAt, onBack, onRetry }: RevealViewProps) {
   const theme = useTheme();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -127,7 +131,7 @@ export function RevealView({ reading, geometry, state = 'ready', readingId, onBa
         {free.map((section, i) => (
           <View key={section.key}>
             <Animated.View entering={enter(n++)}>
-              <SectionCard section={section} readingId={readingId} index={i} />
+              <SectionCard section={section} geometry={geometry} readingId={readingId} index={i} />
             </Animated.View>
             {i === 1 ? (
               <Animated.View entering={enter(n++)}>
@@ -145,13 +149,14 @@ export function RevealView({ reading, geometry, state = 'ready', readingId, onBa
             </Text>
             {locked.map((section) => (
               <Animated.View key={section.key} entering={enter(n++)}>
-                <LockedCard section={section} onUnlock={() => router.push('/paywall?trigger=locked_section' as Href)} />
+                <LockedCard section={section} onUnlock={() => router.push(`/paywall?trigger=locked_section&section=${section.key}` as Href)} />
               </Animated.View>
             ))}
           </View>
         ) : null}
 
-        <TrustFooter onMethodology={() => router.push('/methodology')} />
+        <SecondHandOfferCard onPress={() => router.push('/primer?hand=left' as Href)} />
+        <TrustFooter onMethodology={() => router.push('/methodology')} photoDeletedAt={photoDeletedAt} />
         <FaceOfferCard onPress={() => router.push('/face')} />
 
         {reading.disclaimer ? (
@@ -275,16 +280,28 @@ function FeatureIcon({
   );
 }
 
-function SectionCard({ section, readingId, index }: { section: ReadingSection; readingId?: string; index: number }) {
+function SectionCard({ section, geometry, readingId, index }: { section: ReadingSection; geometry: LineGeometry; readingId?: string; index: number }) {
   const theme = useTheme();
   // Each free section rendered into the reveal is a funnel step (F0.T12) — only for a real reading.
   useEffect(() => {
     if (readingId) track('reveal_section_viewed', { reading_id: readingId, section: section.key, index });
   }, [readingId, section.key, index]);
+  // A per-section mini palm (audit F1.1) — YOUR lines, with THIS section's line lit in the accent.
+  // At ≤96px the silhouette is forced on + strokes doubled (F0.T14), so the mini reads as a hand.
+  const line = SECTION_LINE[section.key];
   return (
     <Card elevation="sm" style={{ marginBottom: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-        <FeatureIcon icon={SECTION_ICON[section.key] ?? 'sparkle'} />
+        <View style={{ width: 64, alignItems: 'center' }}>
+          <PalmDiagram
+            geometry={geometry}
+            size={64}
+            animate={false}
+            highlightedLine={line}
+            signatureLines={line ? [line] : []}
+            accessibilityLabel={line ? `Your ${section.title.toLowerCase()}` : ''}
+          />
+        </View>
         <View style={{ flex: 1 }}>
           <Text variant="heading">{section.title}</Text>
           {section.body ? (
@@ -344,20 +361,39 @@ function LockedCard({ section, onUnlock }: { section: ReadingSection; onUnlock: 
   );
 }
 
-function TrustFooter({ onMethodology }: { onMethodology: () => void }) {
+function TrustFooter({ onMethodology, photoDeletedAt }: { onMethodology: () => void; photoDeletedAt?: string | null }) {
   const theme = useTheme();
   return (
     <View style={{ alignItems: 'center', gap: theme.spacing.sm, marginVertical: theme.spacing.lg }}>
       <Text variant="small" tone="secondary" style={{ textAlign: 'center' }}>
         Same palm, same reading. Rescan anytime — your lines don&apos;t lie.
       </Text>
-      <PrivacyBadge />
+      <PrivacyBadge label={deletedLabel(photoDeletedAt)} />
       <Pressable onPress={onMethodology} accessibilityRole="link">
         <Text variant="small" color={theme.colors.accent}>
           How Palmly reads →
         </Text>
       </Pressable>
     </View>
+  );
+}
+
+/** After the first reading, offer the other hand — traditional readers weigh both (audit F1.1). */
+function SecondHandOfferCard({ onPress }: { onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Card elevation="sm" style={{ marginBottom: theme.spacing.md }}>
+      <View style={{ flexDirection: 'row', gap: theme.spacing.md, alignItems: 'center' }}>
+        <FeatureIcon icon="palm" tone="heritage" />
+        <Text variant="heading" style={{ flex: 1 }}>
+          Add your other hand
+        </Text>
+      </View>
+      <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.sm, marginBottom: theme.spacing.md }}>
+        Traditional readers weigh both hands — one innate, one cultivated. Add your left for a fuller reading.
+      </Text>
+      <Button label="Add my left hand" variant="secondary" onPress={onPress} />
+    </Card>
   );
 }
 

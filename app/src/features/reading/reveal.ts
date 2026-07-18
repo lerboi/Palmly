@@ -52,10 +52,26 @@ export const SECTION_GLYPH: Record<string, string> = {
 export const freeSections = (r: Reading): ReadingSection[] => r.sections.filter((s) => s.depth_level <= 1);
 export const lockedSections = (r: Reading): ReadingSection[] => r.sections.filter((s) => s.depth_level >= 2);
 
-/** A "what this means in the tradition" footnote from a section's grounding tags (authenticity signal). */
+/**
+ * A NAMED classical concept per section (audit F1.1 — the authenticity signal the no-CJK decision
+ * removed). Each cites a real palmistry/physiognomy term in English, no CJK, no health claims.
+ */
+const TRADITION_CONCEPT: Record<string, string> = {
+  heart: 'The tradition reads a long, curving heart line as the sign of the open heart.',
+  head: 'A straight, even head line is what old readers call the practical mind.',
+  life: 'A wide life line sweeps the Mount of Venus — the tradition’s vital arc.',
+  fate: 'An unbroken fate line is the Saturn line — the mark of a self-made path.',
+  hand_shape: 'Hand shape is the first reading — earth, air, fire, or water, the four classical hands.',
+  mounts: 'The raised pads are the mounts — Venus, Jupiter, Saturn, and the Moon.',
+  markings: 'Crosses, stars, and grilles are what the tradition calls the special markings.',
+};
+
+/** A "what this means in the tradition" footnote citing a named classical concept (authenticity
+ *  signal, audit F1.1). Falls back to the section's grounding tag when the key is unmapped. */
 export function traditionFootnote(section: ReadingSection): string {
-  const key = section.tags[0] ?? section.key;
-  const feature = key.split('.')[0].replace(/_/g, ' ');
+  const named = TRADITION_CONCEPT[section.key];
+  if (named) return named;
+  const feature = (section.tags[0] ?? section.key).split('.')[0].replace(/_/g, ' ');
   return `In the tradition, this reads from your ${feature}.`;
 }
 

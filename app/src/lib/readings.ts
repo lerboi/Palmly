@@ -20,6 +20,9 @@ export interface LoadedReading {
   kind: 'palm' | 'face';
   reading: Reading;
   geometry: LineGeometry;
+  /** When the source photo was deleted (scans.image_deleted_at), else uploaded (created_at) —
+   *  powers the reveal's timestamped "Photo deleted · 2:41 PM ✓" trust badge (audit F1.1). */
+  photoDeletedAt: string | null;
 }
 
 /** Pull `features.line_geometry` out of an embedded feature_sets row (object or one-element array). */
@@ -28,6 +31,15 @@ function geometryFrom(featureSets: unknown): LineGeometry {
   const features = (one as { features?: Record<string, unknown> } | undefined)?.features;
   const lg = features?.line_geometry;
   return lg && typeof lg === 'object' ? (lg as LineGeometry) : {};
+}
+
+/** Pull the source scan's deletion/created timestamp out of the nested `scans` embed. */
+function photoTimeFrom(featureSets: unknown): string | null {
+  const one = Array.isArray(featureSets) ? featureSets[0] : featureSets;
+  const scans = (one as { scans?: unknown } | undefined)?.scans;
+  const scan = Array.isArray(scans) ? scans[0] : scans;
+  const s = scan as { image_deleted_at?: string | null; created_at?: string | null } | undefined;
+  return s?.image_deleted_at ?? s?.created_at ?? null;
 }
 
 /**
@@ -39,12 +51,12 @@ export async function loadReading(params: { readingId?: string; scanId?: string 
   if (params.readingId) {
     query = supabase
       .from('readings')
-      .select('id, kind, narrative, feature_sets!inner(features)')
+      .select('id, kind, narrative, feature_sets!inner(features, scans(image_deleted_at, created_at))')
       .eq('id', params.readingId);
   } else if (params.scanId) {
     query = supabase
       .from('readings')
-      .select('id, kind, narrative, feature_sets!inner(features, scan_id)')
+      .select('id, kind, narrative, feature_sets!inner(features, scan_id, scans(image_deleted_at, created_at))')
       .eq('feature_sets.scan_id', params.scanId);
   } else {
     return null;
@@ -58,6 +70,7 @@ export async function loadReading(params: { readingId?: string; scanId?: string 
     kind: row.kind as 'palm' | 'face',
     reading: row.narrative as Reading,
     geometry: geometryFrom(row.feature_sets),
+    photoDeletedAt: photoTimeFrom(row.feature_sets),
   };
 }
 
