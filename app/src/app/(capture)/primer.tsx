@@ -47,6 +47,7 @@ export default function Primer() {
   // are about to reveal so the capture reads as "scan to match with «Name»", not a cold camera ask.
   const [inviterName, setInviterName] = useState<string | null>(null);
   useEffect(() => {
+    track('camera_primer_viewed', {});
     let active = true;
     loadClaimContext().then((ctx) => active && setInviterName(ctx?.inviterName ?? null));
     return () => {

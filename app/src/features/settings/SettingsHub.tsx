@@ -41,8 +41,8 @@ export function SettingsHub({ premium = false }: { premium?: boolean }) {
       </SettingGroup>
 
       <SettingGroup title="Subscription">
-        <PlanRow premium={premium} onPress={() => router.push('/paywall')} />
-        <SettingRow leadingIcon="history" label="Restore purchases" onPress={() => router.push('/paywall')} />
+        <PlanRow premium={premium} onPress={() => router.push('/paywall?trigger=settings' as Href)} />
+        <SettingRow leadingIcon="history" label="Restore purchases" onPress={() => router.push('/paywall?trigger=settings' as Href)} />
       </SettingGroup>
 
       <SettingGroup title="Preferences">

@@ -41,7 +41,8 @@ Sources: **UIUX §8** (instrumentation map) · **Backend §14** (events) · **mv
 | Group | Events |
 |---|---|
 | App | `app_opened` |
-| Capture funnel | `capture_started`, `capture_state_dwell`, `capture_completed`, `capture_abandoned`, `upload_ok` |
+| Onboarding funnel | `onboarding_step_viewed{step}`, `onboarding_skipped{at}`, `hand_selected{hand}` |
+| Capture funnel | `camera_primer_viewed`, `permission_result{granted}`, `capture_started`, `capture_state_dwell`, `capture_completed`, `capture_abandoned`, `upload_ok` |
 | Reveal (wow) | `reading_ready`, `analyzing_notify_me`, `reveal_viewed`, `reveal_section_viewed`, `reveal_scroll_depth`, `reveal_time_spent`, `consistency_survey` |
 | Viral loop (K-factor) | `share_sheet_opened`, `share_completed`, `invite_created`, `invite_clicked`, `invite_installed`, `invite_accepted`, `pair_reveal_viewed` |
 | Paywall funnel | `paywall_viewed`, `paywall_page_viewed`, `paywall_dismissed`, `purchase_completed`, `winback_converted` |
@@ -52,7 +53,15 @@ Sources: **UIUX §8** (instrumentation map) · **Backend §14** (events) · **mv
 Exact prop shapes are the source of truth in `AnalyticsEventMap` (`app/src/lib/analytics.ts`).
 
 ## Wiring status
-The typed catalogue exists; screens emit `app_opened` today (P1.T6). The remaining events are wired into
-their screens as the on-device flows are exercised (capture P4, paywall P7, share P8 — all device/H8/H4c
-gated). Server-side counterparts (invite state, subscription events, telemetry) live in the DB tables and
-can be joined in PostHog via the shared UUID.
+The typed catalogue exists and is **emitted from its wired surfaces** (F0.T12 sweep): `app_opened`
+(root), `onboarding_step_viewed`/`onboarding_skipped`/`hand_selected` (onboarding A1–A3),
+`camera_primer_viewed` (primer), `capture_started`/`upload_ok` (upload flow), `reveal_viewed`/
+`reveal_section_viewed` (reveal), `share_sheet_opened`/`invite_created`/`share_completed` (share sheet),
+`invite_accepted` (claim), `pair_reveal_viewed` (pair), `account_linked` (account sheet),
+`paywall_viewed{trigger}`/`paywall_dismissed` (paywall — every `/paywall` push now carries a `trigger`),
+`fortune_opened` (fortune), `analyzing_notify_me` (analyzing overrun). Still device/human-gated:
+`permission_result` + `capture_completed`/`_abandoned`/`_state_dwell` (camera contract F1.T3/T4),
+`purchase_completed`/`winback_converted` (RC H8), `chat_message_sent` (real chat F1.T11),
+`invite_clicked`/`invite_installed` (attribution H9), `push_opened`/`notification_pref_changed` (push
+F1.T5/T10). Server-side counterparts (invite state, subscription events) live in the DB tables and join
+in PostHog via the shared UUID.

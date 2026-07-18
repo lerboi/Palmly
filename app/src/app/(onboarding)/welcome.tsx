@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -5,6 +6,7 @@ import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import { AppHeader, Button, Logomark, Screen, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { track } from '@/lib/analytics';
 
 /**
  * Onboarding A1 (UIUX §2.1, redesign R12 / v2 V10) — the value prop over a **label-free** traced-
@@ -20,13 +22,20 @@ export default function Welcome() {
       ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base)
       : undefined;
 
+  useEffect(() => {
+    track('onboarding_step_viewed', { step: 'welcome' });
+  }, []);
+
+  const onSkip = () => {
+    track('onboarding_skipped', { at: 'welcome' });
+    router.push('/hand-select' as Href);
+  };
+
   return (
     <Screen>
       <AppHeader
         onBack={() => router.back()}
-        right={
-          <Button label="Skip" variant="ghost" size="md" onPress={() => router.push('/hand-select' as Href)} />
-        }
+        right={<Button label="Skip" variant="ghost" size="md" onPress={onSkip} />}
       />
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <PalmDiagram

@@ -25,7 +25,14 @@ export type AnalyticsEventMap = {
   // ── App lifecycle ──
   app_opened: { cold_start?: boolean };
 
+  // ── Onboarding funnel (F0.T12 — "where do first-openers fall out before capture?") ──
+  onboarding_step_viewed: { step: 'welcome' | 'how_it_works' | 'hand_select' };
+  onboarding_skipped: { at: 'welcome' | 'how_it_works' };
+  hand_selected: { hand: 'left' | 'right' };
+
   // ── Capture funnel (P1 — "is capture effortless?") ──
+  camera_primer_viewed: Record<string, never>;
+  permission_result: { granted: boolean };
   capture_started: { kind: 'palm' | 'face'; hand?: 'left' | 'right' };
   capture_state_dwell: { kind: 'palm' | 'face'; state: string; ms: number };
   capture_completed: { kind: 'palm' | 'face'; method: 'auto' | 'manual'; duration_ms: number };
@@ -53,7 +60,7 @@ export type AnalyticsEventMap = {
   pair_reveal_viewed: { pair_id: string; role: 'sender' | 'recipient' };
 
   // ── Paywall funnel ("is the paywall placed right?") ──
-  paywall_viewed: { trigger: 'locked_section' | 'fortune_full' | 'compat_second' | 'chat_entry' | 'post_share'; variant?: string };
+  paywall_viewed: { trigger: 'locked_section' | 'fortune_full' | 'compat_second' | 'chat_entry' | 'post_share' | 'settings'; variant?: string };
   paywall_page_viewed: { trigger: string; page: number };
   paywall_dismissed: { trigger: string; page: number };
   purchase_completed: { plan: 'monthly' | 'annual'; trigger: string };

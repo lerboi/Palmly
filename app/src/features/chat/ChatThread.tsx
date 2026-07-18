@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import Animated, {
   Easing,
@@ -55,7 +55,7 @@ export function ChatThread({ premium, messages, chips, typing = false, onBack }:
           <Text variant="bodyLarge" tone="secondary" style={{ textAlign: 'center', maxWidth: 300 }}>
             Chat with a reader grounded in your own lines — a Premium feature.
           </Text>
-          <Button label="Unlock chat" variant="primary" onPress={() => router.push('/paywall')} />
+          <Button label="Unlock chat" variant="primary" onPress={() => router.push('/paywall?trigger=chat_entry' as Href)} />
         </View>
       </Screen>
     );

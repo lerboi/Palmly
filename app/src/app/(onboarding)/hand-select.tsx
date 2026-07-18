@@ -11,6 +11,7 @@ import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import { AppHeader, Button, Icon, Screen, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { track } from '@/lib/analytics';
 
 type Hand = 'left' | 'right';
 
@@ -23,6 +24,15 @@ type Hand = 'left' | 'right';
 export default function HandSelect() {
   const theme = useTheme();
   const [hand, setHand] = useState<Hand>('right');
+
+  useEffect(() => {
+    track('onboarding_step_viewed', { step: 'hand_select' });
+  }, []);
+
+  const onContinue = () => {
+    track('hand_selected', { hand });
+    router.push(`/primer?hand=${hand}` as Href);
+  };
 
   return (
     <Screen>
@@ -63,7 +73,7 @@ export default function HandSelect() {
         variant="primary"
         fullWidth
         style={{ marginBottom: theme.spacing.md }}
-        onPress={() => router.push(`/primer?hand=${hand}` as Href)}
+        onPress={onContinue}
       />
     </Screen>
   );

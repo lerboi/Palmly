@@ -17,6 +17,7 @@ import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { AppHeader, Button, Card, Icon, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
+import { track } from '@/lib/analytics';
 import { type Reading, type ReadingSection, freeSections, lockedSections, traditionFootnote } from './reveal';
 
 export type RevealState = 'ready' | 'pending' | 'error';
@@ -103,7 +104,7 @@ export function RevealView({ reading, geometry, state = 'ready', readingId, onBa
         {free.map((section, i) => (
           <View key={section.key}>
             <Animated.View entering={enter(n++)}>
-              <SectionCard section={section} />
+              <SectionCard section={section} readingId={readingId} index={i} />
             </Animated.View>
             {i === 1 ? (
               <Animated.View entering={enter(n++)}>
@@ -121,7 +122,7 @@ export function RevealView({ reading, geometry, state = 'ready', readingId, onBa
             </Text>
             {locked.map((section) => (
               <Animated.View key={section.key} entering={enter(n++)}>
-                <LockedCard section={section} onUnlock={() => router.push('/paywall')} />
+                <LockedCard section={section} onUnlock={() => router.push('/paywall?trigger=locked_section' as Href)} />
               </Animated.View>
             ))}
           </View>
@@ -251,8 +252,12 @@ function FeatureIcon({
   );
 }
 
-function SectionCard({ section }: { section: ReadingSection }) {
+function SectionCard({ section, readingId, index }: { section: ReadingSection; readingId?: string; index: number }) {
   const theme = useTheme();
+  // Each free section rendered into the reveal is a funnel step (F0.T12) — only for a real reading.
+  useEffect(() => {
+    if (readingId) track('reveal_section_viewed', { reading_id: readingId, section: section.key, index });
+  }, [readingId, section.key, index]);
   return (
     <Card elevation="sm" style={{ marginBottom: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>

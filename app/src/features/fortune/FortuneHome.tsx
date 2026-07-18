@@ -69,7 +69,7 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
       ) : (
         <>
           {streak > 0 ? <StreakStrip streak={streak} /> : null}
-          <FortuneCard fortune={fortune} premium={premium} onUnlock={() => router.push('/paywall')} />
+          <FortuneCard fortune={fortune} premium={premium} onUnlock={() => router.push('/paywall?trigger=fortune_full' as Href)} />
           {partnerName ? <RedThreadRow name={partnerName} onPress={() => router.push('/share')} index={0} /> : null}
           <RowLink icon="history" label="Your readings" onPress={() => router.push('/history')} index={1} />
           <RowLink icon="chat" label="Ask about your reading" premiumLocked={!premium} onPress={() => router.push('/chat')} index={2} />

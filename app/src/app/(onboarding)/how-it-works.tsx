@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { AppHeader, Button, Card, Icon, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
+import { track } from '@/lib/analytics';
 
 /**
  * Onboarding A2 (UIUX §2.1, redesign R12 / v2 V10) — the three-step explainer (scan → we trace
@@ -36,6 +38,10 @@ export default function HowItWorks() {
     shouldAnimate ? ZoomIn.delay(i * theme.motion.stagger.reveal + 120).duration(theme.motion.duration.base) : undefined;
   const rise = (i: number) =>
     shouldAnimate ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base) : undefined;
+
+  useEffect(() => {
+    track('onboarding_step_viewed', { step: 'how_it_works' });
+  }, []);
 
   return (
     <Screen scroll>

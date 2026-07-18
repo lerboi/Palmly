@@ -3,6 +3,7 @@ import { FortuneHome } from '@/features/fortune/FortuneHome';
 import type { Fortune } from '@/features/fortune/fortune';
 import { loadTodayFortune } from '@/lib/fortuneData';
 import { useEntitlement } from '@/lib/entitlements';
+import { track } from '@/lib/analytics';
 
 /**
  * Returning-user daily-fortune home (UIUX §2.11, audit F0.3). The honest free default: entitlement
@@ -15,6 +16,12 @@ import { useEntitlement } from '@/lib/entitlements';
 export default function FortuneScreen() {
   const { premium } = useEntitlement();
   const [fortune, setFortune] = useState<Fortune | null>(null);
+
+  useEffect(() => {
+    // Retention signal (D1/D7/D30) — the user opened the daily fortune. Streak is the honest 0 until
+    // real retention data lands (F1.T11); premium reflects the entitlement at open time.
+    track('fortune_opened', { date: new Date().toISOString().slice(0, 10), premium, streak: 0 });
+  }, [premium]);
 
   useEffect(() => {
     let active = true;
