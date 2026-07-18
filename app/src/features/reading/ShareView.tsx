@@ -18,7 +18,8 @@ import { AppHeader, Button, Icon, Logomark, Screen, Text } from '@/components/ui
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
-import { composeShareText, createInvite, type CreatedInvite } from '@/lib/invite';
+import { composeShareText, createInvite, type CreatedInvite, type Framing } from '@/lib/invite';
+import { savePendingCompat } from '@/lib/pendingCompat';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -60,6 +61,9 @@ export interface ShareViewProps {
   readingId?: string;
   /** Where the sheet was opened from (analytics `share_sheet_opened.source`). */
   source?: ShareSource;
+  /** Re-share an EXISTING invite (the home red-thread nudge) — the sheet reuses this exact URL and
+   *  never mints a second invite (audit F1.7). When set, the framing picker is hidden (locked). */
+  presetInviteUrl?: string;
   onClose?: () => void;
 }
 
@@ -83,6 +87,7 @@ export function ShareView({
   initialVariant = 'solo',
   readingId,
   source = 'reveal',
+  presetInviteUrl,
   onClose,
 }: ShareViewProps) {
   const theme = useTheme();
@@ -91,15 +96,27 @@ export function ShareView({
   const [variant, setVariant] = useState<Variant>(initialVariant);
   const [invite, setInvite] = useState(true);
   const [copied, setCopied] = useState(false);
+  // The sender's relationship framing (§2.7) — rides into the invite context; the picker resets the
+  // (not-yet-minted) cache so the LATEST choice mints. A ref keeps ensureInvite's identity stable.
+  const [framing, setFraming] = useState<Framing>('friend');
+  const framingRef = useRef<Framing>('friend');
+  const onFraming = (f: Framing) => {
+    setFraming(f);
+    framingRef.current = f;
+    mintRef.current = null;
+  };
 
-  // Mint the invite AT MOST ONCE (pre-mint on open / toggle-on) — the promise is cached so every
-  // channel reuses the same link. A failure clears the cache so a later tap can retry.
+  // Mint the invite AT MOST ONCE — the promise is cached so every channel reuses the same link. A
+  // failure clears the cache so a later tap can retry. A `presetInviteUrl` (home nudge re-share)
+  // short-circuits minting entirely: the SAME link is reused, so no second invite row is created.
   const mintRef = useRef<Promise<CreatedInvite> | null>(null);
   const ensureInvite = useCallback((): Promise<CreatedInvite> => {
+    if (presetInviteUrl) return Promise.resolve({ inviteId: '', url: presetInviteUrl });
     if (!mintRef.current) {
-      mintRef.current = createInvite({ readingId, kind: 'compatibility', channel: 'link' })
+      mintRef.current = createInvite({ readingId, kind: 'compatibility', channel: 'link', framing: framingRef.current })
         .then((inv) => {
           track('invite_created', { channel: 'link', kind: 'compatibility' });
+          void savePendingCompat({ url: inv.url }); // home red-thread nudge re-shares this exact link
           return inv;
         })
         .catch((e) => {
@@ -108,19 +125,20 @@ export function ShareView({
         });
     }
     return mintRef.current;
-  }, [readingId]);
+  }, [readingId, presetInviteUrl]);
 
   // Emit once the sheet is opened.
   useEffect(() => {
     track('share_sheet_opened', readingId ? { source, reading_id: readingId } : { source });
   }, [source, readingId]);
 
-  // Pre-mint whenever the invite toggle is on AND there's a real reading (so "Copy link" / "Share"
-  // are instant). Gating on readingId keeps the /dev fixture previews from minting real invites; the
-  // on-demand mint in the handlers still covers a share with no reading yet (e.g. pair pre-F0.T9).
+  // Pre-mint the SOLO share on open (so "Copy link" / "Share" are instant). The compat share waits
+  // for the framing pick, so it mints on-demand in the handlers instead — otherwise a framing change
+  // after an eager mint would strand a first, wrongly-framed invite. Gating on readingId keeps /dev
+  // fixture previews from minting real invites; a preset (re-share) never mints.
   useEffect(() => {
-    if (invite && readingId) void ensureInvite().catch(() => {});
-  }, [invite, readingId, ensureInvite]);
+    if (invite && readingId && variant === 'solo' && !presetInviteUrl) void ensureInvite().catch(() => {});
+  }, [invite, readingId, variant, presetInviteUrl, ensureInvite]);
 
   const onCopyLink = async () => {
     try {
@@ -171,6 +189,10 @@ export function ShareView({
           </Animated.View>
         )}
       </View>
+
+      {/* Sender's relationship framing (§2.7 — tone modifier + card-copy variant). Compat only; hidden
+          when re-sharing an existing link (framing is locked to the original invite). */}
+      {variant === 'compat' && !presetInviteUrl ? <FramingPicker value={framing} onChange={onFraming} /> : null}
 
       {/* Invite-to-compare toggle (default ON for compat, per §2.6). */}
       <Pressable
@@ -251,6 +273,58 @@ function Segment({ label, active, onPress }: { label: string; active: boolean; o
         }}
       >
         <Text variant="bodyMedium" color={active ? theme.colors.accent : theme.colors.textSecondary}>
+          {label}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+const FRAMINGS: { value: Framing; label: string }[] = [
+  { value: 'friend', label: 'Friend' },
+  { value: 'partner', label: 'Partner' },
+  { value: 'crush', label: 'Crush' },
+  { value: 'family', label: 'Family' },
+];
+
+/** The sender's relationship framing selector (§2.7) — four pills, single-select. */
+function FramingPicker({ value, onChange }: { value: Framing; onChange: (f: Framing) => void }) {
+  const theme = useTheme();
+  return (
+    <View style={{ marginBottom: theme.spacing.md }}>
+      <Text variant="caption" tone="secondary" style={{ marginBottom: theme.spacing.sm }}>
+        Who are you comparing with?
+      </Text>
+      <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+        {FRAMINGS.map((f) => (
+          <FramingPill key={f.value} label={f.label} active={value === f.value} onPress={() => onChange(f.value)} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function FramingPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const theme = useTheme();
+  const { style, onPressIn, onPressOut } = usePressScale(0.95);
+  return (
+    <Animated.View style={[{ flex: 1 }, style]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="radio"
+        accessibilityState={{ selected: active }}
+        style={{
+          alignItems: 'center',
+          paddingVertical: theme.spacing.sm,
+          borderRadius: theme.radii.pill,
+          backgroundColor: active ? theme.colors.accentMuted : theme.colors.surfaceSunken,
+          borderWidth: theme.strokes.hairline,
+          borderColor: active ? theme.colors.accent : 'transparent',
+        }}
+      >
+        <Text variant="caption" color={active ? theme.colors.accent : theme.colors.textSecondary}>
           {label}
         </Text>
       </Pressable>

@@ -4,6 +4,7 @@ import { ShareView, type ShareSource } from '@/features/reading/ShareView';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { loadReading } from '@/lib/readings';
+import { loadPendingCompat } from '@/lib/pendingCompat';
 
 /**
  * Share sheet (UIUX §2.6/§2.7, audit F0.4). Takes `readingId` + `initialVariant` (+ `source`) params
@@ -15,12 +16,15 @@ import { loadReading } from '@/lib/readings';
  */
 export default function Share() {
   const router = useRouter();
-  const { readingId, initialVariant, source } = useLocalSearchParams<{
+  const { readingId, initialVariant, source, reshare } = useLocalSearchParams<{
     readingId?: string;
     initialVariant?: string;
     source?: string;
+    reshare?: string;
   }>();
   const [loaded, setLoaded] = useState<{ headline: string; geometry: LineGeometry } | null>(null);
+  // Home red-thread nudge (`?reshare=1`): reopen on the SAME sent link (no second invite minted).
+  const [presetUrl, setPresetUrl] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!readingId) return;
@@ -32,6 +36,17 @@ export default function Share() {
       active = false;
     };
   }, [readingId]);
+
+  useEffect(() => {
+    if (reshare !== '1') return;
+    let active = true;
+    loadPendingCompat().then((p) => {
+      if (active && p) setPresetUrl(p.url);
+    });
+    return () => {
+      active = false;
+    };
+  }, [reshare]);
 
   const variant = initialVariant === 'compat' ? 'compat' : 'solo';
   const shareSource: ShareSource =
@@ -46,6 +61,7 @@ export default function Share() {
       partnerName="Mei"
       initialVariant={variant}
       source={shareSource}
+      presetInviteUrl={presetUrl}
       onClose={() => router.back()}
     />
   );

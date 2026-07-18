@@ -16,6 +16,7 @@ export type NotifType =
   | 'daily_fortune'
   | 'solar_term'
   | 'winback'
+  | 'invite_nudge'
   | 'onboarding_d1'
   | 'onboarding_d2'
   | 'onboarding_d3';
@@ -35,6 +36,8 @@ export interface NotifContext {
   solar_hook?: string; // e.g. 'the almanac counsels patience in money matters'
   offer?: string; // win-back, e.g. '40% off your first year'
   focus_line?: string; // onboarding, e.g. '婚姻线'
+  invite_id?: string; // invite_nudge — the pending invite to nudge
+  elapsed?: string; // invite_nudge — human elapsed label, e.g. '2 days ago'
 }
 
 export interface RenderedNotif {
@@ -56,6 +59,7 @@ const CAP_CLASS: Record<NotifType, CapClass> = {
   daily_fortune: 'marketing',
   solar_term: 'marketing',
   winback: 'marketing',
+  invite_nudge: 'marketing', // proactive 48h cron re-share reminder → counts against the 1/day cap
   onboarding_d1: 'marketing',
   onboarding_d2: 'marketing',
   onboarding_d3: 'marketing',
@@ -123,6 +127,13 @@ const EN: Catalog = {
   winback: (c) => {
     const offer = clean(c.offer, 'a welcome gift on your first year');
     return { title: 'A gift while your reading is fresh', body: `${cap(offer)}.`, deep_link: 'palmly://paywall?offer=winback', dedupe_key: 'winback' };
+  },
+  invite_nudge: (c) => {
+    // A gentle 48h re-share reminder for a still-pending compat invite. Lands on home, where the
+    // red-thread pending card reopens the sheet with the SAME link (no palmly://invite route exists).
+    const who = clean(c.name, 'your match');
+    const when = clean(c.elapsed);
+    return { title: 'Your red thread is still loose 🧧', body: when ? `You invited ${who} ${when} — a nudge might tie it.` : `You invited ${who} — a nudge might tie it.`, deep_link: 'palmly://fortune', dedupe_key: `invite_nudge:${clean(c.invite_id) || who}` };
   },
   onboarding_d1: (c) => onboarding(1, c),
   onboarding_d2: (c) => onboarding(2, c),

@@ -12,16 +12,22 @@ export interface CreatedInvite {
   url: string;
 }
 
+/** The sender's relationship framing (UIUX §2.7 — narrative tone + card-copy variant, audit F1.7). */
+export type Framing = 'friend' | 'partner' | 'crush' | 'family';
+
 export async function createInvite(params: {
   readingId?: string;
   /** The published share-card URL (from {@link publishShareCard}) → the invite's OG preview image. */
   cardImageUrl?: string;
   kind?: 'compatibility' | 'generic';
   channel?: string;
+  /** Relationship framing → `invites.context.framing` (server allowlists it, F1.T8). */
+  framing?: Framing;
 }): Promise<CreatedInvite> {
   const context: Record<string, unknown> = {};
   if (params.readingId) context.reading_id = params.readingId;
   if (params.cardImageUrl) context.card_image_url = params.cardImageUrl;
+  if (params.framing) context.framing = params.framing;
   const { data, error } = await supabase.functions.invoke('invite-create', {
     body: {
       kind: params.kind ?? 'compatibility',

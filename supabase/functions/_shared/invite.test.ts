@@ -77,6 +77,7 @@ Deno.test('sanitizeInviteContext: keeps the allowlist, drops everything else', (
       reading_id: '11111111-2222-3333-4444-555555555555',
       card_variant: 'feed_4x5',
       card_image_url: 'https://palmly.app/c.png',
+      framing: 'partner',
       // none of these are part of the contract (schema.sql:120) and must not reach the page
       is_admin: true,
       evil: '<script>',
@@ -89,18 +90,20 @@ Deno.test('sanitizeInviteContext: keeps the allowlist, drops everything else', (
     reading_id: '11111111-2222-3333-4444-555555555555',
     card_variant: 'feed_4x5',
     card_image_url: 'https://palmly.app/c.png',
+    framing: 'partner',
   });
 
   // Invalid values are DROPPED, not thrown: the payload is cosmetic, so a client bug must not break
   // the growth loop — an attacker's value simply never reaches the page.
   const dropped = sanitizeInviteContext(
-    { inviter_name: 'x'.repeat(200), reading_id: 'not-a-uuid', card_variant: 'billboard', card_image_url: 'https://evil.example/x.png' },
+    { inviter_name: 'x'.repeat(200), reading_id: 'not-a-uuid', card_variant: 'billboard', card_image_url: 'https://evil.example/x.png', framing: 'colleague' },
     HOSTS,
   );
   assertEquals((dropped.inviter_name as string).length, INVITE_NAME_MAX, 'name capped, not rejected');
   assertEquals(dropped.reading_id, undefined);
   assertEquals(dropped.card_variant, undefined);
   assertEquals(dropped.card_image_url, undefined, 'the attacker-hosted OG image is gone');
+  assertEquals(dropped.framing, undefined, 'an off-list framing is dropped');
 
   assertEquals(sanitizeInviteContext(undefined, HOSTS), {});
   assertEquals(sanitizeInviteContext('a string', HOSTS), {}, 'a non-object context is not spreadable');

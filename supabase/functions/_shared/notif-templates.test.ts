@@ -2,7 +2,7 @@ import { assert, assertEquals, assertStringIncludes, assertThrows } from '@std/a
 import { notifCapClass, renderNotification, type NotifType } from './notif-templates.ts';
 
 Deno.test('every trigger renders title + body + a palmly:// deep link', () => {
-  const types: NotifType[] = ['reading_ready', 'compat_complete', 'invite_accepted', 'daily_fortune', 'solar_term', 'winback', 'onboarding_d1', 'onboarding_d2', 'onboarding_d3'];
+  const types: NotifType[] = ['reading_ready', 'compat_complete', 'invite_accepted', 'daily_fortune', 'solar_term', 'winback', 'invite_nudge', 'onboarding_d1', 'onboarding_d2', 'onboarding_d3'];
   for (const t of types) {
     const r = renderNotification(t, {});
     assert(r.title.length > 0, `${t} has a title`);
@@ -64,6 +64,18 @@ Deno.test('winback: single-shot offer, deep-links to the paywall', () => {
   assertEquals(r.deep_link, 'palmly://paywall?offer=winback');
   assertEquals(r.dedupe_key, 'winback');
   assertEquals(r.cap_class, 'marketing');
+});
+
+Deno.test('invite_nudge: elapsed-aware 48h re-share reminder, marketing-capped, per-invite dedupe', () => {
+  const r = renderNotification('invite_nudge', { name: 'Mei', elapsed: '2 days ago', invite_id: 'inv7' });
+  assertStringIncludes(r.body, 'Mei');
+  assertStringIncludes(r.body, '2 days ago');
+  assertEquals(r.deep_link, 'palmly://fortune'); // home — where the red-thread card reopens the same link
+  assertEquals(r.dedupe_key, 'invite_nudge:inv7');
+  assertEquals(r.cap_class, 'marketing');
+  // Graceful when the recipient hasn't claimed (no name) / no elapsed label yet.
+  const bare = renderNotification('invite_nudge', {});
+  assert(!bare.body.includes('undefined') && bare.body.length > 0);
 });
 
 Deno.test('onboarding days 1–3: distinct copy + dedupe key per day', () => {

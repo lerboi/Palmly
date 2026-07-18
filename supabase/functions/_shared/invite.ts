@@ -83,6 +83,8 @@ export const deriveShortCode = (tokenHash: string): string => {
 
 export const INVITE_NAME_MAX = 40;
 const CARD_VARIANTS = new Set(['feed_4x5', 'story_9x16']);
+/** The sender's relationship framing (UIUX §2.7 — tone modifier + card-copy variant, audit F1.7). */
+const FRAMINGS = new Set(['friend', 'partner', 'crush', 'family']);
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 /** Cap + strip control characters. Unicode-aware: this product's users are largely CJK-named, so an
@@ -125,6 +127,7 @@ export function sanitizeInviteContext(raw: unknown, allowedHosts: string[]): Rec
   if (typeof src.reading_id === 'string' && UUID_RE.test(src.reading_id)) out.reading_id = src.reading_id;
   if (typeof src.card_variant === 'string' && CARD_VARIANTS.has(src.card_variant)) out.card_variant = src.card_variant;
   if (isAllowedCardUrl(src.card_image_url, allowedHosts)) out.card_image_url = src.card_image_url;
+  if (typeof src.framing === 'string' && FRAMINGS.has(src.framing)) out.framing = src.framing;
 
   return out;
 }

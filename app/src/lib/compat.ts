@@ -1,6 +1,43 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import type { PairData } from '@/features/reading/PairRevealView';
 import type { CompatResultRow } from './useCompatStatus';
+
+export type CompatRequestResult = { ok: true; status: string } | { ok: false; gated: boolean };
+
+/**
+ * Request a comparison for a pair (audit F1.7) → the deployed user-mode `compat-request`, which drives
+ * the `compatibility_results` lifecycle and enforces the free-comparison gate server-side (Backend §4):
+ * a non-premium caller's SECOND comparison returns **HTTP 402**. The client treats 402 as the signal to
+ * route to `/paywall?trigger=compat_second`; any other error is a transient failure, not a gate.
+ */
+export async function requestCompat(pairId: string): Promise<CompatRequestResult> {
+  const { data, error } = await supabase.functions.invoke('compat-request', { body: { pair_id: pairId } });
+  if (!error) return { ok: true, status: (data as { status?: string } | null)?.status ?? 'unknown' };
+  // supabase-js FunctionsHttpError carries the raw Response on `.context`; 402 = the gate.
+  const status = (error as { context?: { status?: number } }).context?.status;
+  return { ok: false, gated: status === 402 };
+}
+
+const seenKey = (pairId: string) => `palmly.compat_prompt_seen.${pairId}`;
+
+/** Has this pair's auto-present compat prompt already fired (one dismissal disables it per pair)? */
+export async function wasCompatPromptSeen(pairId: string): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(seenKey(pairId))) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Mark this pair's auto-present prompt as shown so it never re-fires for the pair. */
+export async function markCompatPromptSeen(pairId: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(seenKey(pairId), '1');
+  } catch {
+    /* best-effort */
+  }
+}
 
 /** Backend `sub_scores` keys (compat.ts `SubScores`) → the display labels the reveal's icons map on. */
 const SUB_LABELS: Record<string, string> = {
