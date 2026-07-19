@@ -3,6 +3,7 @@ import { Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { AppHeader, Screen, Text } from '@/components/ui';
+import { t } from '@/lib/i18n';
 import { useTheme } from '@/theme';
 import { loadNotifPrefs, saveNotifPref, type NotifPref, type NotifPrefs } from '@/lib/privacy';
 import { getPushPermission, openSystemNotificationSettings, type PushPermission } from '@/lib/notifications';
@@ -52,37 +53,36 @@ export function NotificationSettings() {
 
   return (
     <Screen scroll>
-      <AppHeader title="Notifications" onBack={() => router.back()} />
+      <AppHeader title={t('notif.title')} onBack={() => router.back()} />
 
-      <SettingGroup title="System">
+      <SettingGroup title={t('notif.system.group')}>
         <SettingRow
           first
           leadingIcon="bell"
-          label="System notifications"
-          value={pushStatus === 'granted' ? 'On' : pushStatus === 'denied' ? 'Off — tap to enable' : 'Not set yet'}
+          label={t('notif.system.label')}
+          value={pushStatus === 'granted' ? t('notif.system.on') : pushStatus === 'denied' ? t('notif.system.off') : t('notif.system.unset')}
           onPress={pushStatus === 'denied' ? openSystemNotificationSettings : undefined}
         />
       </SettingGroup>
       {pushStatus === 'denied' ? (
         <Text variant="caption" tone="secondary" style={{ marginHorizontal: theme.spacing.xs, marginBottom: theme.spacing.md }}>
-          Notifications are off in your system settings — turn them on to get your daily fortune and match alerts.
+          {t('notif.system.denied_caption')}
         </Text>
       ) : null}
 
-      <SettingGroup title="What you’ll hear about">
-        <SettingRow first leadingIcon="sparkle" label="Daily fortune" right={sw(prefs.daily_fortune, toggle('daily_fortune'), 'Daily fortune')} />
-        <SettingRow leadingIcon="heart" label="Compatibility & social" right={sw(prefs.social, toggle('social'), 'Compatibility & social')} />
-        <SettingRow leadingIcon="bell" label="Offers & updates" right={sw(prefs.offers, toggle('offers'), 'Offers & updates')} />
+      <SettingGroup title={t('notif.about.group')}>
+        <SettingRow first leadingIcon="sparkle" label={t('notif.about.daily')} right={sw(prefs.daily_fortune, toggle('daily_fortune'), t('notif.about.daily'))} />
+        <SettingRow leadingIcon="heart" label={t('notif.about.social')} right={sw(prefs.social, toggle('social'), t('notif.about.social'))} />
+        <SettingRow leadingIcon="bell" label={t('notif.about.offers')} right={sw(prefs.offers, toggle('offers'), t('notif.about.offers'))} />
       </SettingGroup>
 
-      <SettingGroup title="Timing">
-        <SettingRow first label="Fortune delivery time" value="8:30 AM" />
-        <SettingRow label="Quiet hours" value="10pm – 8am" />
+      <SettingGroup title={t('notif.timing.group')}>
+        <SettingRow first label={t('notif.timing.delivery')} value={t('notif.timing.delivery_value')} />
+        <SettingRow label={t('notif.timing.quiet')} value={t('notif.timing.quiet_value')} />
       </SettingGroup>
 
       <Text variant="caption" tone="secondary" style={{ marginHorizontal: theme.spacing.xs }}>
-        Your fortune arrives around 8:30 in your local time — the exact time becomes adjustable at launch.
-        Quiet hours are enforced in your local time, and we send at most one content notification a day.
+        {t('notif.footer')}
       </Text>
     </Screen>
   );

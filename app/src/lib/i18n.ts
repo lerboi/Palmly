@@ -25,6 +25,27 @@ export const messages = {
   'capture.ready': 'Hold still…',
   'capture.captured': 'Got it',
   'capture.review': 'Looks sharp',
+
+  // Notification settings (audit §6 — notif-adjacent copy).
+  'notif.title': 'Notifications',
+  'notif.system.group': 'System',
+  'notif.system.label': 'System notifications',
+  'notif.system.on': 'On',
+  'notif.system.off': 'Off — tap to enable',
+  'notif.system.unset': 'Not set yet',
+  'notif.system.denied_caption':
+    'Notifications are off in your system settings — turn them on to get your daily fortune and match alerts.',
+  'notif.about.group': 'What you’ll hear about',
+  'notif.about.daily': 'Daily fortune',
+  'notif.about.social': 'Compatibility & social',
+  'notif.about.offers': 'Offers & updates',
+  'notif.timing.group': 'Timing',
+  'notif.timing.delivery': 'Fortune delivery time',
+  'notif.timing.delivery_value': '8:30 AM',
+  'notif.timing.quiet': 'Quiet hours',
+  'notif.timing.quiet_value': '10pm – 8am',
+  'notif.footer':
+    'Your fortune arrives around 8:30 in your local time — the exact time becomes adjustable at launch. Quiet hours are enforced in your local time, and we send at most one content notification a day.',
 } as const;
 
 export type MessageKey = keyof typeof messages;
