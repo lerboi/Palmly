@@ -18,6 +18,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { controlHeight, useReducedMotion, useTheme } from '@/theme';
+import { tick } from '@/lib/haptics';
 import { Text } from './Text';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'tonal' | 'danger' | 'premium';
@@ -87,6 +88,7 @@ export function Button({
   const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const pressIn = (e: GestureResponderEvent) => {
     setHeld(true);
+    tick(); // tactile press feedback (F1.11) — native-only, kept on under reduce-motion
     onPressIn?.(e);
   };
   const pressOut = (e: GestureResponderEvent) => {

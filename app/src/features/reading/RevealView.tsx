@@ -20,6 +20,7 @@ import { useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
 import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
 import { FACE_READING_ENABLED } from '@/lib/capabilities';
+import { stamp } from '@/lib/haptics';
 import { type Reading, type ReadingSection, FACE_SECTION_ICON, SECTION_LINE, freeSections, lockedSections, traditionFootnote } from './reveal';
 
 export type RevealState = 'ready' | 'pending' | 'error';
@@ -544,7 +545,10 @@ function SealFab({ onPress, shouldAnimate }: { onPress: () => void; shouldAnimat
       style={[{ position: 'absolute', right: theme.spacing.lg, bottom: theme.spacing.xl }, scaleStyle]}
     >
       <Pressable
-        onPress={onPress}
+        onPress={() => {
+          stamp(); // the seal-stamp confirm (F1.11)
+          onPress();
+        }}
         onPressIn={() => setHeld(true)}
         onPressOut={() => setHeld(false)}
         accessibilityRole="button"

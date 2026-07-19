@@ -14,6 +14,7 @@ import { differentiateGeometry, type LineGeometry } from '@/components/palm-diag
 import { AppHeader, Button, Card, Icon, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
+import { success } from '@/lib/haptics';
 import { RedThread, ScoreRing } from './ShareView';
 
 export interface PairSubScore {
@@ -71,6 +72,12 @@ export function PairRevealView({
   // The partner must never look like a mirrored clone of you (audit F0.11): use their real geometry
   // when known, else derive a visibly different hand (mirror + deterministic nudge).
   const partner = partnerGeometry ?? differentiateGeometry(geometry);
+
+  // The pair-score is the compat peak — a success haptic lands as it arrives (F1.11; kept on under
+  // reduce-motion, no-op on web). Once, on mount.
+  useEffect(() => {
+    success();
+  }, []);
 
   return (
     <Screen scroll>

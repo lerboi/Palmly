@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useReducedMotion, useTheme } from '@/theme';
 import type { ShadowKey } from '@/theme';
+import { tick } from '@/lib/haptics';
 
 export interface CardProps {
   children: ReactNode;
@@ -96,7 +97,10 @@ export function Card({
     <Animated.View entering={entering} style={[styles.pressWrap, scaleStyle]}>
       <Pressable
         onPress={onPress}
-        onPressIn={() => setHeld(true)}
+        onPressIn={() => {
+          setHeld(true);
+          tick(); // tactile press feedback (F1.11)
+        }}
         onPressOut={() => setHeld(false)}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
