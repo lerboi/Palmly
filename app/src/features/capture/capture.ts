@@ -1,5 +1,7 @@
-// Pure capture state-machine contract (audit F1.4, UIUX §2.3) — no React/RN imports, so it is
-// unit-testable and shared by CaptureView + the /dev walk.
+// Pure capture state-machine contract (audit F1.4, UIUX §2.3) — no React/RN-UI imports, so it is
+// unit-testable and shared by CaptureView + the /dev walk. The guidance strings come from the i18n
+// catalog (`t()`) rather than inline literals (audit §6 localization foundation).
+import { t } from '@/lib/i18n';
 
 /**
  * The full §2.3 capture guidance state machine: seven guidance states (searching + the five
@@ -32,22 +34,22 @@ export const CAPTURE_STATES: CaptureState[] = ['searching', 'too_far', 'too_clos
 export function captureInstruction(state: CaptureState, mode: CaptureMode, handSide: 'left' | 'right' = 'right'): string {
   switch (state) {
     case 'searching':
-      return mode === 'palm' ? `Hold your ${handSide} palm up to the camera` : 'Center your face in the frame';
+      return mode === 'palm' ? t('capture.searching.palm', { handSide }) : t('capture.searching.face');
     case 'too_far':
-      return 'Move closer';
+      return t('capture.too_far');
     case 'too_close':
-      return 'A little further';
+      return t('capture.too_close');
     case 'not_flat':
-      return 'Flatten your hand, fingers relaxed';
+      return t('capture.not_flat');
     case 'tilted':
-      return mode === 'palm' ? 'Face your palm to the camera' : 'Face the camera straight on';
+      return mode === 'palm' ? t('capture.tilted.palm') : t('capture.tilted.face');
     case 'dark':
-      return 'Find a little more light';
+      return t('capture.dark');
     case 'ready':
-      return 'Hold still…';
+      return t('capture.ready');
     case 'captured':
-      return 'Got it';
+      return t('capture.captured');
     case 'review':
-      return 'Looks sharp';
+      return t('capture.review');
   }
 }
