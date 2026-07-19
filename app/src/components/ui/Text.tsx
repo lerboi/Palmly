@@ -35,6 +35,10 @@ export function Text({
   tone = 'primary',
   color,
   style,
+  // Dynamic Type guard (audit §6): cap OS font scaling at ~130% by default so large-text users get
+  // bigger copy without shattering layouts. Overridable per call site (pass a different cap, or 0 to
+  // opt out). This is the ONE place the app-wide default lives.
+  maxFontSizeMultiplier = 1.3,
   ...rest
 }: TextProps) {
   const theme = useTheme();
@@ -58,6 +62,7 @@ export function Text({
 
   return (
     <RNText
+      maxFontSizeMultiplier={maxFontSizeMultiplier}
       style={[typeStyle, { color: color ?? toneColor[tone] }, style]}
       {...rest}
     />

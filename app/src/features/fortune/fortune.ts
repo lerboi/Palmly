@@ -1,5 +1,6 @@
 // Daily fortune (Backend §3.2/§10, UIUX §2.11). Almanac-style content generated per
 // (date × pillar_bucket × locale); the free tier shows `overall`, premium expands the rest (U4).
+import { deviceLocale } from '@/lib/locale';
 
 export interface Fortune {
   overall: string;
@@ -87,10 +88,10 @@ export interface AlmanacDate {
   pillar: string; // ganzhi day pillar, e.g. "甲子日" (zh traditional view only; not rendered)
   pillarEn: string; // English whisper, e.g. "Wood Rat" (rendered as the day-pillar whisper)
 }
-export function almanacDate(date: Date): AlmanacDate {
+export function almanacDate(date: Date, locale: string | undefined = deviceLocale()): AlmanacDate {
   return {
-    weekday: date.toLocaleDateString('en-US', { weekday: 'long' }),
-    gregorian: date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
+    weekday: date.toLocaleDateString(locale, { weekday: 'long' }),
+    gregorian: date.toLocaleDateString(locale, { month: 'long', day: 'numeric' }),
     pillar: `${dayPillarCn(date)}日`,
     pillarEn: dayPillarEn(date),
   };

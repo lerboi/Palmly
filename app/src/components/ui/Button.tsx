@@ -123,7 +123,10 @@ export function Button({
         onPressOut={pressOut}
         style={({ pressed }) => {
           const base: ViewStyle = {
-            height,
+            // Dynamic Type (audit §6): a MINIMUM height (not fixed) so a wrapped/scaled label grows
+            // the control instead of clipping; small text still gets the full 44/52pt tap target.
+            minHeight: height,
+            paddingVertical: theme.spacing.sm,
             paddingHorizontal,
             borderRadius: shape === 'pill' ? theme.radii.pill : theme.radii.md,
             alignSelf: 'stretch',

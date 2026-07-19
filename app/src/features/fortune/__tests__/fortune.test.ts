@@ -7,7 +7,8 @@ describe('fortune (P9.T3)', () => {
   });
 
   it('formats an almanac date header (Gregorian + 干支日)', () => {
-    const d = almanacDate(new Date(2026, 6, 14));
+    // Pin the locale so the format is deterministic in CI; production defaults to the device locale.
+    const d = almanacDate(new Date(2026, 6, 14), 'en-US');
     expect(d.gregorian).toBe('July 14');
     expect(d.pillar).toMatch(/日$/);
     expect(d.weekday).toBeTruthy();

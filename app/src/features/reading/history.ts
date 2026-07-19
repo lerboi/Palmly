@@ -1,5 +1,6 @@
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { FACE_READING_ENABLED } from '@/lib/capabilities';
+import { deviceLocale } from '@/lib/locale';
 import { PREVIEW_GEOMETRY } from './reveal';
 
 /** A row in the readings shelf (UIUX §2.11 — palm/face cards, re-openable). */
@@ -30,8 +31,8 @@ export function relativeDate(iso: string, now: number): string {
   if (days === 1) return 'Yesterday';
   if (days < 7) return `${days} days ago`;
   if (days < 30) return `${Math.floor(days / 7)} week${days < 14 ? '' : 's'} ago`;
-  // `undefined` locale → the device/runtime default (device locale on native), not a hardcoded en-US.
-  return new Date(then).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  // Device locale (audit §6) → dates read in the user's own locale, not a hardcoded en-US.
+  return new Date(then).toLocaleDateString(deviceLocale(), { month: 'short', day: 'numeric' });
 }
 
 // ── Preview shelf for device-free web-screenshot verification (P6.T4). ──
