@@ -2,7 +2,7 @@ import { Platform, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { AppHeader, Icon, Screen, Text } from '@/components/ui';
+import { AppHeader, Icon, Logomark, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { CANONICAL_DELETION_PROMISE } from '@/lib/trustCopy';
@@ -47,6 +47,10 @@ export function MethodologyScreen() {
   return (
     <Screen scroll>
       <AppHeader title="How Palmly reads" onBack={() => router.back()} />
+      {/* Heritage touch (§5.4 #3): a small claret seal marks the methodology — the authenticity signature. */}
+      <View style={{ alignItems: 'center', marginBottom: theme.spacing.lg }}>
+        <Logomark variant="stamp" filled tone="heritage" size={44} accessibilityLabel="" />
+      </View>
       <Text variant="body" tone="secondary" style={{ marginBottom: theme.spacing.xl }}>
         Transparency is the point — here is exactly how your reading is made. No crystal balls.
       </Text>

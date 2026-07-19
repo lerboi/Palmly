@@ -120,6 +120,8 @@ export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', 
         contentStyle={{ paddingBottom: theme.spacing.xxl + 56 }}
       >
         <AppHeader onBack={back} />
+        {/* Heritage touch (§5.4 #1): the seal stamps-settle as the reading lands — "your reading is sealed". */}
+        <ReadyStamp shouldAnimate={shouldAnimate} />
         {/* ── Hero: the palm draws itself (face reads its own themed motif), then the headline rises ── */}
         <View style={{ alignItems: 'center', marginBottom: theme.spacing.xl }}>
           {kind === 'face' ? (
@@ -520,6 +522,29 @@ function ConsistencySurvey({ readingId }: { readingId: string }) {
         </View>
       )}
     </Card>
+  );
+}
+
+/** Heritage touch (§5.4 #1): a claret seal stamps-settle as the reading lands — the authenticity
+ *  beat ("your reading is sealed"). Native-only scale-settle + stamp haptic [~]; web / reduce-motion
+ *  render the settled seal. Claret (heritage), never the bright accent — the three-reds discipline. */
+function ReadyStamp({ shouldAnimate }: { shouldAnimate: boolean }) {
+  const theme = useTheme();
+  const scale = useSharedValue(shouldAnimate ? 1.3 : 1);
+  const opacity = useSharedValue(shouldAnimate ? 0 : 1);
+  const press = theme.motion.spring.press;
+  const fast = theme.motion.duration.fast;
+  useEffect(() => {
+    if (!shouldAnimate) return;
+    opacity.value = withTiming(1, { duration: fast });
+    scale.value = withSpring(1, press);
+    stamp(); // the reading-sealed haptic (native, [~] device)
+  }, [shouldAnimate, scale, opacity, press, fast]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value, transform: [{ scale: scale.value }] }));
+  return (
+    <Animated.View style={[{ alignItems: 'center', marginBottom: theme.spacing.md }, style]}>
+      <Logomark variant="stamp" filled tone="heritage" size={40} accessibilityLabel="" />
+    </Animated.View>
   );
 }
 
