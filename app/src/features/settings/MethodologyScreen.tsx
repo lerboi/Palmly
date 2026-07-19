@@ -4,6 +4,8 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AppHeader, Icon, Logomark, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
+import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
+import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { useReducedMotion, useTheme } from '@/theme';
 import { CANONICAL_DELETION_PROMISE } from '@/lib/trustCopy';
 import { PrivacyTrustCard } from './settingsUi';
@@ -12,6 +14,8 @@ interface StepDef {
   icon: IconName;
   title: string;
   body: string;
+  /** F2.T3 §5.8: render the self-drawing PalmDiagram under this step to *demonstrate* the trace. */
+  diagram?: boolean;
 }
 
 /** The three-step "how a reading is made" pipeline (UIUX §2.5) — landmarks → traced lines → classics. */
@@ -25,6 +29,7 @@ const STEPS: StepDef[] = [
     icon: 'palm',
     title: 'We trace your lines',
     body: 'Your major lines — heart, head, life and fate — are traced into an engraved diagram. From here we work only from that diagram — never the photo.',
+    diagram: true,
   },
   {
     icon: 'elements',
@@ -127,6 +132,18 @@ function TimelineStep({ step, index, last, shouldAnimate }: { step: StepDef; ind
         <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.xs }}>
           {step.body}
         </Text>
+        {/* F2.T3 §5.8: the trace step DEMONSTRATES — the diagram self-draws (settled under reduce-motion
+            / web). PREVIEW_GEOMETRY is correct here: this page is about the method, not the user's data. */}
+        {step.diagram ? (
+          <View style={{ alignItems: 'center', marginTop: theme.spacing.md }}>
+            <PalmDiagram
+              geometry={PREVIEW_GEOMETRY}
+              size={180}
+              animate={shouldAnimate}
+              signatureLines={['heart_line', 'fate_line']}
+            />
+          </View>
+        ) : null}
       </View>
     </Animated.View>
   );
