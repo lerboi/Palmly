@@ -16,7 +16,7 @@ import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { AppHeader, Button, Card, Icon, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
-import { useReducedMotion, useTheme } from '@/theme';
+import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
 import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
 import { FACE_READING_ENABLED } from '@/lib/capabilities';
@@ -552,17 +552,7 @@ function ReadyStamp({ shouldAnimate }: { shouldAnimate: boolean }) {
  *  entrance. Native-only spring/scroll-in [~]; web renders the settled seal. */
 function SealFab({ onPress, shouldAnimate }: { onPress: () => void; shouldAnimate: boolean }) {
   const theme = useTheme();
-  const [held, setHeld] = useState(false);
-  const scale = useSharedValue(1);
-  const press = theme.motion.spring.press;
-  useEffect(() => {
-    if (!shouldAnimate) {
-      scale.value = 1;
-      return;
-    }
-    scale.value = withSpring(held ? 0.92 : 1, press);
-  }, [held, shouldAnimate, scale, press]);
-  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const { scaleStyle, onPressIn, onPressOut } = usePressSpring(0.92);
 
   return (
     <Animated.View
@@ -574,8 +564,8 @@ function SealFab({ onPress, shouldAnimate }: { onPress: () => void; shouldAnimat
           stamp(); // the seal-stamp confirm (F1.11)
           onPress();
         }}
-        onPressIn={() => setHeld(true)}
-        onPressOut={() => setHeld(false)}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
         accessibilityRole="button"
         accessibilityLabel="Share this reading"
       >

@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Platform, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
-import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { Button, Card, Icon, Logomark, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
-import { useReducedMotion, useTheme } from '@/theme';
+import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
 
 export interface Plan {
   id: string;
@@ -209,26 +209,14 @@ function joinNames(names: string[]): string {
 
 function PlanCard({ plan, selected, onSelect }: { plan: Plan; selected: boolean; onSelect: () => void }) {
   const theme = useTheme();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  const [held, setHeld] = useState(false);
-  const scale = useSharedValue(1);
-  const press = theme.motion.spring.press;
-  useEffect(() => {
-    if (!shouldAnimate) {
-      scale.value = 1;
-      return;
-    }
-    scale.value = withSpring(held ? 0.98 : 1, press);
-  }, [held, shouldAnimate, scale, press]);
-  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const { scaleStyle, onPressIn, onPressOut } = usePressSpring(0.98);
 
   return (
     <Animated.View style={scaleStyle}>
       <Pressable
         onPress={onSelect}
-        onPressIn={() => setHeld(true)}
-        onPressOut={() => setHeld(false)}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
         accessibilityRole="radio"
         accessibilityState={{ selected }}
         accessibilityLabel={`${plan.name} — ${plan.perMonth}, ${plan.price}`}

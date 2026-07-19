@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import {
   Platform,
   Pressable,
@@ -14,10 +14,9 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { controlHeight, useReducedMotion, useTheme } from '@/theme';
+import { controlHeight, usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { tick } from '@/lib/haptics';
 import { Text } from './Text';
 
@@ -71,28 +70,16 @@ export function Button({
     variant === 'primary' || variant === 'tonal' || variant === 'danger' || variant === 'premium';
 
   // ── Press-spring (native only; reduce-motion / web → resting scale 1) ──
-  // The press handlers only flip a state flag; the shared-value mutation lives in the effect
-  // (effect-scoped mutation is the codebase pattern the React-Compiler lint allows).
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  const [held, setHeld] = useState(false);
-  const scale = useSharedValue(1);
-  const press = theme.motion.spring.press;
-  useEffect(() => {
-    if (!shouldAnimate) {
-      scale.value = 1;
-      return;
-    }
-    scale.value = withSpring(held ? 0.97 : 1, press);
-  }, [held, shouldAnimate, scale, press]);
-  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  // The scale-down press-spring is the shared @/theme hook (redesign §5.6); the handlers below just
+  // compose it with the haptic tick + any forwarded press props.
+  const { scaleStyle, onPressIn: springIn, onPressOut: springOut } = usePressSpring(0.97);
   const pressIn = (e: GestureResponderEvent) => {
-    setHeld(true);
+    springIn();
     tick(); // tactile press feedback (F1.11) — native-only, kept on under reduce-motion
     onPressIn?.(e);
   };
   const pressOut = (e: GestureResponderEvent) => {
-    setHeld(false);
+    springOut();
     onPressOut?.(e);
   };
 

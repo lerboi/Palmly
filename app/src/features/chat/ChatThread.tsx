@@ -11,12 +11,11 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
 import { AppHeader, Button, Icon, Logomark, Screen, Text } from '@/components/ui';
-import { controlHeight, useReducedMotion, useTheme } from '@/theme';
+import { controlHeight, usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { type ChatMessage, citationLabel } from './chat';
 
 export interface ChatThreadProps {
@@ -128,25 +127,6 @@ export function ChatThread({ premium, messages, chips, typing = false, onSend, i
       </KeyboardAvoidingView>
     </Screen>
   );
-}
-
-/** Shared reduce-motion-aware press-scale. */
-function usePressScale(min = 0.94) {
-  const theme = useTheme();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  const [held, setHeld] = useState(false);
-  const scale = useSharedValue(1);
-  const press = theme.motion.spring.press;
-  useEffect(() => {
-    if (!shouldAnimate) {
-      scale.value = 1;
-      return;
-    }
-    scale.value = withSpring(held ? min : 1, press);
-  }, [held, shouldAnimate, scale, press, min]);
-  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  return { style, onPressIn: () => setHeld(true), onPressOut: () => setHeld(false) };
 }
 
 function IconTile() {
@@ -339,7 +319,7 @@ function TypingDot({ index }: { index: number }) {
 /** A suggestion chip — taps its text into the input (F1.10); press-spring + staggered entrance. */
 function Chip({ label, index, shouldAnimate, onInject }: { label: string; index: number; shouldAnimate: boolean; onInject?: () => void }) {
   const theme = useTheme();
-  const { style, onPressIn, onPressOut } = usePressScale(0.95);
+  const { scaleStyle: style, onPressIn, onPressOut } = usePressSpring(0.95);
   const entering = shouldAnimate
     ? FadeInDown.delay(index * theme.motion.stagger.list).duration(theme.motion.duration.base)
     : undefined;
@@ -370,7 +350,7 @@ function Chip({ label, index, shouldAnimate, onInject }: { label: string; index:
 function InputBar({ value, onChangeText, onSubmit }: { value: string; onChangeText: (t: string) => void; onSubmit: () => void }) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
-  const send = usePressScale(0.9);
+  const send = usePressSpring(0.9);
   const canSend = value.trim().length > 0;
   return (
     <View
@@ -405,7 +385,7 @@ function InputBar({ value, onChangeText, onSubmit }: { value: string; onChangeTe
           paddingVertical: theme.spacing.md,
         }}
       />
-      <Animated.View style={send.style}>
+      <Animated.View style={send.scaleStyle}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Send"

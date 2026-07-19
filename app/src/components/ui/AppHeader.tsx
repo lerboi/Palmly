@@ -1,7 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { Platform, Pressable, View, type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { useReducedMotion, useTheme } from '@/theme';
+import { type ReactNode } from 'react';
+import { Pressable, View, type ViewStyle } from 'react-native';
+import Animated from 'react-native-reanimated';
+import { usePressSpring, useTheme } from '@/theme';
 import { Icon } from './Icon';
 import { Text } from './Text';
 
@@ -57,24 +57,12 @@ export function AppHeader({ title, onBack, right, showDivider = false, style }: 
 /** Back affordance — a spring press-scale on the icon (native only; reduce-motion / web → static). */
 function BackButton({ onBack }: { onBack: () => void }) {
   const theme = useTheme();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  const [held, setHeld] = useState(false);
-  const scale = useSharedValue(1);
-  const press = theme.motion.spring.press;
-  useEffect(() => {
-    if (!shouldAnimate) {
-      scale.value = 1;
-      return;
-    }
-    scale.value = withSpring(held ? 0.9 : 1, press);
-  }, [held, shouldAnimate, scale, press]);
-  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const { scaleStyle, onPressIn, onPressOut } = usePressSpring(0.9);
   return (
     <Pressable
       onPress={onBack}
-      onPressIn={() => setHeld(true)}
-      onPressOut={() => setHeld(false)}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
       accessibilityRole="button"
       accessibilityLabel="Back"
       hitSlop={8}

@@ -16,7 +16,7 @@ import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { AppHeader, Button, Icon, Logomark, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
-import { useReducedMotion, useTheme } from '@/theme';
+import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
 import { composeShareText, createInvite, type CreatedInvite, type Framing } from '@/lib/invite';
 import { savePendingCompat } from '@/lib/pendingCompat';
@@ -236,28 +236,9 @@ export function ShareView({
   );
 }
 
-/** Shared reduce-motion-aware press-scale (native only; web / reduce-motion → resting). */
-function usePressScale(min = 0.94) {
-  const theme = useTheme();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  const [held, setHeld] = useState(false);
-  const scale = useSharedValue(1);
-  const press = theme.motion.spring.press;
-  useEffect(() => {
-    if (!shouldAnimate) {
-      scale.value = 1;
-      return;
-    }
-    scale.value = withSpring(held ? min : 1, press);
-  }, [held, shouldAnimate, scale, press, min]);
-  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  return { style, onPressIn: () => setHeld(true), onPressOut: () => setHeld(false) };
-}
-
 function Segment({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   const theme = useTheme();
-  const { style, onPressIn, onPressOut } = usePressScale(0.97);
+  const { scaleStyle: style, onPressIn, onPressOut } = usePressSpring(0.97);
   return (
     <Animated.View style={[{ flex: 1 }, style]}>
       <Pressable
@@ -309,7 +290,7 @@ function FramingPicker({ value, onChange }: { value: Framing; onChange: (f: Fram
 
 function FramingPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   const theme = useTheme();
-  const { style, onPressIn, onPressOut } = usePressScale(0.95);
+  const { scaleStyle: style, onPressIn, onPressOut } = usePressSpring(0.95);
   return (
     <Animated.View style={[{ flex: 1 }, style]}>
       <Pressable
@@ -337,7 +318,7 @@ function FramingPill({ label, active, onPress }: { label: string; active: boolea
 
 function ChannelButton({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
   const theme = useTheme();
-  const { style, onPressIn, onPressOut } = usePressScale(0.9);
+  const { scaleStyle: style, onPressIn, onPressOut } = usePressSpring(0.9);
   return (
     <Animated.View style={style}>
       <Pressable

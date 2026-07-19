@@ -1,15 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import { router, type Href } from 'expo-router';
-import Animated, {
-  ZoomIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import { AppHeader, Button, Icon, Screen, Text } from '@/components/ui';
-import { useReducedMotion, useTheme } from '@/theme';
+import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { track } from '@/lib/analytics';
 
@@ -99,24 +94,14 @@ function HandCard({
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  const [held, setHeld] = useState(false);
-  const scale = useSharedValue(1);
-  const press = theme.motion.spring.press;
-  useEffect(() => {
-    if (!shouldAnimate) {
-      scale.value = 1;
-      return;
-    }
-    scale.value = withSpring(held ? 0.97 : 1, press);
-  }, [held, shouldAnimate, scale, press]);
-  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const { scaleStyle, onPressIn, onPressOut } = usePressSpring(0.97);
 
   return (
     <Animated.View style={[{ flex: 1 }, scaleStyle]}>
       <Pressable
         onPress={onSelect}
-        onPressIn={() => setHeld(true)}
-        onPressOut={() => setHeld(false)}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
         accessibilityRole="radio"
         accessibilityState={{ selected }}
         accessibilityLabel={`${label} hand`}

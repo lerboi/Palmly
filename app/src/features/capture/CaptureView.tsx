@@ -1,17 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { AccessibilityInfo, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, Ellipse, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import Animated, {
   Easing,
   useAnimatedProps,
-  useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { Button, Icon, Text } from '@/components/ui';
-import { useReducedMotion, useTheme } from '@/theme';
+import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { captureInstruction, type CaptureMode, type CaptureState } from './capture';
 
 export { captureInstruction, CORRECTIVE_STATES, CAPTURE_STATES, type CaptureMode, type CaptureState } from './capture';
@@ -213,28 +211,9 @@ const controlStyle = {
   justifyContent: 'center' as const,
 };
 
-/** Shared reduce-motion-aware press-scale (native only; web / reduce-motion → resting). */
-function usePressScale(min = 0.92) {
-  const theme = useTheme();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  const [held, setHeld] = useState(false);
-  const scale = useSharedValue(1);
-  const press = theme.motion.spring.press;
-  useEffect(() => {
-    if (!shouldAnimate) {
-      scale.value = 1;
-      return;
-    }
-    scale.value = withSpring(held ? min : 1, press);
-  }, [held, shouldAnimate, scale, press, min]);
-  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  return { style, onPressIn: () => setHeld(true), onPressOut: () => setHeld(false) };
-}
-
 function PressScale({ children }: { children: React.ReactNode }) {
-  const { style } = usePressScale();
-  return <Animated.View style={style}>{children}</Animated.View>;
+  const { scaleStyle } = usePressSpring(0.92);
+  return <Animated.View style={scaleStyle}>{children}</Animated.View>;
 }
 
 function ControlButton({
@@ -246,7 +225,7 @@ function ControlButton({
   onPress?: () => void;
   accessibilityLabel: string;
 }) {
-  const { style, onPressIn, onPressOut } = usePressScale();
+  const { scaleStyle: style, onPressIn, onPressOut } = usePressSpring(0.92);
   return (
     <Animated.View style={style}>
       <Pressable
@@ -279,7 +258,7 @@ function Shutter({
   const c = 2 * Math.PI * r;
   const reduceMotion = useReducedMotion();
   const shouldAnimate = animate && !reduceMotion && Platform.OS !== 'web';
-  const { style, onPressIn, onPressOut } = usePressScale(0.94);
+  const { scaleStyle: style, onPressIn, onPressOut } = usePressSpring(0.94);
 
   const progress = useSharedValue(target);
   useEffect(() => {

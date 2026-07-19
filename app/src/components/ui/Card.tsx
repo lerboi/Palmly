@@ -1,12 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, type ViewStyle } from 'react-native';
-import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
-import { useReducedMotion, useTheme } from '@/theme';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import type { ShadowKey } from '@/theme';
 import { tick } from '@/lib/haptics';
 
@@ -65,24 +60,19 @@ export function Card({
     borderColor: theme.colors.border,
   };
 
+  // Cards settle in on a SPRING (redesign §4.1 `motion.spring.entrance`, F2.7) rather than a flat
+  // duration, so the stagger feels physical. Native-only; reduce-motion / web render the settled card.
   const entering =
     shouldAnimate && entranceIndex !== undefined
-      ? FadeInDown.delay(entranceIndex * theme.motion.stagger.list).duration(theme.motion.duration.base)
+      ? FadeInDown.delay(entranceIndex * theme.motion.stagger.list)
+          .springify()
+          .damping(theme.motion.spring.entrance.damping)
+          .stiffness(theme.motion.spring.entrance.stiffness)
+          .mass(theme.motion.spring.entrance.mass)
       : undefined;
 
-  // Press-spring — held flag flips in the handler; the shared-value write lives in the effect
-  // (effect-scoped mutation keeps the React-Compiler lint happy).
-  const [held, setHeld] = useState(false);
-  const scale = useSharedValue(1);
-  const press = theme.motion.spring.press;
-  useEffect(() => {
-    if (!shouldAnimate) {
-      scale.value = 1;
-      return;
-    }
-    scale.value = withSpring(held ? 0.985 : 1, press);
-  }, [held, shouldAnimate, scale, press]);
-  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  // The scale-down press-spring is the shared @/theme hook (redesign §5.6).
+  const { scaleStyle, onPressIn, onPressOut } = usePressSpring(0.985);
 
   if (!onPress) {
     return (
@@ -98,10 +88,10 @@ export function Card({
       <Pressable
         onPress={onPress}
         onPressIn={() => {
-          setHeld(true);
+          onPressIn();
           tick(); // tactile press feedback (F1.11)
         }}
-        onPressOut={() => setHeld(false)}
+        onPressOut={onPressOut}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
         style={({ pressed }) => [

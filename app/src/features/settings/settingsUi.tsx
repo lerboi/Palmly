@@ -1,10 +1,10 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { type ReactNode } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { Card, Icon, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
-import { useReducedMotion, useTheme } from '@/theme';
+import { usePressSpring, useTheme } from '@/theme';
 
 /** A titled group of setting rows in a single lifted card (iOS-style grouped list, v2 V20). */
 export function SettingGroup({ title, children }: { title: string; children: ReactNode }) {
@@ -50,22 +50,8 @@ export interface SettingRowProps {
  */
 export function SettingRow({ label, caption, value, leadingIcon, accentIcon = false, onPress, right, danger = false, first = false }: SettingRowProps) {
   const theme = useTheme();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-
-  // Press-spring — held flag flips in the handler; the shared-value write lives in the effect
-  // (effect-scoped mutation keeps the React-Compiler lint happy), written before the style read.
-  const [held, setHeld] = useState(false);
-  const scale = useSharedValue(1);
-  const press = theme.motion.spring.press;
-  useEffect(() => {
-    if (!shouldAnimate) {
-      scale.value = 1;
-      return;
-    }
-    scale.value = withSpring(held ? 0.98 : 1, press);
-  }, [held, shouldAnimate, scale, press]);
-  const scaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  // The scale-down press-spring is the shared @/theme hook (redesign §5.6).
+  const { scaleStyle, onPressIn, onPressOut } = usePressSpring(0.98);
 
   const content = (
     <View
@@ -118,8 +104,8 @@ export function SettingRow({ label, caption, value, leadingIcon, accentIcon = fa
     <Animated.View style={[styles.pressWrap, scaleStyle]}>
       <Pressable
         onPress={onPress}
-        onPressIn={() => setHeld(true)}
-        onPressOut={() => setHeld(false)}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
         accessibilityRole="button"
         accessibilityLabel={label}
         style={({ pressed }) => (pressed ? { backgroundColor: theme.colors.surfaceSunken } : null)}
