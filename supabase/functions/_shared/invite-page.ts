@@ -15,7 +15,8 @@ export type SharePlatform = 'ios' | 'android' | 'other';
 export interface InvitePageOpts {
   inviterName: string; // first name, or 'A friend'
   kind: 'compatibility' | 'generic';
-  cardImageUrl: string; // og:image (the inviter's share card, < 300KB)
+  cardImageUrl: string; // og:image (the inviter's share card, < 300KB — falls back to a default)
+  senderCardUrl?: string; // the inviter's REAL card for the inline body image (absent → no inline card)
   inviteUrl: string; // canonical og:url
   ctaUrl: string; // where the CTA goes (server-picked by UA: app/App-Store/Play referrer)
   clipboardToken: string; // the invite URL to arm on the iOS clipboard on CTA tap
@@ -69,7 +70,8 @@ color:var(--ink);line-height:1.5;-webkit-text-size-adjust:100%}
 main{max-width:560px;margin:0 auto;padding:40px 24px 64px;text-align:center}
 .seal{display:block;width:56px;height:56px;margin:0 auto 24px}
 h1{font-size:30px;font-weight:800;letter-spacing:-0.4px;margin-bottom:24px}
-.wheel{width:180px;height:180px;margin:8px auto 28px;position:relative}
+.wheel{width:180px;height:180px;margin:8px auto 20px;position:relative}
+.card{display:block;width:100%;max-width:260px;margin:0 auto 28px;border-radius:16px;box-shadow:0 8px 24px var(--cta-shadow)}
 .cta{display:block;background:var(--accent);color:var(--on-accent);text-decoration:none;font-size:20px;font-weight:700;
 padding:18px 24px;border-radius:14px;margin:8px 0 28px;box-shadow:0 8px 24px var(--cta-shadow)}
 .steps{list-style:none;text-align:left;max-width:340px;margin:0 auto 32px;counter-reset:s}
@@ -85,9 +87,9 @@ hr{border:none;border-top:1px solid var(--border);margin:24px 0}
 align-items:center;justify-content:center;text-align:center;padding:32px;z-index:9}
 #wc .arrow{position:absolute;top:14px;right:20px;font-size:40px}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.seal,h1,.wheel,.cta,.steps,.about{animation:rise .5s cubic-bezier(.22,1,.36,1) both}
-h1{animation-delay:.05s}.wheel{animation-delay:.1s}.cta{animation-delay:.16s}.steps{animation-delay:.22s}.about{animation-delay:.28s}
-@media (prefers-reduced-motion:reduce){.seal,h1,.wheel,.cta,.steps,.about{animation:none}}`;
+.seal,h1,.wheel,.card,.cta,.steps,.about{animation:rise .5s cubic-bezier(.22,1,.36,1) both}
+h1{animation-delay:.05s}.wheel{animation-delay:.1s}.card{animation-delay:.14s}.cta{animation-delay:.18s}.steps{animation-delay:.24s}.about{animation-delay:.3s}
+@media (prefers-reduced-motion:reduce){.seal,h1,.wheel,.card,.cta,.steps,.about{animation:none}}`;
 
 // CJK-free brand mark — the traced-palm Logomark stamp in claret heritage (§3.2 — seal only, never
 // the bright accent), replacing the 相 chop. Reads `var(--heritage)` so it flips in dark mode.
@@ -110,7 +112,7 @@ export function buildInvitePage(o: InvitePageOpts): string {
   const og = ogText(o);
   const body = bodyCopy(o);
   const weChat = o.isWeChat
-    ? `<div id="wc"><div class="arrow">⋯</div><div><p style="font-size:20px;margin-bottom:12px">Tap ⋯ (top-right)</p><p>then choose <b>Open in Browser</b> to continue.</p></div></div>`
+    ? `<div id="wc" role="dialog" aria-label="Open this page in your browser"><div class="arrow" aria-hidden="true">⋯</div><div><p style="font-size:20px;margin-bottom:12px">Tap ⋯ (top-right)</p><p>then choose <b>Open in Browser</b> to continue.</p></div></div>`
     : '';
 
   return `<!doctype html><html lang="en"><head>
@@ -132,11 +134,13 @@ export function buildInvitePage(o: InvitePageOpts): string {
 ${SEAL_SVG}
 <h1>${body.h1}</h1>
 ${WHEEL_SVG}
+${o.senderCardUrl ? `<img class="card" src="${esc(o.senderCardUrl)}" alt="${esc(o.inviterName)}’s Palmly reading card" loading="lazy" width="1080" height="1350">` : ''}
 <a class="cta" id="cta" href="${esc(o.ctaUrl)}" onclick="arm()">${body.cta}</a>
 <ol class="steps">${body.steps.map((s) => `<li>${s}</li>`).join('')}</ol>
 <hr>
-<section class="about">
+<section class="about" aria-label="About Palmly">
 <p>Palmly reads the lines of your palm into a reflective reading — <b>for reflection and fun</b>, not fortune-telling.</p>
+<p><b>How Palmly reads:</b> your palm’s major lines are traced into an engraved diagram, then read against centuries of palmistry — a transparent method you can see, not mysticism.</p>
 <p class="privacy">Your photo is deleted right after your reading — always within 24 hours.</p>
 <p class="code">Invite code: <b>${esc(o.fallbackCode)}</b></p>
 </section>

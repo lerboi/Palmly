@@ -78,6 +78,22 @@ Deno.test('buildInvitePage: reskinned to Vermilion — accent CTA, claret seal, 
   assert(!/[一-鿿]/.test(html), 'no CJK glyphs — 相 chop dropped'); // (🤝 in the OG title is emoji, not CJK)
 });
 
+Deno.test('buildInvitePage: inlines the sender card (with alt) only when present; every img has an alt (F1.12)', () => {
+  const withCard = buildInvitePage({ ...base, senderCardUrl: 'https://cdn.palmly.app/cards/mei_feed.png' });
+  assertStringIncludes(withCard, '<img class="card" src="https://cdn.palmly.app/cards/mei_feed.png"');
+  assertStringIncludes(withCard, 'alt="Mei’s Palmly reading card"');
+  // No real sender card → no inline <img> at all (the OG default is not shown as a body "card").
+  assert(!buildInvitePage(base).includes('<img'), 'no inline card image when senderCardUrl is absent');
+  // Accessibility: every <img> the page emits carries an alt.
+  for (const m of withCard.matchAll(/<img\b[^>]*>/g)) {
+    assert(m[0].includes(' alt='), `img without alt: ${m[0]}`);
+  }
+});
+
+Deno.test('buildInvitePage: "How Palmly reads" believability backstop is reachable pre-install (F1.12)', () => {
+  assertStringIncludes(buildInvitePage(base), 'How Palmly reads');
+});
+
 Deno.test('buildInvitePage: dark-mode + reduce-motion-safe (§4 — every animation has a no-op fallback)', () => {
   const html = buildInvitePage(base);
   assertStringIncludes(html, '@media (prefers-color-scheme:dark)'); // dark theme

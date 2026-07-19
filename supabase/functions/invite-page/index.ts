@@ -9,6 +9,11 @@ import { buildInviteGonePage, buildInvitePage, isLinkPreviewBot, type SharePlatf
 
 const APP_STORE_URL = 'https://apps.apple.com/app/palmly/id0000000000'; // TODO(H7): real Apple app id
 const WEB_URL = 'https://palmly.app';
+// iOS Universal-Link-first CTA ordering (audit F1.12, Backend §8.2). Once the apple-app-site-
+// association is served AND the domain is verified, the iOS CTA should open the app via the Universal
+// Link (the OS falls through to the App Store when the app isn't installed). Kept DORMANT (→ the App
+// Store) until then — an unverified UL just reloads this teaser. Flip this one flag at launch.
+const IOS_UNIVERSAL_LINK_VERIFIED = false;
 const OG_DEFAULT = 'https://palmly.app/og-default.png';
 const playUrl = (token: string) => `https://play.google.com/store/apps/details?id=com.palmly.app&referrer=${encodeURIComponent(inviteReferrer(token))}`;
 
@@ -68,13 +73,16 @@ Deno.serve(
     }
 
     const { platform, isWeChat } = detectUA(ua ?? '');
-    const ctaUrl = platform === 'ios' ? APP_STORE_URL : platform === 'android' ? playUrl(token) : WEB_URL;
+    // iOS: Universal Link first (once verified), else the store; Android carries the install referrer.
+    const iosCta = IOS_UNIVERSAL_LINK_VERIFIED ? inviteUrl(token) : APP_STORE_URL;
+    const ctaUrl = platform === 'ios' ? iosCta : platform === 'android' ? playUrl(token) : WEB_URL;
 
     return html(
       buildInvitePage({
         inviterName,
         kind: (invite.kind as 'compatibility' | 'generic') ?? 'compatibility',
         cardImageUrl: context.card_image_url ?? OG_DEFAULT,
+        senderCardUrl: typeof context.card_image_url === 'string' ? context.card_image_url : undefined,
         inviteUrl: inviteUrl(token),
         ctaUrl,
         clipboardToken: inviteUrl(token),
