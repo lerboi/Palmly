@@ -213,8 +213,8 @@ export const vermilionSkin: Skin = {
     premiumPressed: '#AE842F',
     onPremium: '#1A1A1F',
     success: '#3F7A5E',
-    danger: '#C0392B', // destructive confirm ONLY — deeper/cooler crimson (§3.2)
-    dangerPressed: '#A32E20', // darker crimson for pressed
+    danger: '#A93226', // destructive confirm ONLY — deeper/cooler crimson, distinct from the accent (§3.2, F2.5)
+    dangerPressed: '#8E2A20', // darker crimson for pressed
     scrim: 'rgba(20,21,26,0.4)',
   },
   dark: {

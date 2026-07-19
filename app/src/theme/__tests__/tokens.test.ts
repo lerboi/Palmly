@@ -75,6 +75,14 @@ describe('design tokens — role-based skin contract (redesign §3)', () => {
     expect(activeSkin.dark.accent).not.toBe('#8B95F0');
   });
 
+  it('keeps destructive `danger` visually distinct from the accent (F2.5 / §5.7)', () => {
+    // §5.7: light danger #C0392B read as the CTA's twin — cooled to #A93226 so "Delete everything"
+    // no longer wears the accent's clothes. The invariant (not the exact hex) is what matters.
+    expect(activeSkin.light.danger).toBe('#A93226');
+    expect(activeSkin.light.danger).not.toBe(activeSkin.light.accent);
+    expect(activeSkin.dark.danger).not.toBe(activeSkin.dark.accent);
+  });
+
   it('keeps Ink & Cinnabar + Quiet Cosmos available as skins #1/#2 for parity / rollback', () => {
     expect(inkCinnabarSkin.name).toBe('Ink & Cinnabar');
     expect(inkCinnabarSkin.light.accent).toBe('#C3272B');

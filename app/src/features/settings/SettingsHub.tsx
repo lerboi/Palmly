@@ -80,6 +80,7 @@ function PlanRow({ premium, onPress }: { premium: boolean; onPress: () => void }
     <SettingRow
       first
       leadingIcon="sparkle"
+      accentIcon
       label={premium ? 'Palmly Premium' : 'Palmly Free'}
       caption={premium ? 'All features unlocked — thank you' : 'Unlock the full almanac, compatibility & chat'}
       onPress={onPress}

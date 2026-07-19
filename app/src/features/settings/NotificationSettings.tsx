@@ -39,8 +39,15 @@ export function NotificationSettings() {
     void saveNotifPref(key, value);
   };
 
-  const sw = (value: boolean, onValueChange: (v: boolean) => void) => (
-    <Switch value={value} onValueChange={onValueChange} trackColor={{ true: theme.colors.accent, false: theme.colors.border }} thumbColor={theme.colors.surface} />
+  const sw = (value: boolean, onValueChange: (v: boolean) => void, label: string) => (
+    <Switch
+      value={value}
+      onValueChange={onValueChange}
+      accessibilityLabel={label}
+      trackColor={{ true: theme.colors.accent, false: theme.colors.border }}
+      thumbColor={theme.colors.surface}
+      activeThumbColor={theme.colors.surface}
+    />
   );
 
   return (
@@ -63,9 +70,9 @@ export function NotificationSettings() {
       ) : null}
 
       <SettingGroup title="What you’ll hear about">
-        <SettingRow first leadingIcon="sparkle" label="Daily fortune" right={sw(prefs.daily_fortune, toggle('daily_fortune'))} />
-        <SettingRow leadingIcon="heart" label="Compatibility & social" right={sw(prefs.social, toggle('social'))} />
-        <SettingRow leadingIcon="bell" label="Offers & updates" right={sw(prefs.offers, toggle('offers'))} />
+        <SettingRow first leadingIcon="sparkle" label="Daily fortune" right={sw(prefs.daily_fortune, toggle('daily_fortune'), 'Daily fortune')} />
+        <SettingRow leadingIcon="heart" label="Compatibility & social" right={sw(prefs.social, toggle('social'), 'Compatibility & social')} />
+        <SettingRow leadingIcon="bell" label="Offers & updates" right={sw(prefs.offers, toggle('offers'), 'Offers & updates')} />
       </SettingGroup>
 
       <SettingGroup title="Timing">

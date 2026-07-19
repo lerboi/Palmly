@@ -30,8 +30,11 @@ export interface SettingRowProps {
   /** Optional secondary line under the label (e.g. the Plan nudge copy). */
   caption?: string;
   value?: string;
-  /** A leading icon in an accent chip (v2 §6 — wire icons across the settings suite). */
+  /** A leading icon in a chip (v2 §6 — wire icons across the settings suite). Ink by default so the
+   *  accent stays scarce; set `accentIcon` to tint it vermilion (reserved for the Plan row, §5.7). */
   leadingIcon?: IconName;
+  /** Tint the leading-icon chip with the accent — reserve for the commercial Plan/Upgrade row only. */
+  accentIcon?: boolean;
   onPress?: () => void;
   /** Right-hand control (a Switch / commercial pill); defaults to a chevron when the row is pressable. */
   right?: ReactNode;
@@ -45,7 +48,7 @@ export interface SettingRowProps {
  * pressed tint (which is also the reduce-motion / web feedback). An optional `leadingIcon` renders
  * in an accent chip; an optional `caption` stacks a secondary line under the label.
  */
-export function SettingRow({ label, caption, value, leadingIcon, onPress, right, danger = false, first = false }: SettingRowProps) {
+export function SettingRow({ label, caption, value, leadingIcon, accentIcon = false, onPress, right, danger = false, first = false }: SettingRowProps) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
@@ -82,12 +85,12 @@ export function SettingRow({ label, caption, value, leadingIcon, onPress, right,
             width: 28,
             height: 28,
             borderRadius: theme.radii.sm,
-            backgroundColor: theme.colors.accentMuted,
+            backgroundColor: accentIcon ? theme.colors.accentMuted : theme.colors.surfaceSunken,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Icon name={leadingIcon} size={16} color={theme.colors.accent} decorative />
+          <Icon name={leadingIcon} size={16} color={accentIcon ? theme.colors.accent : theme.colors.textSecondary} decorative />
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
