@@ -3,6 +3,8 @@ import { Platform, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { Button, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
+import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
+import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { RedThread } from '@/features/reading/ShareView';
 import { useReducedMotion, useTheme } from '@/theme';
 import { ClaimError, claimInvite, loadClaimContext, normalizeCode, saveClaimContext, type ClaimContext } from '@/lib/claim';
@@ -90,18 +92,20 @@ export default function Claim() {
   return (
     <Screen>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+        {/* F2.T2 §5.5: the avatar+thread composition scaled ~1.5× (64→96) so it anchors the void
+            above it as the hero, instead of floating small in centered space. */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
           <Animated.View entering={zoom(0)}>
-            <Avatar accessibilityLabel={`${inviterName}, who invited you`}>
-              <Text variant="heading" color={theme.colors.accent}>
+            <Avatar size={96} accessibilityLabel={`${inviterName}, who invited you`}>
+              <Text variant="display" color={theme.colors.accent}>
                 {inviterName[0]}
               </Text>
             </Avatar>
           </Animated.View>
           <RedThread animate />
           <Animated.View entering={zoom(1)}>
-            <Avatar accessibilityLabel="You">
-              <Logomark size={34} tone="accent" accessibilityLabel="" />
+            <Avatar size={96} accessibilityLabel="You">
+              <Logomark size={48} tone="accent" accessibilityLabel="" />
             </Avatar>
           </Animated.View>
         </View>
@@ -117,6 +121,7 @@ export default function Claim() {
           Scan your palm to reveal your compatibility — you&apos;ll get your own full reading too.
         </Text>
         <PrivacyBadge style={{ marginTop: theme.spacing.lg }} />
+        <PairTease />
       </View>
 
       <View style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
@@ -172,22 +177,25 @@ export default function Claim() {
 }
 
 /** A circular avatar tile — both people share the same accent treatment (the thread carries the
- *  claret); differentiated only by their glyph so the pair reads symmetric. */
+ *  claret); differentiated only by their glyph so the pair reads symmetric. `size` (default 64) lets
+ *  the claim landing scale the composition up (§5.5). */
 function Avatar({
   children,
   accessibilityLabel,
+  size = 64,
 }: {
   children: React.ReactNode;
   accessibilityLabel: string;
+  size?: number;
 }) {
   const theme = useTheme();
   return (
     <View
       accessibilityLabel={accessibilityLabel}
       style={{
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
         backgroundColor: theme.colors.accentMuted,
         borderWidth: theme.strokes.bold,
         borderColor: theme.colors.accent,
@@ -196,6 +204,61 @@ function Avatar({
       }}
     >
       {children}
+    </View>
+  );
+}
+
+/** F2.T2 §5.5: a teased "what you'll both see" mini pair-card — two mirrored mini palms tied to a
+ *  claret "?" score ring (unknown until you scan), rendered at reduced opacity so it reads as an
+ *  obscured preview and fills the void between the badge and the CTA. (A true native blur is a
+ *  device-only enhancement — the opacity tease is the device-free approximation.) */
+function PairTease() {
+  const theme = useTheme();
+  return (
+    <View style={{ marginTop: theme.spacing.xl, alignItems: 'center' }}>
+      <View
+        style={[
+          {
+            width: 232,
+            borderRadius: theme.radii.lg,
+            paddingVertical: theme.spacing.lg,
+            paddingHorizontal: theme.spacing.xl,
+            backgroundColor: theme.colors.surfaceRaised,
+            alignItems: 'center',
+            opacity: 0.55,
+          },
+          theme.shadow.md,
+        ]}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <PalmDiagram geometry={PREVIEW_GEOMETRY} size={52} animate={false} silhouette />
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              borderWidth: theme.strokes.bold,
+              borderColor: theme.colors.heritageAccent,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text variant="heading" color={theme.colors.heritageAccent}>
+              ?
+            </Text>
+          </View>
+          <PalmDiagram
+            geometry={PREVIEW_GEOMETRY}
+            size={52}
+            animate={false}
+            silhouette
+            style={{ transform: [{ scaleX: -1 }] }}
+          />
+        </View>
+      </View>
+      <Text variant="caption" tone="tertiary" style={{ marginTop: theme.spacing.sm }}>
+        What you&apos;ll both see
+      </Text>
     </View>
   );
 }

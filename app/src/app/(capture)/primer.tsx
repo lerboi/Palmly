@@ -5,6 +5,8 @@ import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { AppHeader, Button, Card, Icon, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
+import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
+import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { useReducedMotion, useTheme } from '@/theme';
 import { uploadPickedScan, type Hand } from '@/lib/scan';
 import { loadClaimContext } from '@/lib/claim';
@@ -81,19 +83,34 @@ export default function Primer() {
       <AppHeader onBack={() => router.back()} />
 
       <View style={{ flex: 1 }}>
+        {/* F2.T2 §5.5: an engraved two-tone camera+open-palm spot illustration (~200px) replaces the
+            small glyph tile, so the primer reads as a Palmly moment — not a styled permission dialog.
+            The palm is the existing engraved diagram (ink silhouette + accent heart line = two-tone);
+            the accent camera badge is the "we see your palm" half of the motif. */}
         <View style={{ alignItems: 'center', marginBottom: theme.spacing.xl }}>
           <Animated.View
             entering={shouldAnimate ? ZoomIn.duration(theme.motion.duration.base) : undefined}
-            style={{
-              width: 96,
-              height: 96,
-              borderRadius: theme.radii.xl,
-              backgroundColor: theme.colors.accentMuted,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            style={{ width: 200, height: 200, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Icon name="camera" size={44} color={theme.colors.accent} decorative />
+            <PalmDiagram geometry={PREVIEW_GEOMETRY} size={190} animate={false} silhouette signatureLines={['heart_line']} />
+            <View
+              style={[
+                {
+                  position: 'absolute',
+                  right: theme.spacing.sm,
+                  bottom: theme.spacing.sm,
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  backgroundColor: theme.colors.accentMuted,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+                theme.shadow.sm,
+              ]}
+            >
+              <Icon name="camera" size={30} color={theme.colors.accent} decorative />
+            </View>
           </Animated.View>
         </View>
 

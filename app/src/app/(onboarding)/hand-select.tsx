@@ -66,6 +66,12 @@ export default function HandSelect() {
             hand later.
           </Text>
         </View>
+
+        {/* F2.T2 §5.5: a full-bleed ghost-palm watermark fills the dead band below the note — identity,
+            not decoration. Silhouette-only + ~5% opacity so it never competes with the cards/CTA. */}
+        <View pointerEvents="none" style={{ flex: 1, alignItems: 'center', justifyContent: 'center', opacity: 0.05 }}>
+          <PalmDiagram geometry={PREVIEW_GEOMETRY} size={300} animate={false} silhouette />
+        </View>
       </View>
 
       <Button
