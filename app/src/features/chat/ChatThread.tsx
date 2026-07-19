@@ -248,7 +248,7 @@ function Bubble({ message, index, shouldAnimate }: { message: ChatMessage; index
             justifyContent: 'center',
           }}
         >
-          <Logomark size={20} tone="accent" accessibilityLabel="Palmly" />
+          <Logomark size={20} tone="accent" compact accessibilityLabel="Palmly" />
         </View>
       </Animated.View>
       <Animated.View entering={entering} style={{ flexShrink: 1 }}>
@@ -286,7 +286,7 @@ function TypingBubble({ shouldAnimate }: { shouldAnimate: boolean }) {
           justifyContent: 'center',
         }}
       >
-        <Logomark size={20} tone="accent" accessibilityLabel="" />
+        <Logomark size={20} tone="accent" compact accessibilityLabel="" />
       </View>
       <View
         style={[

@@ -105,7 +105,7 @@ export default function Claim() {
           <RedThread animate />
           <Animated.View entering={zoom(1)}>
             <Avatar size={96} accessibilityLabel="You">
-              <Logomark size={48} tone="accent" accessibilityLabel="" />
+              <Logomark size={48} tone="accent" compact accessibilityLabel="" />
             </Avatar>
           </Animated.View>
         </View>

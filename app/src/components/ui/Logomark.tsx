@@ -37,6 +37,10 @@ export interface LogomarkProps {
   heartColor?: string;
   /** For `stamp`: fill the tile (solid) vs. outline only. Default outline. */
   filled?: boolean;
+  /** Compact treatment for small sizes (≤~40px — share-card footer, claim avatar, welcome caption,
+   *  chat bubble): heavier strokes + drop the middle head line so the mark reads as a hand instead
+   *  of an ambiguous scribble (audit §5.7). Default off. */
+  compact?: boolean;
   /** Opt-in launcher draw-on (dash-offset stroke reveal). Default off. */
   animate?: boolean;
   accessibilityLabel?: string;
@@ -56,6 +60,7 @@ export function Logomark({
   color,
   heartColor,
   filled = false,
+  compact = false,
   animate = false,
   accessibilityLabel = 'Palmly',
   style,
@@ -81,9 +86,11 @@ export function Logomark({
   const lineInk = isStamp && filled ? colors.onAccent : base;
   const lineHeart = isStamp && filled ? colors.onAccent : heart;
 
-  const w = (size / 48) * 3.2; // base line weight scales with size
+  // Compact (§5.7) uses a heavier base weight + full-weight secondary line so a ≤40px mark reads;
+  // the default keeps the lighter secondary so the three lines separate at hero size.
+  const w = (size / 48) * (compact ? 5.2 : 3.2); // base line weight scales with size
   const wHeart = w * 1.2; // the heart line is heaviest (engraved focal stroke)
-  const wLine = w * 0.8; // head + life sit lighter so they read as two lines, not a blob
+  const wLine = w * (compact ? 1.0 : 0.8); // head + life sit lighter so they read as two lines, not a blob
 
   // Draw-on (native only): head/life reveal first, the heart whisper blooms in last.
   const progress = useSharedValue(1);
@@ -123,7 +130,8 @@ export function Logomark({
       )}
       <G fill="none" strokeLinecap="round">
         <Stroke d={LIFE} len={LEN.life} color={lineInk} width={wLine} progress={progress} />
-        <Stroke d={HEAD} len={LEN.head} color={lineInk} width={wLine} progress={progress} />
+        {/* Compact drops the middle head line — fewer, heavier strokes read cleanly at ≤40px (§5.7). */}
+        {compact ? null : <Stroke d={HEAD} len={LEN.head} color={lineInk} width={wLine} progress={progress} />}
         <Stroke d={HEART} len={LEN.heart} color={lineHeart} width={wHeart} progress={heartProgress} />
       </G>
     </Svg>

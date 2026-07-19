@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams, type Href } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
@@ -30,7 +30,9 @@ export default function Index() {
   // `/claim`; (2) a returning user (has seen a real reveal) → the daily-fortune home; (3) else the
   // launcher. The async checks resolve fast; until then the launcher shows (no blank flash).
   const params = useLocalSearchParams<{ token?: string }>();
+  const hasToken = typeof params.token === 'string' && !!params.token;
   const [asyncRoute, setAsyncRoute] = useState<'claim' | 'fortune' | null>(null);
+  const [resolved, setResolved] = useState(false);
   useEffect(() => {
     let active = true;
     (async () => {
@@ -38,17 +40,32 @@ export default function Index() {
       if (!active) return;
       if (claim) {
         setAsyncRoute('claim');
+        setResolved(true);
         return;
       }
       const returning = await hasFirstReadingComplete();
-      if (active) setAsyncRoute(returning ? 'fortune' : null);
+      if (active) {
+        setAsyncRoute(returning ? 'fortune' : null);
+        setResolved(true);
+      }
     })();
     return () => {
       active = false;
     };
   }, []);
 
-  if (typeof params.token === 'string' && params.token) {
+  // A0 launcher (§3.1): once the brand draw has settled, auto-advance to welcome — a hands-off
+  // splash. Gated so it ONLY fires when the draw actually plays (native + motion) AND the async
+  // routing resolved to "stay on the launcher" (so a returning user's redirect always wins). On
+  // web / reduce-motion there is no draw → no auto-nav (no surprise); the user taps or uses the CTA.
+  const advance = () => router.replace('/welcome' as Href);
+  useEffect(() => {
+    if (!shouldAnimate || !resolved || hasToken || asyncRoute !== null) return;
+    const t = setTimeout(() => router.replace('/welcome' as Href), 1500);
+    return () => clearTimeout(t);
+  }, [shouldAnimate, resolved, hasToken, asyncRoute]);
+
+  if (hasToken) {
     return <Redirect href={`/claim?token=${params.token}` as Href} />;
   }
   if (asyncRoute === 'claim') return <Redirect href={'/claim' as Href} />;
@@ -67,7 +84,9 @@ export default function Index() {
         />
       </View>
 
-      <View style={styles.lockup}>
+      {/* A0: the whole brand region is pressable — tap anywhere to advance (the footer keeps the
+          explicit CTA). Pairs with the native auto-advance above. */}
+      <Pressable style={styles.lockup} onPress={advance} accessibilityRole="button" accessibilityLabel="Enter Palmly">
         {/* Mark draws on; the wordmark + value line stagger in beneath it. */}
         <Logomark size={76} tone="ink" animate accessibilityLabel="Palmly" />
         <Animated.View entering={enter(0)}>
@@ -84,14 +103,14 @@ export default function Index() {
             Read your palm from a single photo.
           </Text>
         </Animated.View>
-      </View>
+      </Pressable>
 
       <Animated.View entering={enter(2)} style={[styles.footer, { paddingBottom: theme.spacing.md }]}>
         <Button
           label="Get started"
           variant="primary"
           fullWidth
-          onPress={() => router.push('/welcome' as Href)}
+          onPress={advance}
         />
         <Text variant="caption" tone="tertiary" style={[styles.legal, { marginTop: theme.spacing.sm }]}>
           For reflection &amp; entertainment

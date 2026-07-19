@@ -406,7 +406,7 @@ function CardSeal() {
   const theme = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, marginTop: theme.spacing.lg, alignSelf: 'stretch' }}>
-      <Logomark size={24} tone="ink" />
+      <Logomark size={24} tone="ink" compact />
       <Text variant="caption" tone="tertiary">
         palmly.app
       </Text>

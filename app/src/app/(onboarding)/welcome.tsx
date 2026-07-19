@@ -43,7 +43,7 @@ export default function Welcome() {
           size={240}
           signatureLines={['heart_line', 'fate_line']}
         />
-        <Logomark size={34} tone="ink" style={{ marginTop: theme.spacing.lg }} />
+        <Logomark size={34} tone="ink" compact style={{ marginTop: theme.spacing.lg }} />
         <Animated.View entering={enter(0)}>
           <Text variant="display" style={{ textAlign: 'center', marginTop: theme.spacing.md }}>
             Your palm remembers
