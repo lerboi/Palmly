@@ -122,6 +122,17 @@ function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: num
             {reading.headline}
           </Text>
         </View>
+        {/* Loop re-entry (F2.8): a trailing share affordance so a past reading can re-enter the viral
+            loop straight from history. Nested Pressable → its own tap wins over the row's open-reveal. */}
+        <Pressable
+          onPress={() => router.push(`/share?readingId=${reading.id}&source=home` as Href)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Share this ${isPalm ? 'palm' : 'face'} reading`}
+          style={{ padding: theme.spacing.xs }}
+        >
+          <Icon name="share" size={18} color={theme.colors.textSecondary} decorative />
+        </Pressable>
         <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
       </View>
     </Card>

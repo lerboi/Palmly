@@ -52,6 +52,18 @@ export function SettingsHub({ premium = false }: { premium?: boolean }) {
         />
       </SettingGroup>
 
+      {/* Loop re-entry (F2.8): a standing door back into the viral compatibility loop. Routes to the
+          reading list, where each row's share affordance opens the compat sheet. */}
+      <SettingGroup title="Friends">
+        <SettingRow
+          first
+          leadingIcon="heart"
+          label="Compare with a friend"
+          caption="See how your palms match"
+          onPress={() => router.push('/history' as Href)}
+        />
+      </SettingGroup>
+
       <SettingGroup title="Preferences">
         <SettingRow first leadingIcon="bell" label="Notifications" onPress={() => router.push('/notifications')} />
         {/* English-only for the MVP — an informational row (no fake chevron). The zh "traditional
