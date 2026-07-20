@@ -31,12 +31,12 @@ the two ledgers never diverge.
 | Field | Value |
 |---|---|
 | **Current phase** | D0 — Trust the deployment again |
-| **Next task** | **D0.T1** (redeploy every pure-code Edge Function from git) |
+| **Next task** | **D0.T2** (repair the migration ledger; prove `db push` no-op) |
 | **Blocked on** | — |
 | **Waiting on human** | Nothing yet. Human items live in Production-Readiness-Plan R1 (phone, store accounts, paid Gemini H4c, RevenueCat H8, domain H6, auth providers H5b, CI secrets, AppsFlyer H9, KB review, dashboard toggles) — they are **out of scope** here and must never block this loop; if a task turns out to need one, mark it `[!]` naming the R1 item and move on. |
 | **Last run (date, by whom)** | 2026-07-20, 🤖 Claude (Audit-3 loop) |
-| **Last completed task** | D0.T0 — preflight + baseline commit (toolchain proven; reorg committed; baseline pinned app 64/64 · Deno 208/208 · Node 135/135) |
-| **Notes for next run** | D0.T1: redeploy all **19** pure-code Edge Functions from git (all except `card-render`) via `npx supabase@latest functions deploy <fn> --project-ref rphtdgoggsldshtdbkaj`; then verify `list_edge_functions` bumps + live posture spot-checks + Deno green. Staging migration ledger currently records **30** (ends `20260717000030`) — repair to 32 is D0.T2, not yet done. |
+| **Last completed task** | D0.T1 — all 19 pure-code Edge Functions redeployed from git (versions bumped, `updated_at` = today); posture spot-checks pass (invite-create no-JWT→401, worker-scan no-key→403/+key→200, chat-send non-premium→402); Deno 208/208. |
+| **Notes for next run** | D0.T2: staging migration ledger records **30** (ends `20260717000030`), repo has **32** — objects from `20260719000031`/`0032` exist live (A3). Run `npx supabase@latest migration repair --status applied 20260719000031 20260719000032` (db creds from `.env.staging`), then prove `supabase db push` is a clean no-op; document db push as the one apply path. `SUPABASE_ACCESS_TOKEN` (root `.env`) is a valid `sbp_` PAT with deploy privilege — **source it from repo-root cwd** (the Bash tool persists cwd between calls; `cd` back to repo root or the `.env` grep fails silently → empty token → 403). |
 
 ---
 
@@ -161,7 +161,7 @@ the two ledgers never diverge.
     "commit the reorg" leg of R0.T6 early.)
   - Verify: `git status` clean after the commit; the three baseline suites run green (app
     64/64 · Deno 208/208 · Node 135/135) — this pins the "before" state.
-- [ ] **D0.T1** 🤖 **Redeploy every pure-code Edge Function from git.** (= R0.T1; audit A1.)
+- [x] **D0.T1** 🤖 **Redeploy every pure-code Edge Function from git.** (= R0.T1; audit A1.)
   - Build: deploy all **19** functions EXCEPT `card-render` (that's D0.T3):
     `account-delete account-merge chat-send cleanup compat-request fortune-generate image-delete
     invite-claim invite-create invite-page ops-alerts push-dispatch revenuecat-webhook scan-create
@@ -292,3 +292,4 @@ the two ledgers never diverge.
 | Date | Task | Result |
 |---|---|---|
 | 2026-07-20 | D0.T0 | Toolchain proven (`supabase projects list`→palmly-staging ACTIVE_HEALTHY; Deno 2.9.2; `.env`/`.env.staging` present; MCP `list_migrations` answers=30). Planning reorg + this ledger + Prompt.txt committed as one baseline. Baseline suites pinned green: app 64/64 · Deno 208/208 · Node 135/135. |
+| 2026-07-20 | D0.T1 | Redeployed all 19 pure-code Edge Functions from git (all except `card-render`) via `npx supabase@latest functions deploy` — every version bumped +1, `updated_at`=today; `card-render` left at v4 (D0.T3). Posture spot-checks live-verified: invite-create no-JWT→401, worker-scan no-key→403 & +service-key→200 (`{"processed":0}`), chat-send non-premium→402. Deno 208/208. Minted anon users for the chat check cleaned up. |

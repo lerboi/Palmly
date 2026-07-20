@@ -12,7 +12,7 @@
 
 > Rationale: audits A1–A3. Until staging runs the code in git, every "live-verified" claim decays.
 
-- [ ] **R0.T1** 🤖 Redeploy every Edge Function from git (audit A1). All 19 pure-code functions via `npx supabase@latest functions deploy <fn> --project-ref rphtdgoggsldshtdbkaj` (config-driven verify_jwt/import_map). Skip `card-render` (R0.T3).
+- [x] **R0.T1** 🤖 Redeploy every Edge Function from git (audit A1). All 19 pure-code functions via `npx supabase@latest functions deploy <fn> --project-ref rphtdgoggsldshtdbkaj` (config-driven verify_jwt/import_map). Skip `card-render` (R0.T3). _Done 2026-07-20 (D0.T1): all 19 versions bumped, posture spot-checks pass, Deno 208/208._
   - Verify: `list_edge_functions` shows every function's `updated_at` newer than the last git commit touching its dir or `_shared/`; re-run the live posture spot-checks (invite-create no-JWT→403, worker-scan no-key→403/+key→200, chat-send non-premium→402); Deno suite still green.
 - [ ] **R0.T2** 🤖 Repair the migration ledger (audit A3): mark `20260719000031` + `20260719000032` applied (`npx supabase@latest migration repair --status applied …` against staging), then prove `supabase db push` is a clean no-op.
   - Verify: `supabase_migrations.schema_migrations` max = `20260719000032`; `db push` reports nothing to apply.
