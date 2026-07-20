@@ -24,7 +24,7 @@
   - Verify: grep shows a call site per event; tsc/lint/jest green.
 - [x] **R0.T6** 🤖 ∥ Hygiene sweep (audit A9, A10): dependency pass (`npx expo install --check` → expo-doctor fully green); one additive migration revoking PostgREST EXECUTE on the trigger-only SECURITY DEFINER functions; update `HowItWorks.md` (cron claim) + the `MVP_Buildplan.md` STATE block (point at Audit-2/Audit-3 reality); commit the Planning reorg sitting in the working tree _(reorg-commit leg discharged early by D0.T0 baseline commit, 2026-07-20)_. _Done 2026-07-20 (D0.T6): expo-doctor 21/21; migration 0033 revokes the 4 trigger-only fns (advisors dropped them; 3 kept per A9); HowItWorks + MVP_Buildplan STATE corrected; db push no-op; Node 135/135._
   - Verify: expo-doctor all-green; security advisors drop the revoked functions; `git status` clean.
-- [ ] **R0.G** 🚦 Staging == git: every function current, `db push` no-op, card-render 200, no route dead-ends, suites green.
+- [x] **R0.G** 🚦 Staging == git: every function current, `db push` no-op, card-render 200, no route dead-ends, suites green. _PASSED 2026-07-20 (Audit-3 D0.G): all 19 fns redeployed + card-render v5 Docker 200; ledger 33 rows + db push no-op; no scanId-less `/analyzing` (camera device leg `[~]`); 8 dark events live; expo-doctor 21/21 + advisors cleaned. app 64/64 · Deno 208/208 · Node 135/135._
 
 ## R1 — The human unblock list (do these while R0/R2 run; ordered by leverage)
 
