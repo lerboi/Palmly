@@ -1,0 +1,85 @@
+/loop Execute the Palmly full-audit (Audit-3) fix loop.
+
+This is a SELF-PACED loop (no fixed interval — one ledger task per iteration, each a full
+multi-step task, not a timed poll). It is fully re-entrant: every iteration re-derives where it
+is from the ledger's STATE block, never from conversation memory, so it resumes correctly after
+a context reset. Do NOT schedule fixed-interval wakeups; pace yourself by the work.
+
+GROUND YOURSELF FIRST (every iteration, in this order):
+1. Read Planning/Audits/Audit-3-Full/Full-Audit-Tasks.md IN FULL — it is the single source of
+   truth for what to do next. Its STATE block tells you where the last run stopped; its
+   EXECUTION PROTOCOL is the algorithm you must follow LITERALLY.
+2. Read the finding(s) in Planning/Audits/Audit-3-Full/Full-Audit.md that the selected task
+   cites (A1–A10) — they hold the WHY, the evidence, and the exact failure the task prevents.
+   If you have not yet oriented this run, also read the audit's §2 (verdict) and §4 (findings)
+   once, plus the matching R-section of Production-Readiness-Plan.md (this ledger is its
+   agent-executable subset; keep its checkboxes in sync on every commit).
+3. The task will cite spec sections (Planning/mvp_spec.md, Planning/Backend-specs.md,
+   Planning/UIUX/UIUX-specs.md, docs/ENVIRONMENT.md) — read those too; they are the
+   authoritative behavioral detail. D2.T1 additionally requires reading the Audit-2 ledger's
+   F1.T9 task + notes (Planning/Audits/Audit-2-Frontend/Frontend-audit-Tasks.md).
+
+THEN RUN THE PROTOCOL — for each task, strictly in this order:
+- RESEARCH: read the CURRENT source of every file the task names before editing. Audit cites
+  were correct on 2026-07-19 but the tree moves — grep to re-anchor every cite; if one is wrong,
+  record it in the ledger's AUDIT ERRATA table and proceed against reality. Check
+  app/package.json before assuming a library exists. For anything backend-related, inspect live
+  staging FIRST with the read-only Supabase MCP tools (mcp__supabase__list_tables, execute_sql,
+  list_edge_functions, get_edge_function, list_migrations, get_logs, get_advisors) — never guess
+  schema or deployed state.
+- PLAN: write a short 3–6 line plan (files, approach, how Verify will pass) before editing.
+  Where the spec is silent, choose the simplest thing that passes Verify and record the choice
+  in the ledger's Decision Log.
+- EXECUTE: the smallest coherent change. Match surrounding code style. Theme tokens only (no
+  raw hexes), reduce-motion + web gating on every animation, the typed track() facade for all
+  analytics, PREVIEW_* fixtures stay /dev-only. Migrations: new files only, expand-contract
+  (additive) — never edit an applied migration.
+- VERIFY: run the task's Verify line LITERALLY, plus the standing gates (from app/: npm run
+  typecheck, npm run lint, npm run test:ci — all clean; edge-function tasks also run the Deno
+  suite from supabase/functions — Deno is at C:\Users\leheh\.deno\bin\deno.exe; migration/schema
+  tasks also run the Node suite from supabase/tests: node --test --test-concurrency=1, needs
+  .env.staging; phase gates run all three). Only when everything passes: mark the box [x] (or
+  [~] with a note naming exactly which leg remains), append one Build Log line, update the
+  STATE block, tick the matching R-task in Production-Readiness-Plan.md, and commit
+  (git add -A && git commit -m "D#.T# <short description>" — scoped to the task + the two
+  ledgers, never sweeping unrelated changes).
+
+HARD RULES:
+- NEVER mark a task done without its verification passing. NEVER fake a green. Everything
+  camera/haptics/purchase/push-delivery/native-share is device-pending: build the code fully,
+  verify what is device-free-verifiable, mark the live leg [~] honestly.
+- On failure: 3 distinct approaches max, then mark [!] with the failure detail, update STATE,
+  move to the next ∥-marked task if one exists, else report and stop.
+- ⚠️ RULE CHANGE from the prior audit loops: the old "never schedule pg_cron / install pg_net"
+  parking rule is LIFTED for task D1.T1 ONLY — that task IS the sanctioned cron→worker wiring
+  (Full-Audit A4). It still applies everywhere else. The service key goes ONLY into Vault via
+  an uncommitted one-off script — never into a migration file, never into git, never client-side.
+  Grep the migration for key material before committing it.
+- Secrets live only in .env / .env.staging / EAS / Vault — never committed, never in output.
+  SUPABASE_ACCESS_TOKEN for deploys lives in the git-ignored root .env (check .env.staging too).
+- Deploy Edge Functions with: npx supabase@latest functions deploy <fn> --project-ref
+  rphtdgoggsldshtdbkaj (never the globally installed CLI). EXCEPTION: card-render must be
+  deployed --use-docker (its wasm/fonts are static_files a --use-api deploy silently drops).
+- The Supabase MCP is READ-ONLY. Seeds/SQL-writes/Vault-inserts a Verify needs go through
+  throwaway Node/pg scripts with .env.staging creds (pattern: supabase/tests/). Seed rows the
+  app must READ must be owned by the app session's user id (RLS). Clean up every seeded row
+  when a verify finishes.
+- Screenshots (from app/): npx expo export --platform web, then
+  node scripts/shoot.mjs <outDir> <route:WxH[=name]> ... (root route is "/", never "/index";
+  dark mode needs a separate EXPO_PUBLIC_FORCE_SCHEME=dark export). Save under
+  docs/checkpoints/audit3/. To DRIVE the web export (file pickers, clicks, real network) use a
+  raw-CDP script in the shoot.mjs style (native dialogs need a TRUSTED
+  Input.dispatchMouseEvent, not Runtime.evaluate .click()).
+- Respect the ledger's OUT OF SCOPE + DO NOT BUILD lists absolutely: no R1 human items, no
+  R3/R4 device work, no R5 launch-phase work, no second cron mechanism, no new screens, no
+  re-auditing. If a task turns out to need a human item, mark it [!] naming the exact R1 item
+  and move on.
+
+LOOP CONTROL (self-paced — how each turn ends and when the loop stops):
+- Work tasks one at a time, in ledger order, and keep going while context allows.
+- Near the context limit: finish (or [~]-note) the in-flight task, update STATE, commit, and
+  stop the turn cleanly — the next iteration resumes exactly from the ledger's STATE block.
+- END THE LOOP (stop scheduling further iterations) only when every remaining task is
+  [!]/human-blocked — then write the consolidated blocker report into STATE and send a one-line
+  PushNotification — OR when D2.G passes and the ledger STATE reads COMPLETE. Otherwise the
+  loop continues.

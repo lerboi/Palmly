@@ -1,12 +1,17 @@
-Execute the Palmly frontend-audit fix loop.
+/loop Execute the Palmly frontend-audit fix loop.
+
+This is a SELF-PACED loop (no fixed interval — one ledger task per iteration, each a full
+multi-step task, not a timed poll). It is fully re-entrant: every iteration re-derives where it
+is from the ledger's STATE block, never from conversation memory, so it resumes correctly after a
+context reset. Do NOT schedule fixed-interval wakeups; pace yourself by the work.
 
 GROUND YOURSELF FIRST (every iteration, in this order):
 1. Read Planning/Audits/Audit-2-Frontend/Frontend-audit-Tasks.md IN FULL — it is the single
    source of truth for what to do next. Its STATE block tells you where the last run stopped;
    its EXECUTION PROTOCOL is the algorithm you must follow LITERALLY.
 2. Read the section of Planning/Audits/Audit-2-Frontend/Frontend-audit.md that the selected
-   task cites — it holds the WHY, the evidence, and the exact failure the task prevents. On
-   your very first run also read the audit's §2 (verdict) and §3 (journey) once for orientation.
+   task cites — it holds the WHY, the evidence, and the exact failure the task prevents. If you
+   have not yet oriented this run, also read the audit's §2 (verdict) and §3 (journey) once.
 3. The task will cite spec sections (Planning/mvp_spec.md, Planning/UIUX/UIUX-specs.md,
    Planning/UIUX/UIUX-Redesign-v2.md, Planning/Backend-specs.md) — read those too; they are the
    authoritative behavioral detail.
@@ -29,8 +34,9 @@ THEN RUN THE PROTOCOL — for each task, strictly in this order:
   typecheck, npm run lint, npm run test:ci — all clean; edge-function tasks also run the Deno
   suite from supabase/functions; Deno is at C:\Users\leheh\.deno\bin\deno.exe). Only when
   everything passes: mark the box [x] (or [~] with a note naming exactly which device/human
-  leg remains), append one Build Log line, update the STATE block, and
-  git add -A && git commit -m "F#.T# <short description>".
+  leg remains), append one Build Log line, update the STATE block, and commit this task's
+  changes (git add -A && git commit -m "F#.T# <short description>" — but never sweep in
+  unrelated pre-existing working-tree changes; scope the commit to the task + the ledger).
 
 HARD RULES:
 - NEVER mark a task done without its verification passing. NEVER fake a green. Web screenshots
@@ -42,20 +48,26 @@ HARD RULES:
 - Do NOT schedule pg_cron jobs or install pg_net (parked security-sensitive work). To advance
   pipeline rows in tests, invoke the worker Edge Functions directly with the service key.
 - Migrations: new files only, expand-contract (additive) — never edit an applied migration.
-- Secrets live only in .env.staging / EAS / Vault — never committed, never in client code.
+- Secrets live only in .env / .env.staging / EAS / Vault — never committed, never in client code.
+  (SUPABASE_ACCESS_TOKEN for deploys lives in the git-ignored root .env.)
 - Deploy Edge Functions with: npx supabase@latest functions deploy <fn> --project-ref
-  rphtdgoggsldshtdbkaj (SUPABASE_ACCESS_TOKEN from .env.staging; never the globally installed
-  CLI). Clean up every seeded test row when a verify finishes.
+  rphtdgoggsldshtdbkaj (SUPABASE_ACCESS_TOKEN sourced from the root .env; never the globally
+  installed CLI). Clean up every seeded test row when a verify finishes.
 - Screenshots (run from app/): npx expo export --platform web, then
   node scripts/shoot.mjs <outDir> <route:WxH[=name]> ... — routes are CLI arguments (the
   launcher is the root route "/", never "/index"). Dark mode needs a separate
-  EXPO_PUBLIC_FORCE_SCHEME=dark export. Save shots under docs/checkpoints/audit2/.
+  EXPO_PUBLIC_FORCE_SCHEME=dark export. Save shots under docs/checkpoints/audit2/. To DRIVE the
+  web export (file pickers, clicks, real network calls) use a raw-CDP script in the shoot.mjs
+  style — clicks that must open a native dialog (file chooser) need a TRUSTED
+  Input.dispatchMouseEvent, not a Runtime.evaluate .click().
 - Three test suites exist; know all of them: app (typecheck/lint/test:ci from app/), Deno
   (from supabase/functions), and the Node schema suite (from supabase/tests:
   node --test --test-concurrency=1, needs .env.staging) — the phase gates run all three.
 
-Work tasks one at a time, in ledger order, and keep going while context allows. When the
-session nears its limit: finish (or [~]-note) the in-flight task, update STATE, commit, and
-stop cleanly so the next loop iteration resumes exactly where you left off. Stop entirely only
-when every remaining task is [!]/human-blocked (report the consolidated blocker list) or when
-F2.G passes and the ledger is COMPLETE.
+LOOP CONTROL (self-paced — how each turn ends and when the loop stops):
+- Work tasks one at a time, in ledger order, and keep going while context allows.
+- Near the context limit: finish (or [~]-note) the in-flight task, update STATE, commit, and
+  stop the turn cleanly — the next iteration resumes exactly from the ledger's STATE block.
+- END THE LOOP (stop scheduling further iterations) only when every remaining task is
+  [!]/human-blocked — then report the consolidated blocker list — OR when F2.G passes and the
+  ledger STATE reads COMPLETE. Otherwise the loop continues.

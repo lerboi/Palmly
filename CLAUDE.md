@@ -2,8 +2,10 @@
 
 **Build ledger (single source of truth):** `Planning/MVP_Buildplan.md` — a checkbox task
 machine (phases P0–P12) with a STATE block + Execution Protocol. Specs it draws from:
-`Planning/mvp_spec.md`, `Planning/Backend-specs.md`, `Planning/UIUX-specs.md`. Env/secret map:
-`docs/ENVIRONMENT.md`.
+`Planning/mvp_spec.md`, `Planning/Backend-specs.md`, `Planning/UIUX/UIUX-specs.md` (UIUX docs
+live under `Planning/UIUX/`). Env/secret map: `docs/ENVIRONMENT.md`. Audit fix ledgers:
+`Planning/Audits/Audit-1-Backend/` (done) and `Planning/Audits/Audit-2-Frontend/`
+(`Frontend-audit.md` + `Frontend-audit-Tasks.md`, loop prompt in `Prompt.txt`).
 
 ## Supabase: use the MCP server to read DB details
 

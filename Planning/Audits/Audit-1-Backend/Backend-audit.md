@@ -5,6 +5,14 @@
 **Method:** read of all planning docs (`mvp_spec.md`, `Backend-specs.md`, `MVP_Buildplan.md`, `HowItWorks.md`, `Human-tasks.md`, `docs/ENVIRONMENT.md`); full code audit of `supabase/migrations/` + `supabase/functions/` + `app/src`; **live verification against the staging project** (`rphtdgoggsldshtdbkaj`) via the read-only Supabase MCP (tables, RLS flags, function ACLs, cron jobs, queue metrics, advisors, logs); static census of both test suites.
 **Honest caveat:** the Deno (133 tests) and Node (100 tests) suites could **not be re-executed on this Mac** — Deno is not installed and `.env.staging` (staging DB credentials) exists only on the original Windows dev machine. The last recorded green run is 2026-07-14 (Deno 130/130, Node 100/100). Everything else below was verified directly.
 
+> **➡️ Fixes are tracked in [`Backend-audit-Tasks.md`](./Backend-audit-Tasks.md)** (the B0–B22 checkbox
+> ledger; loop prompt in `Planning/Prompt`). **Read its ⚠️ AUDIT ERRATA table before acting on any
+> file:line cite below** — a 2026-07-17 recon pass verified every anchor against the tree and found four
+> cites naming files that have never existed, plus a caveat correction: on the Windows dev machine **both
+> suites DO run** (Deno **133/133** green; Node **96/100** — 4 stale global-count assertions, no product
+> bugs). This audit remains the authority on *what* each finding claims; the repo is the authority on
+> *where* it lives.
+
 ---
 
 ## 1. What Palmly is (understanding check)
