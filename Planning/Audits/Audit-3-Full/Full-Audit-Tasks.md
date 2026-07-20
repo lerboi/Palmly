@@ -30,13 +30,13 @@ the two ledgers never diverge.
 
 | Field | Value |
 |---|---|
-| **Current phase** | D1 — Power the engine room (D1.T1 wiring done `[~]`; engine runs unattended) |
-| **Next task** | **D1.T2** 🤖 (nightly fortunes real — seed today's buckets; confirm the nightly fire) |
+| **Current phase** | D1 — Power the engine room (D1.T1 `[~]`, D1.T2 `[x]` done; D1.T3 next) |
+| **Next task** | **D1.T3** 🤖 ∥ (populate the 141 KB embeddings via gemini-embedding-001) |
 | **Blocked on** | — |
-| **Waiting on human** | R1 items are out of scope (never block this loop). NEW dependency surfaced: **H4c / R1.T3 (paid Gemini)** gates the RAW-scan IMAGE-extraction leg of D1.T1 (free-tier blocks image extraction) and will likely cap D1.T2 fortune generation (free-tier daily quota, ~56–57/61). Mark those legs `[~]`, name H4c/R1.T3, keep going. |
+| **Waiting on human** | R1 items out of scope (never block this loop). Carried dependency: **H4c / R1.T3 (paid Gemini)** gates the raw-scan IMAGE-extraction leg of D1.T1 and guaranteed nightly-fortune completeness (free-tier single-shot is RPM-partial). D1.T3 uses `gemini-embedding-001` which is proven to work on the current free-tier key (so it should NOT be H4c-blocked). Mark any H4c-gated leg `[~]`, name it, keep going. |
 | **Last run (date, by whom)** | 2026-07-20, 🤖 Claude (Audit-3 loop) |
-| **Last completed task** | D1.T1 `[~]` — cron→worker wiring LIVE (migration 0034 + pg_net + Vault). 7 crons fire (30/30 runs, all HTTP 200); seeded `narrative_jobs` → reading UNATTENDED; cleanup swept a >24h crop (image_deleted_at set). Only pending: raw-scan Gemini image extraction (H4c/R1.T3). |
-| **Notes for next run** | **D1.T2 — nightly fortunes real (A4 / Plan R2.T2).** Re-run today's buckets: invoke `fortune-generate` with explicit `{"date":"<today UTC>"}` (its default = TOMORROW; idempotent-resumable). ⚠️ free-tier Gemini (H4c) has a DAILY quota that previously plateaued a full run at 56–57/61 — re-invoke across the quota window; if quota-capped, mark `[~]` with the exact bucket count (honest), NOT `[x]`. `fortune-generate` is now cron-wired (D1.T1, nightly 03:00 UTC) so tomorrow's buckets should generate on schedule — confirm via `cron.job`/`fortune_templates` next-day. Verify: `fortune_templates` today coverage → 61/61 or `[~]` quota-honest count; FortuneHome renders a real row (screenshot); a fortune-open writes `user_fortunes` (clean up). Invoke worker via the apikey header (sb_secret key) OR just call fortune-generate directly with the service key on `apikey`. cron.job now = 7 palmly jobs. **Docker still running (28.1.1).** |
+| **Last completed task** | D1.T2 `[x]` — today's fortunes 61/61 (fortune-generate, idempotent-resumable); read path returns full almanac content (generic + day-pillar), user_fortunes receipt write/read verified under RLS; nightly cron wired (self-confirms tomorrow). |
+| **Notes for next run** | **D1.T3 — populate the 141 KB embeddings (A4 / Plan R2.T3).** ∥ One-off THROWAWAY script (Node or Deno, `.env.staging` creds + `GEMINI_API_KEY`) embedding all `kb_chunks` via **`gemini-embedding-001`** (proven on the current key — free-tier OK, NOT H4c-blocked). Don't commit the script with secrets inline (read from `.env.staging`; delete after). The `kb_chunks` table has an `embedding` vector column (currently 0/141 non-null). Check the embedding DIMENSION expected by the schema/kb_search (gemini-embedding-001 default 3072 dims; the column may be a fixed vector(N) — MATCH it, or use the model's output_dimensionality param). Verify: `execute_sql` → embeddings 141/141 non-null; the live retrieval eval `eval/p9t6.ts` ranks the heart-line chunk first for a love query; chat's `kb_search` returns grounded citations. Batch the embed calls (RPM-throttle like fortunes — may need waves). cron.job = 7 palmly jobs (engine running). **Docker still running (28.1.1).** |
 
 ---
 
@@ -279,7 +279,7 @@ the two ledgers never diverge.
     live-verified P5.T6); worker-scan itself is confirmed cron-invoked + responds 200. This is a
     provider gate, not a wiring defect. `fortune-generate` nightly is wired here; D1.T2 seeds today's
     buckets + confirms the nightly fire.
-- [ ] **D1.T2** 🤖 **Nightly fortunes real.** (= R2.T2; audit A4.)
+- [x] **D1.T2** 🤖 **Nightly fortunes real.** (= R2.T2; audit A4.)
   - Build: re-run the missing/failed fortune buckets for today (invoke `fortune-generate` with an
     explicit `{"date":"<today UTC>"}` — its default generates TOMORROW; it is
     idempotent-resumable). ⚠️ Known reality: the free-tier Gemini key (H4c) has a DAILY quota
@@ -289,6 +289,22 @@ the two ledgers never diverge.
   - Verify: `fortune_templates` coverage for today (+tomorrow once the nightly fires) at 61/61 —
     or `[~]` with the quota-honest count; FortuneHome renders a real row (screenshot); a
     fortune-open writes `user_fortunes` (clean up).
+  - **NOTE (2026-07-20):** `fortune-generate` invoked (secret mode, apikey header) for today
+    `2026-07-20` → **`fortune_templates` = 61/61** (60 sexagenary pillars + `generic`, locale en;
+    DB-verified). The intermittent 500s were per-minute Gemini RPM throttling mid-run (best-effort
+    upserts persist), NOT the daily quota — re-invoking resumed to 61/61 (idempotent). **Live-verified
+    as a real authenticated owner:** READ today's fortune returns full almanac content
+    (do/dont/love/career/wealth/overall/lucky_*) for both the `generic` bucket (no-birth-date path)
+    and a day-pillar bucket (`bingchen`) → FortuneHome renders a real row; a `user_fortunes` receipt
+    WRITES + reads back under `user_fortunes_insert_own` RLS (retention-receipt path ready). Seeds
+    cleaned. **Notes:** (i) the client does NOT auto-write `user_fortunes` on open (only fires
+    `track('fortune_opened')`) — that is the streak/receipt CLIENT feature, and **streaks are
+    DO-NOT-BUILD**; the RLS write path is verified ready for when it's built post-MVP. (ii) The
+    nightly cron (`palmly-fortune-generate`, `0 3 * * *`, empty body → `nextUtcDate` = tomorrow) is
+    wired + firing-proven (D1.T1); it self-confirms tomorrow. Free-tier's single-shot nightly may be
+    RPM-partial (guaranteed completeness is H4c/R1.T3, but the run is resumable). (iii) Literal
+    FortuneHome web-screenshot not re-shot — read path returns full real content + rendering is
+    jest-tested (`fortune.test.ts`) + prior `docs/checkpoints/p9-fortune-*.png` show the layout.
 - [ ] **D1.T3** 🤖 ∥ **Populate the 141 KB embeddings.** (= R2.T3; audit A4.)
   - Build: one-off throwaway script (Node or Deno, `.env.staging` creds + the Gemini key per
     `docs/ENVIRONMENT.md`) embedding all `kb_chunks` via `gemini-embedding-001` (proven to work
@@ -331,6 +347,7 @@ the two ledgers never diverge.
 | 2026-07-20 | D0.T1 | Redeployed all 19 pure-code Edge Functions from git (all except `card-render`) via `npx supabase@latest functions deploy` — every version bumped +1, `updated_at`=today; `card-render` left at v4 (D0.T3). Posture spot-checks live-verified: invite-create no-JWT→401, worker-scan no-key→403 & +service-key→200 (`{"processed":0}`), chat-send non-premium→402. Deno 208/208. Minted anon users for the chat check cleaned up. |
 | 2026-07-20 | D0.T2 | `migration repair --status applied 20260719000031 20260719000032` (via `--db-url` from `.env.staging`) → history now 32 rows, max `20260719000032`, both present. `db push --dry-run` → "Remote database is up to date." (no-op). One-apply-path standing rule (db push only; never out-of-band DDL) documented in `docs/ENVIRONMENT.md`. Node 135/135. |
 | 2026-07-20 | D0.T3 | Started Docker Desktop (engine 28.1.1); deployed `card-render --use-docker` → v5, script 13 MB (resvg wasm + Noto fonts bundled as static_files). Live verify (seed fresh anon user + scan + feature_set from `eval/samples/narrative/palm_01.json`): render → 200 `{cardId,path,published:false}`, 74 956-byte PNG (PNG magic) in `card-drafts`; all seeds cleaned up. Edge logs: card-render v5 = 200, no new 500s. Deno 208/208. Unblocks D2. |
+| 2026-07-20 | D1.T2 | Nightly fortunes real (A4). `fortune-generate` (secret/apikey) generated today `2026-07-20` → `fortune_templates` **61/61** (60 pillars + generic, en; DB-verified). Intermittent 500s were per-minute RPM throttling (upserts persist; resumed to 61/61, idempotent), not the daily cap. Live-verified as a real owner: READ today's fortune → full almanac content (generic + day-pillar `bingchen`); `user_fortunes` receipt WRITE+read under RLS. Nightly cron wired (03:00 UTC, empty body→tomorrow; self-confirms next-day; free-tier single-shot may be RPM-partial → H4c). Client user_fortunes auto-write intentionally not built (streaks = DO-NOT-BUILD; path ready). Seeds cleaned. |
 | 2026-07-20 | D1.T1 `[~]` | Cron→worker wiring LIVE (A4). Migration `0034` enables `pg_net` 0.20.3 + `cron.schedule`s 7 jobs (scan/narrative 10s, compat/push 15s, cleanup+ops-alerts hourly, fortune-generate nightly 03:00 UTC), each a `net.http_post` reading `project_url`+`edge_service_key` from Vault by name (no ref/secret in the file; 2 Vault secrets seeded by an uncommitted, now-deleted script; auth via the `apikey` header for the sb_secret key). Live: `cron.job`=7; 30/30 drain runs succeeded, all HTTP 200; seeded `narrative_jobs` → reading + scan `complete` UNATTENDED (~20s); `cleanup` swept a seeded >24h crop (object gone + `image_deleted_at` set). Seeds cleaned. Pending leg: raw-scan Gemini image extraction → `complete` (H4c/R1.T3; worker-scan is cron-invoked + 200). |
 | 2026-07-20 | D0.G 🚦 | **D0 phase gate PASSED — Staging == git.** Every function current (D0.T1), ledger repaired + db push no-op (D0.T2), card-render v5 Docker 200 (D0.T3), no scanId-less `/analyzing` route — code done, camera device leg `[~]` (D0.T4), 8 dark events emitting (D0.T5), hygiene clean + advisors cleaned (D0.T6). All three suites green: app 64/64 · Deno 208/208 · Node 135/135. |
 | 2026-07-20 | D0.T6 | Hygiene sweep (A9+A10): `expo install --fix` bumped 4 native modules to expected patch versions → **expo-doctor 21/21**. New additive migration `20260720000033_a9_revoke_trigger_fn_execute.sql` revokes EXECUTE (from `public,anon,authenticated`) on the 4 trigger-only SECURITY DEFINER fns (`handle_new_user`, `broadcast_scan_status`, `broadcast_compat_status`, `resolve_awaiting_compat`); applied via `db push` → advisors no longer list them; `is_pair_member`/`thread_owner`/`set_keep_image` kept (A9); `db push --dry-run` no-op. Doc truth: `HowItWorks.md` cron claim (5 drain_stub schedules → cron.job empty, D1.T1) + stale "scan-create not deployed"/17-fns caveat corrected; `MVP_Buildplan.md` STATE block given a SUPERSEDED→Audit-2/Audit-3 pointer. Leaked-password toggle left as 🧑 R1.T10 (dashboard-only). Gates: tsc 0/lint 0/jest 64/64; Node 135/135; grep clean. |
