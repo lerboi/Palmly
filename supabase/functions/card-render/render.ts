@@ -4,7 +4,7 @@
 // PNG and upload to the public `cards` bucket with immutable cache headers.
 import { initWasm, Resvg } from '@resvg/resvg-wasm';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { buildCardSvg, buildCompatCardSvg, deriveCardContent, type CardVariant, type Point } from '../_shared/card-svg.ts';
+import { buildCardSvg, buildCompatCardSvg, buildFortuneCardSvg, deriveCardContent, deriveFortuneCardContent, type CardVariant, type Point } from '../_shared/card-svg.ts';
 import { DRAFT_BUCKET, PUBLIC_BUCKET, publishCard } from '../_shared/card-publish.ts';
 
 // Re-export so existing importers (card-render/index.ts) keep their path; the logic now lives in
@@ -138,6 +138,32 @@ export interface CompatRenderOpts {
   chips: string[];
   attribution?: string;
   locale?: string;
+}
+
+// ── Daily-fortune card (audit F1.T9): the almanac's essence + lucky triad, keyed on (date, bucket). ──
+export interface FortuneRenderOpts {
+  userId: string; // owner = the sharing user (fortune has no entity carrying it — the caller supplies it)
+  sourceId: string; // a stable id for (date, bucket, locale) so re-renders upsert the same row
+  variant: CardVariant;
+  dateLabel: string; // pre-formatted eyebrow, e.g. "Daily Almanac · July 21" (romanized — no CJK)
+  content: Record<string, unknown>; // the `fortune_templates.content` jsonb
+  locale?: string;
+}
+
+/** Build → rasterize → store the DAILY-FORTUNE card (essence headline + lucky triad + do-chips). */
+export async function renderAndStoreFortuneCard(admin: SupabaseClient, o: FortuneRenderOpts): Promise<{ cardId: string; path: string; published: boolean }> {
+  const c = deriveFortuneCardContent(o.content);
+  const svg = buildFortuneCardSvg({
+    variant: o.variant,
+    headline: c.headline,
+    dateLabel: o.dateLabel,
+    luckyDirection: c.luckyDirection,
+    luckyColor: c.luckyColor,
+    luckyHours: c.luckyHours,
+    chips: c.chips,
+  });
+  const png = await renderCardPng(svg);
+  return storeCard(admin, { userId: o.userId, sourceType: 'fortune', sourceId: o.sourceId, variant: o.variant, locale: o.locale }, png);
 }
 
 /** Build → rasterize → store the COMPATIBILITY card (two palms + red thread + score ring). */
