@@ -165,8 +165,8 @@ Three big pieces: the **Expo app** (client), **Supabase** (the whole backend pla
 │   pgmq queues ──────  5 queues, driven only by SECURITY DEFINER RPC   │
 │      │                wrappers granted to service_role only           │
 │      │                                                                │
-│   pg_cron ──────────  5 schedules (CURRENTLY no-op `drain_stub`;      │
-│                       net.http_post → worker wiring still parked)     │
+│   pg_cron ──────────  0 jobs — drains unscheduled (mig 0019);         │
+│                       real cron→worker wiring = Audit-3 D1.T1 (A4)     │
 └───────────────┬───────────────────────────────────────────────────────┘
                 │ worker-scan / worker-narrative / worker-compat /
                 │ fortune-generate / chat-send  (server-side only)
@@ -218,7 +218,7 @@ The intended journey (UIUX §2), first-time user → returning user. For each st
 
 ## 5. The AI reading pipeline in detail
 
-> **Accuracy caveat.** The pipeline's **HTTP entry point is not yet built.** `scan-create` (quota + signed upload URL) and the `scan-ingest` storage webhook are **P4.T4, still unchecked** — they are *not* among the 17 deployed functions. Today scans enter the pipeline by direct enqueue (that is how the live end-to-end validation ran). Also, **cron currently no-ops** (see §10) — the workers are deployed and manually invocable but not auto-drained yet.
+> **Accuracy caveat (updated Audit-3, 2026-07-20).** The pipeline's HTTP entry point **is** built now: `scan-create` (quota + signed upload URL) and `scan-ingest` (client-invoked confirm + enqueue) are **deployed** and driven by the client upload chain (`uploadPickedScan`: scan-create → PUT → scan-ingest → `/analyzing?scanId=…`). **20** Edge Functions are deployed today (not 17). What is NOT yet live: `cron.job` is **empty** (see §10) — the workers are deployed and manually invocable but not auto-drained yet (Audit-3 A4 → task D1.T1).
 
 ### The designed flow
 
@@ -584,7 +584,7 @@ Live posture check after deploy: `invite-create` with no JWT → 403; `worker-sc
 
 ### The one remaining backend task — cron self-draining
 
-The 5 pg_cron schedules currently invoke **`drain_stub`**, a no-op that reads → archives → writes telemetry (it proves the enqueue→drain→archive→telemetry path but does **not** call the real workers). Cadence: `scan_jobs`/`narrative_jobs` every 10s, `compat_jobs`/`push_jobs` every 15s, `cleanup_jobs` every minute. The remaining wiring is a new migration rescheduling the drains from `drain_stub` → `net.http_post` against the deployed worker functions (+ a nightly `fortune-generate` cron). It needs `pg_net` and a cron-readable service key via Supabase Vault (security-sensitive, key-in-DB), which is why it is parked for a careful pass. Until then the deployed workers are invoked manually with the service key; **the pipeline is not yet self-draining.**
+`cron.job` is currently **empty (0 jobs)** — the earlier `drain_stub` schedules (a no-op that read → archived → wrote telemetry, proving the enqueue→drain→archive→telemetry path without calling the real workers) were **unscheduled** by migration `0019_c2_unschedule_destructive_drains`. So nothing auto-drains today: the deployed workers are invoked manually with the service key, and **the pipeline is not yet self-draining** (Audit-3 finding A4). The remaining wiring — **Audit-3 task D1.T1** — is one new migration that `cron.schedule`s `net.http_post` calls against the deployed workers at the Backend-spec cadences (`scan_jobs`/`narrative_jobs` ~10s, `compat_jobs`/`push_jobs` ~15s, hourly `cleanup`/`ops-alerts`, nightly `fortune-generate`). It needs `pg_net` (available, not yet installed) and a cron-readable service key in Supabase Vault (security-sensitive, key-in-DB) — the one place the standing "no pg_cron/pg_net" parking rule is lifted (Audit-3 loop).
 
 ---
 
