@@ -35,8 +35,8 @@ the two ledgers never diverge.
 | **Blocked on** | — |
 | **Waiting on human** | R1 items out of scope (never block this loop). Carried `[~]` legs (all H4c/R1.T3 paid-Gemini or device, out of scope): D1.T1 raw-scan image extraction; D0.T4 on-device camera + CDP screenshots. Nothing blocks D2. |
 | **Last run (date, by whom)** | 2026-07-20, 🤖 Claude (Audit-3 loop) |
-| **Last completed task** | D1.G 🚦 PASSED — the engine runs unattended (cron drains, narrative→reading, nightly fortunes 61/61, cleanup sweep, KB 141/141 + live kb_search). Fixed a chat.test.mjs isolation issue exposed by D1.T3. Suites: app 64/64 · Deno 208/208 · Node 135/135. |
-| **Notes for next run** | **D2.T1 — share-card craft parity (the deferred F1.T9 tail; = Production-Readiness card tail).** GATED on D0.T3 (card-render 200 ✓ — satisfied). FIRST read the Audit-2 ledger's F1.T9 task + its Blocked-on/STATE notes (`Planning/Audits/Audit-2-Frontend/Frontend-audit-Tasks.md`) — this is that tail executed once. Scope: compat/face/daily-fortune card classes in `_shared/card-svg.ts` + `card-render`, real QR (or delete + Decision-Log), dark variant, <450KB Deno size assertion, client sheet honesty (real draft PNG preview, "show my name" consent toggle, market-ordered channel row), fortune share seal (F1.T11 leg), card-corner seal (F2.T1 leg), card-side rarity (F2.T8 leg — honest framing, no fabricated number). Redeploy `card-render --use-docker`. Verify: Deno green (size assertion incl.); live renders of each card class → 200 PNGs in card-drafts; client sheet previews a real draft PNG (screenshot); an invite published after carries a working OG card image. Standing gates. Tick the Audit-2 ledger's `[~]`/`[!]` notes closed (annotate). **Docker still running (28.1.1); card-render v5 live.** LARGE multi-part task — pace it; may span iterations. |
+| **Last completed task** | D2.T1 chunk 1 — the COMPATIBILITY card class in `_shared/card-svg.ts` (`buildCompatCardSvg` + `deriveCompatCardContent`; two mini palms + claret heart-thread + score/`?` ring + names + honest chips). Deno 213/213 (was 208). D2.T1 stays `[~]` (multi-chunk — see its PROGRESS LOG). |
+| **Notes for next run** | **CONTINUE D2.T1 (share-card craft parity) — chunk 2.** Chunk 1 (compat card SVG) done. Next highest-value: **card-render integration + live compat render + client real-draft preview** (the "preview == posted" defining deliverable). (a) `card-render/index.ts` — add `source_type='compatibility'` handling: given a `pair_id` (or `source_id`), load both members' feature_sets (geometries) + the `compatibility_results` score/sub_scores/narrative, call `buildCompatCardSvg`; store to `card-drafts` (a NEW `renderAndStoreCompatCard` in `render.ts`, or generalize). Also stub the `daily fortune` + `solo face` source types. Deploy `card-render --use-docker`. Live-verify: seed a complete pair (like D1/D0 harnesses) → invoke card-render `{source_type:'compatibility', source_id:<pairId>}` → 200 + a compat PNG in `card-drafts` (Read the PNG). (b) then `ShareView` real draft-PNG preview + consent toggle + channel row. See D2.T1's PROGRESS LOG for the full remaining list (face/fortune classes, QR, dark, size-assertion, seals, rarity). Standing gate = **Deno** (card-svg touched) + app gates when ShareView is touched. **Docker running (28.1.1); card-render v5 live.** |
 
 ---
 
@@ -327,7 +327,7 @@ the two ledgers never diverge.
 
 ## D2 — The Docker-unlocked card tail (conditional on D0.T3; = the deferred F1.T9 tail)
 
-- [ ] **D2.T1** 🤖 **Share-card craft parity.** (Gated: only if D0.T3 verified 200.) Read the
+- [~] **D2.T1** 🤖 **Share-card craft parity.** (Gated: only if D0.T3 verified 200.) — IN PROGRESS (multi-chunk; see note). Read the
   Audit-2 ledger's F1.T9 task + its `Blocked on`/STATE notes first — this is that deferred tail,
   executed once, as one focused task: compat/face/daily-fortune card classes in
   `_shared/card-svg.ts` + `card-render`, real QR (or delete + Decision-Log), dark variant,
@@ -340,6 +340,25 @@ the two ledgers never diverge.
     an invite published after this carries a working OG card image (fetch the teaser HTML).
     Standing gates. Tick the corresponding `[~]`/`[!]` notes in the Audit-2 ledger as closed
     (annotate, don't rewrite history).
+  - **PROGRESS LOG (multi-chunk build — this is a ~10-part task, paced across iterations):**
+    - **Chunk 1 ✅ (2026-07-20): the COMPATIBILITY card class** — `_shared/card-svg.ts` gains
+      `buildCompatCardSvg` (two mini palms angled toward each other via `miniPalm()`, a claret "red
+      thread" joining their HEART lines through a score ring — or a `?` ring pre-claim — both first
+      names, ≤2 chips = shared-trait + friction) + `deriveCompatCardContent` (headline + honest
+      chips from `sub_scores`: top = "in tune", low = "to bridge"). 5 new Deno tests (thread/names/
+      score/`?`-pre-claim/chip-cap/derive/size-guard). Deno **213/213** (was 208), type-checks clean.
+      Three-reds honored (accent lines, claret thread+seal), no CJK, no indigo.
+    - **REMAINING chunks (next iterations):** (2) card-render integration — resolve a pair's two
+      feature_sets + score in `card-render/index.ts` for `source_type='compatibility'`, wire the
+      `daily fortune` + `solo face` source types; deploy `--use-docker`; live-render each class → 200
+      PNG in `card-drafts` (view them). (3) `solo face` + `daily fortune` SVG classes. (4) client sheet
+      honesty in `ShareView` — real draft-PNG preview (signed `card-drafts` URL, preview==posted),
+      "Show my name" consent toggle gating the byline, market-ordered channel row (WhatsApp·LINE·Zalo·
+      IG·TikTok·Copy·QR·More) with per-channel text + channel tag on `invite-create`. (5) real QR
+      encoder (pure-TS, decode-tested) OR delete + Decision-Log. (6) dark story variant + sheet toggle.
+      (7) <450KB rasterized-PNG assertion in a resvg render test. (8) label-anchor/headline-dead-band
+      polish. (9) card-corner seal (F2.T1), fortune share seal (F1.T11), card-side rarity (F2.T8 —
+      honest, no fabricated number).
 - [ ] **D2.G** 🚦 **FINAL GATE + consolidated report.** All three suites green. Then write the
   terminal report into STATE: what this loop closed (with commit refs), what remains and exactly
   which R1/R3/R4/R5 item each remaining thing waits on. Update `Production-Readiness-Plan.md`
@@ -356,6 +375,7 @@ the two ledgers never diverge.
 | 2026-07-20 | D0.T1 | Redeployed all 19 pure-code Edge Functions from git (all except `card-render`) via `npx supabase@latest functions deploy` — every version bumped +1, `updated_at`=today; `card-render` left at v4 (D0.T3). Posture spot-checks live-verified: invite-create no-JWT→401, worker-scan no-key→403 & +service-key→200 (`{"processed":0}`), chat-send non-premium→402. Deno 208/208. Minted anon users for the chat check cleaned up. |
 | 2026-07-20 | D0.T2 | `migration repair --status applied 20260719000031 20260719000032` (via `--db-url` from `.env.staging`) → history now 32 rows, max `20260719000032`, both present. `db push --dry-run` → "Remote database is up to date." (no-op). One-apply-path standing rule (db push only; never out-of-band DDL) documented in `docs/ENVIRONMENT.md`. Node 135/135. |
 | 2026-07-20 | D0.T3 | Started Docker Desktop (engine 28.1.1); deployed `card-render --use-docker` → v5, script 13 MB (resvg wasm + Noto fonts bundled as static_files). Live verify (seed fresh anon user + scan + feature_set from `eval/samples/narrative/palm_01.json`): render → 200 `{cardId,path,published:false}`, 74 956-byte PNG (PNG magic) in `card-drafts`; all seeds cleaned up. Edge logs: card-render v5 = 200, no new 500s. Deno 208/208. Unblocks D2. |
+| 2026-07-20 | D2.T1 (chunk 1) | Share-card craft parity — **compatibility card class** (F1.T9). `_shared/card-svg.ts` gains `buildCompatCardSvg` (two mini palms via `miniPalm()` angled toward each other, a claret red-thread joining their HEART lines through a score ring — `?` ring pre-claim — both names, ≤2 honest chips) + `deriveCompatCardContent` (chips from `sub_scores`: top→"in tune", low→"to bridge"). 5 new Deno tests; **Deno 213/213** (was 208), type-checks clean; three-reds honored, no CJK/indigo. D2.T1 stays `[~]` — remaining chunks (card-render integration + live renders, face/fortune classes, client real-preview + consent + channel row, QR, dark, size-assertion, seals, rarity) in its PROGRESS LOG. |
 | 2026-07-20 | D1.G 🚦 | **D1 phase gate PASSED — the engine runs unattended.** Cron drains fire (D1.T1: 30/30 runs → 200; narrative→reading unattended); nightly fortunes 61/61 today + cron wired (D1.T2); cleanup swept a >24h crop unattended (D1.T1); KB 141/141 + live kb_search grounded (D1.T3). Raw-scan image extraction to complete = H4c/R1.T3 `[~]` (provider gate). All three suites green (app 64/64 · Deno 208/208 · Node 135/135) — Node needed a `chat.test.mjs` isolation fix (clear kb_chunks in-txn) exposed by D1.T3's real embeddings; product correct, tests hermetic. |
 | 2026-07-20 | D1.T3 | Populated the 141 KB embeddings (A4). Throwaway script embedded every `kb_chunks.content` via `gemini-embedding-001` @1024 dims (matches vector(1024)+embedText; stored raw, kb_search is cosine `<=>`). 141/141 non-null, 0 failed (no free-tier throttle). Verified: `eval/p9t6.ts --live` P9T6_OK (heart-line nearest the love query; grounded answer+citations; medical deflection no-model-call); live `kb_search` RPC for a love query → all heart_line chunks (heart_line.depth.deep @0.351 top). Chat fuzzy-retrieval grounding live; graceful-degradation ends. Script (.env.staging creds, no committed secrets) deleted. |
 | 2026-07-20 | D1.T2 | Nightly fortunes real (A4). `fortune-generate` (secret/apikey) generated today `2026-07-20` → `fortune_templates` **61/61** (60 pillars + generic, en; DB-verified). Intermittent 500s were per-minute RPM throttling (upserts persist; resumed to 61/61, idempotent), not the daily cap. Live-verified as a real owner: READ today's fortune → full almanac content (generic + day-pillar `bingchen`); `user_fortunes` receipt WRITE+read under RLS. Nightly cron wired (03:00 UTC, empty body→tomorrow; self-confirms next-day; free-tier single-shot may be RPM-partial → H4c). Client user_fortunes auto-write intentionally not built (streaks = DO-NOT-BUILD; path ready). Seeds cleaned. |

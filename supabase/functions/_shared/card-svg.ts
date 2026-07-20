@@ -246,3 +246,160 @@ export function deriveCardContent(features: Rec): CardContent {
 }
 
 const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// Compatibility card (§3.1 class 3, audit F1.T9) — two mini palms angled toward each other, a claret
+// "red thread" joining their HEART lines through a score ring (or a "?" ring pre-claim), both first
+// names, and ≤2 chips (one shared-trait + one friction). Same warm-paper panel + three-reds discipline
+// as the solo card. Deterministic + pure → the resvg edge rasterizes it, the app sheet previews it.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+const SUB_LABEL: Record<string, string> = { emotion: 'Emotion', mind: 'Mind', life_energy: 'Energy', destiny: 'Destiny', elements: 'Elements' };
+const SUB_ORDER = ['emotion', 'mind', 'life_energy', 'destiny', 'elements'];
+
+export interface CompatCardContent {
+  headline: string;
+  chips: string[]; // ≤2: shared-trait + friction (honest, from sub_scores)
+}
+
+/** Derive the compat card's headline + chips from a `compatibility_results` row (deterministic). */
+export function deriveCompatCardContent(result: { score?: number | null; sub_scores?: Record<string, number> | null; narrative?: { headline?: string } | null }): CompatCardContent {
+  const headline = str(result.narrative?.headline) ?? 'Where your lines meet';
+  const subs = (result.sub_scores ?? {}) as Record<string, number>;
+  const present = SUB_ORDER.filter((k) => typeof subs[k] === 'number');
+  const chips: string[] = [];
+  if (present.length) {
+    const top = present.reduce((a, b) => (subs[b] > subs[a] ? b : a));
+    const low = present.reduce((a, b) => (subs[b] < subs[a] ? b : a));
+    chips.push(`${SUB_LABEL[top]} in tune`);
+    if (low !== top) chips.push(`${SUB_LABEL[low]} to bridge`);
+  }
+  if (chips.length === 0) chips.push('A rare resonance');
+  return { headline, chips: chips.slice(0, 2) };
+}
+
+export interface CompatCardInput {
+  variant: CardVariant;
+  headline: string;
+  score: number | null; // null → a "?" ring (the reveal is not claimed yet)
+  nameA: string; // usually the sender ("You")
+  nameB: string; // the partner's first name
+  geometryA: Record<string, Point[]>; // sender's traced lines (0–1000 frame)
+  geometryB: Record<string, Point[]>; // partner's traced lines
+  chips: string[]; // ≤2 (shared + friction)
+  domain?: string;
+  attribution?: string; // optional sender byline, gated by the sheet's consent toggle
+}
+
+/** One small palm (faint silhouette + lines, heart highlighted in accent) centred at (cx,cy) and
+ *  rotated `rot`°. Returns its `<g>` + the SCREEN-space anchor of the heart line's inner end so the
+ *  red thread can join the two hearts exactly. */
+function miniPalm(geom: Record<string, Point[]>, cx: number, cy: number, size: number, rot: number): { svg: string; heartAnchor: Point } {
+  const half = size / 2;
+  const map = (p: Point): Point => [(p[0] / 1000) * size - half, (p[1] / 1000) * size - half]; // centred-local
+  const strokes: string[] = [];
+  for (const [line, pts] of Object.entries(geom)) {
+    if (!Array.isArray(pts) || pts.length < 2) continue;
+    const d = smoothPath(pts.map(map));
+    const isHeart = line === 'heart_line';
+    strokes.push(`<path d="${d}" fill="none" stroke="${PALETTE.ink}" stroke-opacity="0.10" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>`);
+    strokes.push(`<path d="${d}" fill="none" stroke="${isHeart ? PALETTE.accent : PALETTE.ink}" stroke-opacity="${isHeart ? '1' : '0.5'}" stroke-width="${isHeart ? 5 : 3.5}" stroke-linecap="round" stroke-linejoin="round"/>`);
+  }
+  const sil =
+    `<g transform="translate(${r1(-half)},${r1(-half)}) scale(${r1(size / 1000)})">` +
+    `<path d="${HAND_SILHOUETTE}" fill="${PALETTE.ink}" fill-opacity="0.04" stroke="${PALETTE.inkWash}" stroke-opacity="0.14" stroke-width="2.5" stroke-linejoin="round"/></g>`;
+  const svg = `<g transform="translate(${r1(cx)},${r1(cy)}) rotate(${rot})">${sil}${strokes.join('')}</g>`;
+  let anchor: Point = [cx, cy];
+  const heart = geom.heart_line;
+  if (Array.isArray(heart) && heart.length) {
+    const loc = map(heart[heart.length - 1]);
+    const rad = (rot * Math.PI) / 180; // rotate the local anchor into screen space
+    anchor = [cx + loc[0] * Math.cos(rad) - loc[1] * Math.sin(rad), cy + loc[0] * Math.sin(rad) + loc[1] * Math.cos(rad)];
+  }
+  return { svg, heartAnchor: anchor };
+}
+
+export function buildCompatCardSvg(input: CompatCardInput): string {
+  const { w, h } = DIMS[input.variant];
+  const domain = input.domain ?? 'palmly.app';
+  const pad = 64;
+  const story = input.variant === 'story_9x16';
+  const palmSize = story ? 440 : 400;
+  const palmY = story ? 760 : 600;
+  const leftX = w * 0.29;
+  const rightX = w * 0.71;
+  const a = miniPalm(input.geometryA, leftX, palmY, palmSize, -7);
+  const b = miniPalm(input.geometryB, rightX, palmY, palmSize, 7);
+
+  // headline (top, ≤2 lines) — same treatment as the solo card
+  const hlSize = input.headline.length > 34 ? 54 : 62;
+  const headline = wrapLines(input.headline, 28, 2)
+    .map((ln, i) => `<tspan x="${r1(w / 2)}" dy="${i === 0 ? 0 : hlSize * 1.15}">${esc(ln)}</tspan>`)
+    .join('');
+
+  // the red thread + the score ring on top (the ring covers the thread's midpoint → thread enters it)
+  const ringCx = w / 2;
+  const ringCy = palmY + (story ? 24 : 16);
+  const ringR = 96;
+  const thread =
+    `<path d="M ${r1(a.heartAnchor[0])} ${r1(a.heartAnchor[1])} Q ${r1(ringCx)} ${r1(ringCy + 44)} ${r1(b.heartAnchor[0])} ${r1(b.heartAnchor[1])}" ` +
+    `fill="none" stroke="${PALETTE.heritage}" stroke-width="5" stroke-linecap="round" opacity="0.9"/>`;
+  const scoreTxt = input.score == null ? '?' : String(Math.round(input.score));
+  const ring =
+    `<circle cx="${r1(ringCx)}" cy="${r1(ringCy)}" r="${ringR}" fill="${PALETTE.paper}" stroke="${PALETTE.heritage}" stroke-width="3"/>` +
+    `<circle cx="${r1(ringCx)}" cy="${r1(ringCy)}" r="${ringR - 13}" fill="none" stroke="${PALETTE.accent}" stroke-width="7"/>` +
+    `<text x="${r1(ringCx)}" y="${r1(ringCy + 26)}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="${input.score == null ? 92 : 74}" font-weight="800" fill="${PALETTE.accent}">${scoreTxt}</text>`;
+
+  // names under each palm
+  const nameY = palmY + palmSize / 2 + 44;
+  const names =
+    `<text x="${r1(leftX)}" y="${r1(nameY)}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="36" font-weight="700" fill="${PALETTE.ink}">${esc(input.nameA)}</text>` +
+    `<text x="${r1(rightX)}" y="${r1(nameY)}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="36" font-weight="700" fill="${PALETTE.ink}">${esc(input.nameB)}</text>`;
+
+  // ≤2 chips, centred as a row below the names
+  const picked = input.chips.slice(0, 2);
+  const chipW = picked.map((c) => 34 + c.length * 20);
+  const gap = 22;
+  const totalW = chipW.reduce((s, x) => s + x, 0) + gap * Math.max(0, picked.length - 1);
+  let chipX = (w - totalW) / 2;
+  const chipY = nameY + 40;
+  const chips = picked
+    .map((c, i) => {
+      const cw = chipW[i];
+      const el =
+        `<rect x="${r1(chipX)}" y="${chipY}" rx="30" ry="30" width="${r1(cw)}" height="60" fill="${PALETTE.accentMuted}"/>` +
+        `<text x="${r1(chipX + cw / 2)}" y="${chipY + 40}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="28" fill="${PALETTE.accent}">${esc(c)}</text>`;
+      chipX += cw + gap;
+      return el;
+    })
+    .join('');
+
+  // footer rail: claret logomark seal + domain + optional consent byline
+  const railY = h - 96;
+  const seal =
+    `<g transform="translate(${pad},${railY - 6}) scale(${r1(56 / 48)})">` +
+    `<rect x="3" y="3" width="42" height="42" rx="10" fill="none" stroke="${PALETTE.heritage}" stroke-width="2.6"/>` +
+    `<g fill="none" stroke="${PALETTE.heritage}" stroke-width="3" stroke-linecap="round">` +
+    `<path d="M19.5 12.5 C14 18.5 13 28 18.5 36"/><path d="M11.5 24.5 C20 21.5 29.5 22.5 35.5 26"/><path d="M12 18.5 C20 14 30 15 36.5 19.5"/>` +
+    `</g></g>`;
+  const brand =
+    `<text x="${pad + 74}" y="${railY + 34}" font-family="Noto Sans, sans-serif" font-size="30" fill="${PALETTE.ink}">${esc(domain)}</text>` +
+    (input.attribution ? `<text x="${w - pad}" y="${railY + 34}" text-anchor="end" font-family="Noto Sans, sans-serif" font-size="28" fill="${PALETTE.inkWash}">${esc(input.attribution)}</text>` : '');
+
+  const panelInset = 28;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  <defs><filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="12" stdDeviation="26" flood-color="${PALETTE.ink}" flood-opacity="0.10"/>
+  </filter></defs>
+  <rect width="${w}" height="${h}" fill="${PALETTE.bg}"/>
+  <rect x="${panelInset}" y="${panelInset}" width="${w - panelInset * 2}" height="${h - panelInset * 2}" rx="40" fill="${PALETTE.paper}" stroke="${PALETTE.edge}" stroke-width="2" filter="url(#cardShadow)"/>
+  <text x="${r1(w / 2)}" y="${story ? 300 : 180}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="${hlSize}" font-weight="800" fill="${PALETTE.ink}">${headline}</text>
+  ${a.svg}
+  ${b.svg}
+  ${thread}
+  ${ring}
+  ${names}
+  ${chips}
+  ${seal}
+  ${brand}
+</svg>`;
+}

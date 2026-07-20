@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertStringIncludes } from '@std/assert';
-import { buildCardSvg, deriveCardContent, type Point } from './card-svg.ts';
+import { buildCardSvg, buildCompatCardSvg, deriveCardContent, deriveCompatCardContent, type Point } from './card-svg.ts';
 import palm01 from '../../../eval/samples/narrative/palm_01.json' with { type: 'json' };
 import palm02 from '../../../eval/samples/narrative/palm_02.json' with { type: 'json' };
 
@@ -67,4 +67,45 @@ Deno.test('deriveCardContent: sparse palm still yields a headline + at least one
   assertStringIncludes(c.headline, 'Earth hand');
   assert(c.chips.length >= 1);
   assertEquals(c.signatureLines.length, 2);
+});
+
+// ── Compatibility card class (audit F1.T9) ──
+Deno.test('buildCompatCardSvg: two names, claret heart-thread, a score ring, chips', () => {
+  const svg = buildCompatCardSvg({ variant: 'feed_4x5', headline: 'A rare, easy resonance', score: 82, nameA: 'You', nameB: 'Mei', geometryA: geom, geometryB: geom, chips: ['Emotion in tune', 'Mind to bridge'] });
+  assertStringIncludes(svg, 'width="1080" height="1350"');
+  assertStringIncludes(svg, '>You</text>');
+  assertStringIncludes(svg, '>Mei</text>');
+  assertStringIncludes(svg, '>82</text>'); // real score in the ring
+  assertStringIncludes(svg, '#9E3B2E'); // claret thread + seal (heritage, §3.2)
+  assertStringIncludes(svg, 'Emotion in tune'); // shared-trait chip
+  assertStringIncludes(svg, 'palmly.app');
+  assert(!/[一-鿿]/.test(svg), 'no CJK on the compat card');
+  assert(!svg.includes('#4B57C4'), 'no retired indigo accent');
+});
+
+Deno.test('buildCompatCardSvg: pre-claim shows a "?" ring, never a fabricated score', () => {
+  const svg = buildCompatCardSvg({ variant: 'feed_4x5', headline: 'x', score: null, nameA: 'You', nameB: 'Sam', geometryA: geom, geometryB: geom, chips: [] });
+  assertStringIncludes(svg, '>?</text>');
+});
+
+Deno.test('buildCompatCardSvg: caps chips at 2 (shared + friction)', () => {
+  const svg = buildCompatCardSvg({ variant: 'feed_4x5', headline: 'x', score: 70, nameA: 'A', nameB: 'B', geometryA: geom, geometryB: geom, chips: ['one', 'two', 'three'] });
+  assertEquals((svg.match(/rx="30" ry="30"/g) ?? []).length, 2);
+});
+
+Deno.test('deriveCompatCardContent: shared-trait (top sub) + friction (low sub), honest', () => {
+  const c = deriveCompatCardContent({ score: 82, sub_scores: { emotion: 90, mind: 55, life_energy: 70 }, narrative: { headline: 'Deeply in sync' } });
+  assertEquals(c.headline, 'Deeply in sync');
+  assert(c.chips.includes('Emotion in tune')); // highest sub-score
+  assert(c.chips.includes('Mind to bridge')); // lowest sub-score
+  assert(c.chips.length <= 2);
+});
+
+Deno.test('card SVG source stays tiny (guards a runaway toward the 450KB PNG budget)', () => {
+  const solo = buildCardSvg({ variant: 'story_9x16', headline: 'A Water hand — feeling runs deep and true', chips: ['Deep heart line', 'Clear fate line', 'Long head line'], lineGeometry: geom, attribution: 'Mei' });
+  const compat = buildCompatCardSvg({ variant: 'story_9x16', headline: 'A rare, easy resonance', score: 82, nameA: 'You', nameB: 'Mei', geometryA: geom, geometryB: geom, chips: ['Emotion in tune', 'Mind to bridge'] });
+  // The SVG is a small fraction of the rasterized PNG; a runaway (embedded data / duplicated defs) is
+  // the failure this guards. The real <450KB PNG assertion lives in the resvg render test (D2.T1 cont).
+  assert(solo.length < 60_000, `solo SVG ${solo.length} bytes`);
+  assert(compat.length < 60_000, `compat SVG ${compat.length} bytes`);
 });
