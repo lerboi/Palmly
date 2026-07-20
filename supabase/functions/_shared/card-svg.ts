@@ -177,13 +177,10 @@ export function buildCardSvg(input: CardInput): string {
       ? `<text x="${w - pad}" y="${railY + 34}" text-anchor="end" font-family="Noto Sans, sans-serif" font-size="28" fill="${PALETTE.inkWash}">${esc(input.attribution)}</text>`
       : '');
 
-  // ── QR placeholder (story variant only, corner) — real code wired in the share flow (P8.T2/T3) ──
-  const qr =
-    input.variant === 'story_9x16'
-      ? `<g transform="translate(${w - pad - 150}, ${heroTop - 190})"><rect width="150" height="150" fill="none" stroke="${PALETTE.edge}" stroke-width="3"/>` +
-        `<rect x="16" y="16" width="34" height="34" fill="${PALETTE.ink}"/><rect x="100" y="16" width="34" height="34" fill="${PALETTE.ink}"/><rect x="16" y="100" width="34" height="34" fill="${PALETTE.ink}"/>` +
-        `<text x="75" y="180" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="20" fill="${PALETTE.inkWash}">scan to compare</text></g>`
-      : '';
+  // No QR on the card. A real, scannable QR must encode the per-share INVITE URL, which is minted
+  // AFTER this draft is pre-rendered — so it belongs at share/publish time, not the pre-rendered
+  // draft (Decision D3-06). The earlier "scan to compare" placeholder was non-scannable finder-square
+  // decoration (it implied a capability it lacked), so it was removed rather than shipped as a fake.
 
   // Warm-paper field + a raised white surface panel with soft depth (matches the in-app ShareView
   // preview — a premium card on paper, not a flat white rectangle).
@@ -198,7 +195,6 @@ export function buildCardSvg(input: CardInput): string {
   ${silhouette}
   ${strokes.join('\n  ')}
   ${labels.join('\n  ')}
-  ${qr}
   ${chips.join('\n  ')}
   ${seal}
   ${brand}

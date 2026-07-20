@@ -32,12 +32,14 @@ Deno.test('buildCardSvg: signature lines are drawn in the accent; others in ink'
   assertStringIncludes(svg, `stroke="#1A1A1F" stroke-width="4.5"`);
 });
 
-Deno.test('buildCardSvg: story variant is 9:16 and adds the QR block', () => {
+Deno.test('buildCardSvg: story variant is 9:16 and ships NO fake QR (D3-06)', () => {
   const feed = buildCardSvg({ variant: 'feed_4x5', headline: 'x', chips: ['y'], lineGeometry: geom });
   const story = buildCardSvg({ variant: 'story_9x16', headline: 'x', chips: ['y'], lineGeometry: geom });
-  assertStringIncludes(story, 'width="1080" height="1920"');
-  assertStringIncludes(story, 'scan to compare'); // QR only on story
-  assert(!feed.includes('scan to compare'), 'no QR on feed');
+  assertStringIncludes(story, 'width="1080" height="1920"'); // 9:16 dimensions
+  // The old non-scannable "scan to compare" placeholder was removed (a real QR needs the per-share
+  // invite URL, added at share time, not the pre-rendered draft). Neither variant may imply a fake code.
+  assert(!story.includes('scan to compare'), 'no fake QR on story');
+  assert(!feed.includes('scan to compare'), 'no fake QR on feed');
 });
 
 Deno.test('buildCardSvg: never emits more than 3 chips (anti-clutter §3.2)', () => {
