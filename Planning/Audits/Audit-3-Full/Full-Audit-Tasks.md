@@ -30,13 +30,13 @@ the two ledgers never diverge.
 
 | Field | Value |
 |---|---|
-| **Current phase** | D1 — Power the engine room (D0 COMPLETE; D0.G passed 2026-07-20) |
-| **Next task** | **D1.T1** 🤖 (cron→worker wiring — the sanctioned pg_cron/pg_net task; Vault service key) |
+| **Current phase** | D1 — Power the engine room (D1.T1 wiring done `[~]`; engine runs unattended) |
+| **Next task** | **D1.T2** 🤖 (nightly fortunes real — seed today's buckets; confirm the nightly fire) |
 | **Blocked on** | — |
-| **Waiting on human** | Nothing yet. Human items live in Production-Readiness-Plan R1 (phone, store accounts, paid Gemini H4c, RevenueCat H8, domain H6, auth providers H5b, CI secrets, AppsFlyer H9, KB review, dashboard toggles) — they are **out of scope** here and must never block this loop; if a task turns out to need one, mark it `[!]` naming the R1 item and move on. |
+| **Waiting on human** | R1 items are out of scope (never block this loop). NEW dependency surfaced: **H4c / R1.T3 (paid Gemini)** gates the RAW-scan IMAGE-extraction leg of D1.T1 (free-tier blocks image extraction) and will likely cap D1.T2 fortune generation (free-tier daily quota, ~56–57/61). Mark those legs `[~]`, name H4c/R1.T3, keep going. |
 | **Last run (date, by whom)** | 2026-07-20, 🤖 Claude (Audit-3 loop) |
-| **Last completed task** | D0.G 🚦 PASSED — D0 phase complete (Staging == git). All 7 D0 tasks done (D0.T4 `[~]` for its on-device camera leg only). Suites: app 64/64 · Deno 208/208 · Node 135/135. |
-| **Notes for next run** | **D1.T1 — cron→worker wiring (Full-Audit A4 / Plan R2.T1).** ⚠️ This is the ONE task where the pg_cron/pg_net parking rule is lifted. Decision FIRST (record in Decision Log D3-01): default **(a)** service key in **Vault** + enable `pg_net` (0.20.3 available, not installed) + one new migration `cron.schedule`-ing `net.http_post` against the deployed workers at Backend-spec cadences (scan/narrative ~10s, compat/push ~15s, hourly cleanup + ops-alerts, nightly fortune-generate). Option (b) GH-Actions needs R1.T7 human secrets — only if (a) impossible; never both. **SECURITY:** the migration reads the key from `vault.decrypted_secrets` BY NAME at runtime — NO key material in the migration file (grep before commit); the Vault secret is inserted once by an UNCOMMITTED throwaway Node/pg script using `.env.staging`. Use `mcp__supabase__search_docs` for current Vault+pg_cron+pg_net patterns. Verify: `cron.job` populated; a seeded enqueued scan progresses queued→…→complete with ZERO manual worker calls; a >24h crop is swept with `image_deleted_at`; migration has no secrets; Node suite; clean up seeds. cron.job currently = 0 (confirmed). **Docker still running (28.1.1).** |
+| **Last completed task** | D1.T1 `[~]` — cron→worker wiring LIVE (migration 0034 + pg_net + Vault). 7 crons fire (30/30 runs, all HTTP 200); seeded `narrative_jobs` → reading UNATTENDED; cleanup swept a >24h crop (image_deleted_at set). Only pending: raw-scan Gemini image extraction (H4c/R1.T3). |
+| **Notes for next run** | **D1.T2 — nightly fortunes real (A4 / Plan R2.T2).** Re-run today's buckets: invoke `fortune-generate` with explicit `{"date":"<today UTC>"}` (its default = TOMORROW; idempotent-resumable). ⚠️ free-tier Gemini (H4c) has a DAILY quota that previously plateaued a full run at 56–57/61 — re-invoke across the quota window; if quota-capped, mark `[~]` with the exact bucket count (honest), NOT `[x]`. `fortune-generate` is now cron-wired (D1.T1, nightly 03:00 UTC) so tomorrow's buckets should generate on schedule — confirm via `cron.job`/`fortune_templates` next-day. Verify: `fortune_templates` today coverage → 61/61 or `[~]` quota-honest count; FortuneHome renders a real row (screenshot); a fortune-open writes `user_fortunes` (clean up). Invoke worker via the apikey header (sb_secret key) OR just call fortune-generate directly with the service key on `apikey`. cron.job now = 7 palmly jobs. **Docker still running (28.1.1).** |
 
 ---
 
@@ -133,7 +133,7 @@ the two ledgers never diverge.
 
 | # | Decision | Rationale | Date |
 |---|---|---|---|
-| D3-01 | *(reserved for D1.T1: cron mechanism choice — record (a) Vault+pg_net or (b) GH-Actions here with rationale before building)* | | |
+| D3-01 | **Cron→worker = mechanism (a): Vault + pg_net + pg_cron.** One migration (`0034`) enables `pg_net` (0.20.3) and `cron.schedule`s 7 jobs, each a `net.http_post` to a deployed worker. **Two Vault secrets** set by an UNCOMMITTED one-off script (neither in git): `project_url` (= `https://<ref>.supabase.co`) and `edge_service_key` (= the `sb_secret_` SERVICE_ROLE key). The migration reads BOTH from `vault.decrypted_secrets` **by name at runtime** → the file has no ref and no secret. **Auth header = `apikey: <key>`** (NOT `Authorization: Bearer` — the new `sb_secret_` key is gateway-rejected on Bearer per current Supabase docs; Palmly's `bearerToken` falls back to the `apikey` header → `requireMode 'secret'`). Cadences (Backend §4): scan/narrative `10 seconds`, compat/push `15 seconds`, cleanup `0 * * * *`, ops-alerts `15 * * * *`, fortune-generate `0 3 * * *` (empty body → `nextUtcDate` = tomorrow). | (b) GH-Actions rejected: needs R1.T7 human CI secrets; (a) is fully agent-doable today. `project_url` in Vault (not hardcoded) keeps the migration portable for the R5.T7 prod-from-git recreation (the single-project decision's whole point). Never build both (DO-NOT-BUILD). | 2026-07-20 |
 
 ---
 
@@ -247,7 +247,7 @@ the two ledgers never diverge.
 
 ## D1 — Power the engine room (= Plan R2; audit A4)
 
-- [ ] **D1.T1** 🤖 **Cron→worker wiring** — the single most important backend task left. (= R2.T1.)
+- [~] **D1.T1** 🤖 **Cron→worker wiring** — the single most important backend task left. (= R2.T1.) — WIRING COMPLETE + live-verified (engine runs unattended); the only pending leg is a RAW scan's Gemini IMAGE extraction to `complete`, which is H4c/R1.T3-gated (not a wiring defect). See note below.
   - Decision FIRST (Decision-Log it): default **(a) recommended** — service key in **Vault**,
     enable `pg_net` (0.20.3 available, not installed), one new migration that `cron.schedule`s
     jobs calling `net.http_post` against the deployed workers: scan/narrative/compat/push drains
@@ -263,6 +263,22 @@ the two ledgers never diverge.
     progresses queued→extracting→complete→reading with **zero manual worker invocations**; a
     seeded >24h-old crop is deleted by the sweep with `image_deleted_at` set; migration file
     contains no secrets; Node suite green; clean up seeds.
+  - **NOTE (2026-07-20, `[~]` honesty):** Mechanism (a) built — migration `0034` enables `pg_net`
+    (0.20.3) and `cron.schedule`s 7 jobs, each a `net.http_post` reading `project_url` +
+    `edge_service_key` from `vault.decrypted_secrets` BY NAME (migration has NO ref, NO secret —
+    grep-verified; the two Vault secrets were seeded once by an uncommitted throwaway script, now
+    deleted). Auth = the `apikey` header (the `sb_secret_` key is gateway-rejected on
+    `Authorization: Bearer`; the workers' `bearerToken` falls back to `apikey` → `requireMode
+    'secret'`). **Live-verified (zero manual calls):** `cron.job` = 7 jobs (correct cadences);
+    in a 2-min window **30/30 drain runs `succeeded`, all HTTP 200, zero errors**; a seeded
+    `narrative_jobs` → the drain invoked worker-narrative → a `readings` row + scan `complete`
+    within ~20s; the `cleanup` worker (invoked via the cron's apikey path) swept a seeded >24h crop
+    → object deleted + `image_deleted_at` stamped (cleanup is scheduled hourly). All seeds cleaned
+    up. **PENDING leg:** a RAW scan progressing through **Gemini IMAGE extraction** (worker-scan) to
+    `complete` needs the paid Gemini key — **H4c / R1.T3** (free-tier blocks image extraction,
+    live-verified P5.T6); worker-scan itself is confirmed cron-invoked + responds 200. This is a
+    provider gate, not a wiring defect. `fortune-generate` nightly is wired here; D1.T2 seeds today's
+    buckets + confirms the nightly fire.
 - [ ] **D1.T2** 🤖 **Nightly fortunes real.** (= R2.T2; audit A4.)
   - Build: re-run the missing/failed fortune buckets for today (invoke `fortune-generate` with an
     explicit `{"date":"<today UTC>"}` — its default generates TOMORROW; it is
@@ -315,6 +331,7 @@ the two ledgers never diverge.
 | 2026-07-20 | D0.T1 | Redeployed all 19 pure-code Edge Functions from git (all except `card-render`) via `npx supabase@latest functions deploy` — every version bumped +1, `updated_at`=today; `card-render` left at v4 (D0.T3). Posture spot-checks live-verified: invite-create no-JWT→401, worker-scan no-key→403 & +service-key→200 (`{"processed":0}`), chat-send non-premium→402. Deno 208/208. Minted anon users for the chat check cleaned up. |
 | 2026-07-20 | D0.T2 | `migration repair --status applied 20260719000031 20260719000032` (via `--db-url` from `.env.staging`) → history now 32 rows, max `20260719000032`, both present. `db push --dry-run` → "Remote database is up to date." (no-op). One-apply-path standing rule (db push only; never out-of-band DDL) documented in `docs/ENVIRONMENT.md`. Node 135/135. |
 | 2026-07-20 | D0.T3 | Started Docker Desktop (engine 28.1.1); deployed `card-render --use-docker` → v5, script 13 MB (resvg wasm + Noto fonts bundled as static_files). Live verify (seed fresh anon user + scan + feature_set from `eval/samples/narrative/palm_01.json`): render → 200 `{cardId,path,published:false}`, 74 956-byte PNG (PNG magic) in `card-drafts`; all seeds cleaned up. Edge logs: card-render v5 = 200, no new 500s. Deno 208/208. Unblocks D2. |
+| 2026-07-20 | D1.T1 `[~]` | Cron→worker wiring LIVE (A4). Migration `0034` enables `pg_net` 0.20.3 + `cron.schedule`s 7 jobs (scan/narrative 10s, compat/push 15s, cleanup+ops-alerts hourly, fortune-generate nightly 03:00 UTC), each a `net.http_post` reading `project_url`+`edge_service_key` from Vault by name (no ref/secret in the file; 2 Vault secrets seeded by an uncommitted, now-deleted script; auth via the `apikey` header for the sb_secret key). Live: `cron.job`=7; 30/30 drain runs succeeded, all HTTP 200; seeded `narrative_jobs` → reading + scan `complete` UNATTENDED (~20s); `cleanup` swept a seeded >24h crop (object gone + `image_deleted_at` set). Seeds cleaned. Pending leg: raw-scan Gemini image extraction → `complete` (H4c/R1.T3; worker-scan is cron-invoked + 200). |
 | 2026-07-20 | D0.G 🚦 | **D0 phase gate PASSED — Staging == git.** Every function current (D0.T1), ledger repaired + db push no-op (D0.T2), card-render v5 Docker 200 (D0.T3), no scanId-less `/analyzing` route — code done, camera device leg `[~]` (D0.T4), 8 dark events emitting (D0.T5), hygiene clean + advisors cleaned (D0.T6). All three suites green: app 64/64 · Deno 208/208 · Node 135/135. |
 | 2026-07-20 | D0.T6 | Hygiene sweep (A9+A10): `expo install --fix` bumped 4 native modules to expected patch versions → **expo-doctor 21/21**. New additive migration `20260720000033_a9_revoke_trigger_fn_execute.sql` revokes EXECUTE (from `public,anon,authenticated`) on the 4 trigger-only SECURITY DEFINER fns (`handle_new_user`, `broadcast_scan_status`, `broadcast_compat_status`, `resolve_awaiting_compat`); applied via `db push` → advisors no longer list them; `is_pair_member`/`thread_owner`/`set_keep_image` kept (A9); `db push --dry-run` no-op. Doc truth: `HowItWorks.md` cron claim (5 drain_stub schedules → cron.job empty, D1.T1) + stale "scan-create not deployed"/17-fns caveat corrected; `MVP_Buildplan.md` STATE block given a SUPERSEDED→Audit-2/Audit-3 pointer. Leaked-password toggle left as 🧑 R1.T10 (dashboard-only). Gates: tsc 0/lint 0/jest 64/64; Node 135/135; grep clean. |
 | 2026-07-20 | D0.T5 | Wired 8 dark analytics events at live call sites (A7): `capture_completed` + `capture_started`/`upload_ok` in new `useScanUpload`; `capture_state_dwell` + `capture_abandoned` in `palm.tsx` (dwell) / `face.tsx` (abandon); `reading_ready` at the analyzing→reveal seam (kind threaded via route param); `reveal_time_spent` on reveal unmount; `invite_clicked{source:'web'}` on the claim landing; `notification_pref_changed` on the settings toggle; `paywall_page_viewed{page:0}` on the paywall. `docs/ANALYTICS.md` wiring-status rewritten (wired vs intentionally-pending H8/H9/device). Gates: tsc 0 / lint 0 / jest 64/64; grep confirms ≥1 non-test call site per event. |
