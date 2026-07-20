@@ -5,7 +5,7 @@
 // in the resvg-wasm dependency; it needs --allow-read for the vendored wasm + font assets.
 import { assert } from '@std/assert';
 import { renderCardPng } from './render.ts';
-import { buildCardSvg, buildCompatCardSvg, buildFortuneCardSvg, deriveCardContent, type Point } from '../_shared/card-svg.ts';
+import { buildCardSvg, buildCompatCardSvg, buildFaceCardSvg, buildFortuneCardSvg, deriveCardContent, type Point } from '../_shared/card-svg.ts';
 import palm01 from '../../../eval/samples/narrative/palm_01.json' with { type: 'json' };
 
 const geom = (palm01 as unknown as { line_geometry: Record<string, Point[]> }).line_geometry;
@@ -26,6 +26,7 @@ Deno.test('rasterized card PNGs stay under the 450KB share budget (all classes, 
     ['compat feed', buildCompatCardSvg({ variant: 'feed_4x5', headline: 'A rare, easy resonance', score: 82, nameA: 'You', nameB: 'Mei', geometryA: geom, geometryB: geom, chips: ['Emotion in tune', 'Mind to bridge'] })],
     ['compat story', buildCompatCardSvg({ variant: 'story_9x16', headline: 'A rare, easy resonance', score: 82, nameA: 'You', nameB: 'Mei', geometryA: geom, geometryB: geom, chips: ['Emotion in tune', 'Mind to bridge'] })],
     ['fortune feed', buildFortuneCardSvg({ variant: 'feed_4x5', headline: 'A steady day to plant seeds and mend fences.', dateLabel: 'Daily Almanac · July 21', luckyDirection: 'Southeast', luckyColor: 'Vermilion', luckyHours: '7–9am', chips: ['Sign paperwork', 'Reach out first'] })],
+    ['face feed', buildFaceCardSvg({ variant: 'feed_4x5', headline: 'A Wood face — upright and growing.', chips: ['Arched brows', 'Almond eyes', 'High nose bridge'], accentFeature: 'brows', courtLabel: 'Upper court' })],
   ];
   for (const [name, svg] of cases) {
     const size = await pngSize(svg);

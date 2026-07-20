@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertStringIncludes } from '@std/assert';
-import { buildCardSvg, buildCompatCardSvg, buildFortuneCardSvg, deriveCardContent, deriveCompatCardContent, deriveFortuneCardContent, type Point } from './card-svg.ts';
+import { buildCardSvg, buildCompatCardSvg, buildFaceCardSvg, buildFortuneCardSvg, deriveCardContent, deriveCompatCardContent, deriveFaceCardContent, deriveFortuneCardContent, type Point } from './card-svg.ts';
 import palm01 from '../../../eval/samples/narrative/palm_01.json' with { type: 'json' };
 import palm02 from '../../../eval/samples/narrative/palm_02.json' with { type: 'json' };
 
@@ -139,6 +139,35 @@ Deno.test('deriveFortuneCardContent: essence headline + do-hooks + lucky triad f
   assert(c.chips.includes('Rest'));
   assertEquals(c.luckyDirection, 'East');
   assertEquals(c.luckyColor, 'Jade');
+});
+
+// ── Face card class (audit F1.T9) ──
+Deno.test('buildFaceCardSvg: element headline, face silhouette, dominant-court feature lit, chips', () => {
+  const svg = buildFaceCardSvg({ variant: 'feed_4x5', headline: 'A Wood face — upright and growing.', chips: ['Arched brows', 'Almond eyes', 'High nose bridge'], accentFeature: 'brows', courtLabel: 'Upper court' });
+  assertStringIncludes(svg, 'width="1080" height="1350"');
+  assertStringIncludes(svg, 'Wood face'); // element headline
+  assertStringIncludes(svg, '>Upper court</text>'); // the 三停 (three-court) label
+  assertStringIncludes(svg, 'Arched brows'); // physiognomy chip
+  assertStringIncludes(svg, '#D13B27'); // the accented feature is lit in vermilion
+  assertStringIncludes(svg, 'rx="10" fill="#9E3B2E"'); // filled claret chop-seal
+  assertStringIncludes(svg, 'palmly.app');
+  assert(!/[一-鿿]/.test(svg), 'no CJK on the face card');
+});
+
+Deno.test('deriveFaceCardContent: element face headline + three-court feature + honest chips', () => {
+  const c = deriveFaceCardContent({ face_shape: 'wood', three_courts: 'upper_dominant', eyebrows: { shape: 'arched' }, eyes: { shape: 'almond' }, nose: { bridge: 'high' } });
+  assertStringIncludes(c.headline, 'Wood face');
+  assertEquals(c.accentFeature, 'brows'); // upper court → brows
+  assertEquals(c.courtLabel, 'Upper court');
+  assert(c.chips.includes('Arched brows'));
+  assert(c.chips.length <= 3 && c.chips.length >= 1);
+});
+
+Deno.test('deriveFaceCardContent: balanced court → the central nose; sparse features still yield a chip', () => {
+  const c = deriveFaceCardContent({ face_shape: 'metal', three_courts: 'balanced' });
+  assertEquals(c.accentFeature, 'nose');
+  assertEquals(c.courtLabel, 'Middle court');
+  assert(c.chips.length >= 1); // falls back to "Metal face"
 });
 
 Deno.test('card SVG source stays tiny (guards a runaway toward the 450KB PNG budget)', () => {

@@ -220,6 +220,33 @@ const HAND_HEADLINE: Record<string, string> = {
   mixed: 'A Mixed hand — many natures in one.',
 };
 
+// ── Face card (面相 / physiognomy, audit F1.T9) — face features are ENUM-bucketed (element face,
+//    three-courts 三停, categorical brow/eye/nose/mouth), NOT line geometry, so the hero is a face
+//    silhouette with the dominant COURT's feature lit in vermilion (the palm's "signature line"
+//    analogue). Five-element FACE headline mirrors HAND_HEADLINE's tone. ──
+const FACE_HEADLINE: Record<string, string> = {
+  wood: 'A Wood face — upright and growing.',
+  fire: 'A Fire face — vivid and quick to warm.',
+  earth: 'An Earth face — grounded and giving.',
+  metal: 'A Metal face — clear and exacting.',
+  water: 'A Water face — deep and adaptable.',
+  mixed: 'A Mixed face — many natures in one.',
+};
+
+// A front-facing face oval in 0–1000 hero space (rounded forehead → widest at the cheeks → tapered
+// chin), mapped into the hero box exactly like HAND_SILHOUETTE.
+const FACE_SILHOUETTE =
+  'M500 180 C320 180 235 300 235 460 C235 640 360 810 500 822 C640 810 765 640 765 460 C765 300 680 180 500 180 Z';
+
+// The physiognomy features, in the same 0–1000 hero space. `key` maps to the dominant three-court:
+// upper court → brows, middle court → nose (the "mountain"), lower court → mouth.
+const FACE_FEATURES: Record<string, string> = {
+  brows: 'M300 392 Q346 372 392 390 M608 390 Q654 372 700 392',
+  eyes: 'M330 452 Q363 436 398 452 M602 452 Q637 436 670 452',
+  nose: 'M500 456 C494 502 492 548 500 572 C512 584 528 580 536 566',
+  mouth: 'M436 690 Q500 712 564 690',
+};
+
 export interface CardContent {
   headline: string;
   chips: string[];
@@ -505,4 +532,124 @@ export function buildFortuneCardSvg(input: FortuneCardInput): string {
   ${seal}
   ${brand}
 </svg>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// Face card (面相 / physiognomy, audit F1.T9) — same warm-paper panel + three-reds discipline as the
+// solo palm card, but the hero is a face silhouette with the dominant three-court feature lit in
+// vermilion (the "signature line" analogue). Face features carry no geometry, so nothing is traced.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+export type FaceFeature = 'brows' | 'nose' | 'mouth';
+
+export interface FaceCardInput {
+  variant: CardVariant;
+  headline: string;
+  chips: string[];
+  accentFeature: FaceFeature; // the dominant three-court's feature, drawn in vermilion + labelled
+  courtLabel: string; // e.g. "Upper court" — the named 三停 zone
+  attribution?: string;
+  domain?: string;
+}
+
+export function buildFaceCardSvg(input: FaceCardInput): string {
+  const { w, h } = DIMS[input.variant];
+  const domain = input.domain ?? 'palmly.app';
+  const pad = 64;
+  const L = LAYOUT[input.variant];
+  const heroSize = L.heroSize;
+  const heroX = (w - heroSize) / 2;
+  const heroY = L.heroTop;
+  const s = heroSize / 1000;
+
+  // Faint face oval behind the features (negative space → reads as a face, matches the palm card).
+  const silhouette =
+    `<g transform="translate(${r1(heroX)},${r1(heroY)}) scale(${r1(s)})">` +
+    `<path d="${FACE_SILHOUETTE}" fill="${PALETTE.ink}" fill-opacity="0.04" stroke="${PALETTE.inkWash}" stroke-opacity="0.16" stroke-width="2" stroke-linejoin="round"/>` +
+    // every feature soft in ink, then the dominant-court feature over-drawn in vermilion (thicker)
+    Object.entries(FACE_FEATURES)
+      .map(([k, d]) => `<path d="${d}" fill="none" stroke="${PALETTE.ink}" stroke-opacity="0.22" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>` +
+        (k === input.accentFeature ? `<path d="${d}" fill="none" stroke="${PALETTE.accent}" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>` : ''))
+      .join('') +
+    `</g>`;
+
+  // Label the accented feature's court, anchored to the right of the face at that feature's height.
+  const anchorY: Record<FaceFeature, number> = { brows: 385, nose: 512, mouth: 695 };
+  const labelX = heroX + heroSize * 0.82;
+  const labelY = heroY + (anchorY[input.accentFeature] / 1000) * heroSize;
+  const courtLabel = `<text x="${r1(labelX)}" y="${r1(labelY)}" font-family="Noto Sans, sans-serif" font-size="30" fill="${PALETTE.inkWash}">${esc(input.courtLabel)}</text>`;
+
+  // headline (top-left, bold sans, ≤2 lines) — same treatment as the solo card
+  const hlSize = input.headline.length > 34 ? 58 : 66;
+  const headline = wrapLines(input.headline, 26, 2)
+    .map((ln, i) => `<tspan x="${pad}" dy="${i === 0 ? 0 : hlSize * 1.15}">${esc(ln)}</tspan>`)
+    .join('');
+
+  // ≤3 feature chips (branded pills), same layout as the solo card
+  const picked = input.chips.slice(0, 3);
+  const chipY = heroY + heroSize + 40;
+  let chipX = pad;
+  const chips = picked
+    .map((c) => {
+      const cw = 34 + c.length * 18;
+      const el =
+        `<rect x="${r1(chipX)}" y="${chipY}" rx="30" ry="30" width="${r1(cw)}" height="60" fill="${PALETTE.accentMuted}"/>` +
+        `<text x="${r1(chipX + cw / 2)}" y="${chipY + 40}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="28" fill="${PALETTE.accent}">${esc(c)}</text>`;
+      chipX += cw + 20;
+      return el;
+    })
+    .join('');
+
+  const railY = h - 96;
+  const seal = chopSeal(pad, railY - 6);
+  const brand =
+    `<text x="${pad + 74}" y="${railY + 34}" font-family="Noto Sans, sans-serif" font-size="30" fill="${PALETTE.ink}">${esc(domain)}</text>` +
+    (input.attribution ? `<text x="${w - pad}" y="${railY + 34}" text-anchor="end" font-family="Noto Sans, sans-serif" font-size="28" fill="${PALETTE.inkWash}">${esc(input.attribution)}</text>` : '');
+
+  const panelInset = 28;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  <defs><filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="12" stdDeviation="26" flood-color="${PALETTE.ink}" flood-opacity="0.10"/>
+  </filter></defs>
+  <rect width="${w}" height="${h}" fill="${PALETTE.bg}"/>
+  <rect x="${panelInset}" y="${panelInset}" width="${w - panelInset * 2}" height="${h - panelInset * 2}" rx="40" fill="${PALETTE.paper}" stroke="${PALETTE.edge}" stroke-width="2" filter="url(#cardShadow)"/>
+  <text x="${pad}" y="${L.headlineY}" font-family="Noto Sans, sans-serif" font-size="${hlSize}" font-weight="800" fill="${PALETTE.ink}">${headline}</text>
+  ${silhouette}
+  ${courtLabel}
+  ${chips}
+  ${seal}
+  ${brand}
+</svg>`;
+}
+
+export interface FaceCardContent {
+  headline: string;
+  chips: string[]; // ≤3 physiognomy descriptors
+  accentFeature: FaceFeature;
+  courtLabel: string;
+}
+
+/** Derive the face card's fields from a `face_features.v1` jsonb (deterministic, enum-driven). */
+export function deriveFaceCardContent(features: Rec): FaceCardContent {
+  const shape = str(features.face_shape) ?? 'mixed';
+  const headline = FACE_HEADLINE[shape] ?? FACE_HEADLINE.mixed;
+
+  // The dominant three-court picks the lit feature (upper→brows, lower→mouth, else the central nose).
+  const court = str(features.three_courts);
+  const { accentFeature, courtLabel }: { accentFeature: FaceFeature; courtLabel: string } =
+    court === 'upper_dominant'
+      ? { accentFeature: 'brows', courtLabel: 'Upper court' }
+      : court === 'lower_dominant'
+        ? { accentFeature: 'mouth', courtLabel: 'Lower court' }
+        : { accentFeature: 'nose', courtLabel: 'Middle court' };
+
+  const brows = features.eyebrows as Rec | undefined;
+  const eyes = features.eyes as Rec | undefined;
+  const nose = features.nose as Rec | undefined;
+  const chips: string[] = [];
+  if (brows && str(brows.shape)) chips.push(`${cap(String(brows.shape))} brows`);
+  if (eyes && str(eyes.shape)) chips.push(`${cap(String(eyes.shape))} eyes`);
+  if (nose && str(nose.bridge)) chips.push(`${cap(String(nose.bridge))} nose bridge`);
+  if (chips.length === 0) chips.push(`${cap(shape)} face`); // always ≥1 chip
+
+  return { headline, chips: chips.slice(0, 3), accentFeature, courtLabel };
 }

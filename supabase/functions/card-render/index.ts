@@ -8,7 +8,7 @@
 // a share intent. Pre-render keeps the share instant; publication is what the user actually chose.
 import { createContext, requireMode } from '../_shared/context.ts';
 import { AppError, jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
-import { publishCard, renderAndStoreCard, renderAndStoreCompatCard, renderAndStoreFortuneCard } from './render.ts';
+import { publishCard, renderAndStoreCard, renderAndStoreCompatCard, renderAndStoreFaceCard, renderAndStoreFortuneCard } from './render.ts';
 import { deriveCompatCardContent, type CardVariant, type Point } from '../_shared/card-svg.ts';
 
 interface Body {
@@ -131,15 +131,17 @@ Deno.serve(
       );
     }
 
-    // ── Solo palm/face — keyed on a feature_set ──
+    // ── Solo palm/face — keyed on a feature_set; the feature_set's `kind` selects the card motif
+    //    (palm → traced lines; face → physiognomy silhouette). Both store as source_type 'reading'. ──
     if (!body.feature_set_id) throw new AppError('bad_request', 'feature_set_id is required', 400);
 
-    const { data: fs } = await ctx.admin.from('feature_sets').select('user_id, features').eq('id', body.feature_set_id).single();
+    const { data: fs } = await ctx.admin.from('feature_sets').select('user_id, features, kind').eq('id', body.feature_set_id).single();
     if (!fs) throw new AppError('not_found', 'feature_set not found', 404);
 
     const { data: profile } = await ctx.admin.from('profiles').select('display_name, locale').eq('id', fs.user_id).maybeSingle();
 
-    const res = await renderAndStoreCard(ctx.admin, {
+    const render = fs.kind === 'face' ? renderAndStoreFaceCard : renderAndStoreCard;
+    const res = await render(ctx.admin, {
       userId: fs.user_id,
       sourceType: body.source_type ?? 'reading',
       sourceId: body.source_id ?? body.feature_set_id,

@@ -4,7 +4,7 @@
 // PNG and upload to the public `cards` bucket with immutable cache headers.
 import { initWasm, Resvg } from '@resvg/resvg-wasm';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { buildCardSvg, buildCompatCardSvg, buildFortuneCardSvg, deriveCardContent, deriveFortuneCardContent, type CardVariant, type Point } from '../_shared/card-svg.ts';
+import { buildCardSvg, buildCompatCardSvg, buildFaceCardSvg, buildFortuneCardSvg, deriveCardContent, deriveFaceCardContent, deriveFortuneCardContent, type CardVariant, type Point } from '../_shared/card-svg.ts';
 import { DRAFT_BUCKET, PUBLIC_BUCKET, publishCard } from '../_shared/card-publish.ts';
 
 // Re-export so existing importers (card-render/index.ts) keep their path; the logic now lives in
@@ -138,6 +138,23 @@ export interface CompatRenderOpts {
   chips: string[];
   attribution?: string;
   locale?: string;
+}
+
+/** Build → rasterize → store the FACE card (physiognomy: face silhouette + dominant-court feature).
+ *  Keyed on a face feature_set, like the solo palm card; `anonymous` gates the byline the same way. */
+export async function renderAndStoreFaceCard(admin: SupabaseClient, o: RenderCardOpts): Promise<{ cardId: string; path: string; published: boolean }> {
+  const c = deriveFaceCardContent(o.features);
+  const svg = buildFaceCardSvg({
+    variant: o.variant,
+    headline: c.headline,
+    chips: c.chips,
+    accentFeature: c.accentFeature,
+    courtLabel: c.courtLabel,
+    attribution: o.anonymous ? undefined : o.attribution,
+  });
+  const png = await renderCardPng(svg);
+  const storageVariant = o.anonymous ? `${o.variant}_anon` : o.variant;
+  return storeCard(admin, { userId: o.userId, sourceType: o.sourceType, sourceId: o.sourceId, variant: storageVariant, locale: o.locale }, png);
 }
 
 // ── Daily-fortune card (audit F1.T9): the almanac's essence + lucky triad, keyed on (date, bucket). ──
