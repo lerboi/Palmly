@@ -29,6 +29,11 @@ const mix = (pairs) => {
 test('kb_search ranks the nearest KB chunk first (pgvector cosine distance)', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);
+    // Isolate from the live KB: since D1.T3 (Audit-3) the 141 production kb_chunks carry real
+    // embeddings, so kb_search would return them alongside the seeded rows and skew the exact-count
+    // assertions below. Clearing here (inside the rolled-back txn — restored on rollback) makes the
+    // test hermetic regardless of live KB state.
+    await c.query('delete from public.kb_chunks');
     await c.query(
       `insert into public.kb_chunks (kb_version, tradition, feature_key, content, embedding) values
          ('v1','palmistry','test.a','Chunk A',$1::vector),
@@ -48,6 +53,10 @@ test('kb_search ranks the nearest KB chunk first (pgvector cosine distance)', as
 test('kb_search filters by tradition and honors k', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);
+    // Isolate from the live KB (see the ranking test above): D1.T3 populated real embeddings on the
+    // 141 production kb_chunks, so kb_search would otherwise return them too. Cleared in-txn, restored
+    // on rollback.
+    await c.query('delete from public.kb_chunks');
     await c.query(
       `insert into public.kb_chunks (kb_version, tradition, feature_key, content, embedding) values
          ('v1','palmistry','palm.one','P1',$1::vector),

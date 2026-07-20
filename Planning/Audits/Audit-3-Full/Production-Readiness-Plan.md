@@ -51,7 +51,7 @@
   - Verify: `fortune_templates` has full coverage for today+tomorrow; a fortune-open writes `user_fortunes`.
 - [x] **R2.T3** 🤖 ∥ **Populate the 141 KB embeddings** (`gemini-embedding-001` — proven to work on the current key) via a one-off script; chat's pgvector `kb_search` goes live (graceful-degradation ends). _Done 2026-07-20 (D1.T3): 141/141 embedded @1024 dims (0 failed); eval/p9t6 --live P9T6_OK (heart-line nearest the love query); live kb_search returns grounded heart_line chunks. Chat fuzzy-retrieval live._
   - Verify: `kb_chunks` embeddings 141/141; the live retrieval eval (`eval/p9t6.ts`) ranks the heart-line chunk first for a love query.
-- [ ] **R2.G** 🚦 A scan enqueued at rest becomes a reading unattended; fortunes roll nightly; deletion promises are kept by machinery, not humans.
+- [x] **R2.G** 🚦 A scan enqueued at rest becomes a reading unattended; fortunes roll nightly; deletion promises are kept by machinery, not humans. _PASSED 2026-07-20 (Audit-3 D1.G): cron drains fire (30/30 → 200), narrative_jobs→reading unattended, fortunes 61/61 today + nightly cron wired, cleanup swept a >24h crop, KB 141/141 + live kb_search grounded. Raw-scan image extraction to complete is the H4c/R1.T3 `[~]` leg (provider gate). app 64/64 · Deno 208/208 · Node 135/135._
 
 ## R3 — The camera (the critical path; needs R1.T1; timeboxed)
 
