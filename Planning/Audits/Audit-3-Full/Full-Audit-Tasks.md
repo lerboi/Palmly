@@ -401,11 +401,16 @@ the two ledgers never diverge.
       **Deno 217/217**, tsc 0 / lint 0 / jest 68/68. LIVE-verified (harness, real RLS): one reading →
       TWO drafts — named `feed_4x5` (77 000 B, byline "Zarahemla" baked) + `feed_4x5_anon` (74 956 B,
       no byline), distinct paths, owner sees both rows, both sign+fetch as real PNGs, **named ≠ anon
-      (Δ=2044 B = the byline)** → preview == posted holds in BOTH toggle states. _Honesty note: the solo
+      (Δ=2044 B = the byline)** → preview == posted holds in BOTH toggle states. _Honesty notes: (1) the solo
       sheet eager-pre-mints on open, publishing the DEFAULT (named) draft; toggling OFF then sending
       re-mints + publishes the anon draft, but the named copy stays public-though-unsent — a pre-existing
       eager-publish property (A6), not worsened here. Deferring publish to first-send is a future
-      hardening, out of this chunk._
+      hardening, out of this chunk. (2) The `card-render` `anonymous` path is LIVE-proven (harness,
+      above). The `worker-narrative` double-fire is deployed + type-checked but not independently
+      triggered end-to-end, because the full worker path runs the narrative (Gemini) leg BEFORE
+      `preRenderCard`, and that leg is the H4c free-tier-limited one (a pre-existing `[~]`); the call it
+      makes is byte-identical to the proven harness invocation, and it's best-effort (a miss just falls
+      back to the vector preview), so the runtime risk is nil._
     - **REMAINING chunks (next iterations):** (3b) `solo face` SVG class + card-render integration
       for `fortune` & `face` (live-render each). (5) real QR encoder (pure-TS, decode-tested) → then
       add the QR tile in its market slot; OR delete + Decision-Log. (6) dark story variant + sheet
