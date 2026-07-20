@@ -109,6 +109,19 @@ export function ShareView({
     framingRef.current = f;
     mintRef.current = null;
   };
+  // "Show my name on the card" consent (F1.T9; UIUX §2 "first-name attribution (optional)"). Both a
+  // named and a byline-less draft are pre-rendered (worker-narrative), so the toggle just picks which
+  // pre-rendered variant the sheet previews AND publishes — no re-render, and "preview == posted"
+  // holds in both states. Toggling resets the mint so the next send publishes the chosen draft.
+  const [showName, setShowName] = useState(true);
+  const showNameRef = useRef(true);
+  const onToggleName = () => {
+    const v = !showNameRef.current;
+    setShowName(v);
+    showNameRef.current = v;
+    mintRef.current = null;
+  };
+  const soloVariant = (on: boolean) => (on ? 'feed_4x5' : 'feed_4x5_anon');
 
   // Mint the invite AT MOST ONCE — the promise is cached so every channel reuses the same link. A
   // failure clears the cache so a later tap can retry. A `presetInviteUrl` (home nudge re-share)
@@ -124,7 +137,9 @@ export function ShareView({
         let cardImageUrl: string | undefined;
         if (readingId) {
           try {
-            const cardId = await loadDraftShareCardId(readingId);
+            // Publish the draft the consent toggle selected (named vs byline-less) so the OG image a
+            // friend sees matches the sheet preview exactly. Ref, not state — ensureInvite stays stable.
+            const cardId = await loadDraftShareCardId(readingId, soloVariant(showNameRef.current));
             if (cardId) cardImageUrl = await publishShareCard(cardId);
           } catch {
             /* no draft card yet / publish failed — mint without the OG image */
@@ -152,12 +167,12 @@ export function ShareView({
   // async callback (react-hooks/set-state-in-effect).
   useEffect(() => {
     let active = true;
-    const load = variant === 'solo' && readingId ? loadDraftCardPreviewUrl(readingId) : Promise.resolve(null);
+    const load = variant === 'solo' && readingId ? loadDraftCardPreviewUrl(readingId, soloVariant(showName)) : Promise.resolve(null);
     load.then((u) => active && setPreviewUrl(u)).catch(() => {});
     return () => {
       active = false;
     };
-  }, [variant, readingId]);
+  }, [variant, readingId, showName]);
 
   // Pre-mint the SOLO share on open (so "Copy link" / "Share" are instant). The compat share waits
   // for the framing pick, so it mints on-demand in the handlers instead — otherwise a framing change
@@ -219,6 +234,24 @@ export function ShareView({
           </Animated.View>
         )}
       </View>
+
+      {/* "Show my name on the card" consent (F1.T9; UIUX §2 first-name attribution is optional). Solo
+          only — the compat card's names are governed separately by U6 (both consent on "Share our
+          result"). Flips the previewed + published draft between the named and byline-less renders. */}
+      {variant === 'solo' && readingId ? (
+        <Pressable
+          onPress={onToggleName}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: showName }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingVertical: theme.spacing.md }}
+        >
+          <Icon name="shield" size={22} color={theme.colors.heritageAccent} decorative />
+          <Text variant="body" style={{ flex: 1 }}>
+            Show my name on the card
+          </Text>
+          <Toggle on={showName} />
+        </Pressable>
+      ) : null}
 
       {/* Sender's relationship framing (§2.7 — tone modifier + card-copy variant). Compat only; hidden
           when re-sharing an existing link (framing is locked to the original invite). */}

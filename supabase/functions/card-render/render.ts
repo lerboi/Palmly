@@ -60,6 +60,10 @@ export interface RenderCardOpts {
   variant: CardVariant;
   features: Record<string, unknown>;
   attribution?: string;
+  /** Consent gate (F1.T9 "show my name" toggle): render WITHOUT the sender byline and stash the
+   *  result under a distinct `${variant}_anon` storage variant, so the named + anonymous drafts
+   *  coexist and the sheet can preview/publish either without a re-render. */
+  anonymous?: boolean;
   locale?: string;
 }
 
@@ -68,7 +72,9 @@ export interface RenderCardOpts {
  *  `publishCard` mints that on share intent (H8). */
 async function storeCard(
   admin: SupabaseClient,
-  o: { userId: string; sourceType: 'reading' | 'compatibility' | 'fortune'; sourceId: string; variant: CardVariant; locale?: string },
+  // `variant` is the STORAGE variant (the DB column + path key), widened to string so the anonymous
+  // draft can be stashed as `feed_4x5_anon` alongside the named `feed_4x5` under the same reading.
+  o: { userId: string; sourceType: 'reading' | 'compatibility' | 'fortune'; sourceId: string; variant: string; locale?: string },
   png: Uint8Array,
 ): Promise<{ cardId: string; path: string; published: boolean }> {
   const path = `${o.userId}/${o.sourceId}_${o.variant}.png`;
@@ -106,15 +112,16 @@ async function storeCard(
 export async function renderAndStoreCard(admin: SupabaseClient, o: RenderCardOpts): Promise<{ cardId: string; path: string; published: boolean }> {
   const content = deriveCardContent(o.features);
   const svg = buildCardSvg({
-    variant: o.variant,
+    variant: o.variant, // dimensions (feed/story); the anon draft keeps the same size, only the byline drops
     headline: content.headline,
     chips: content.chips,
     signatureLines: content.signatureLines,
     lineGeometry: (o.features.line_geometry ?? {}) as Record<string, Point[]>,
-    attribution: o.attribution,
+    attribution: o.anonymous ? undefined : o.attribution, // consent gate: no byline when anonymous
   });
   const png = await renderCardPng(svg);
-  return storeCard(admin, { userId: o.userId, sourceType: o.sourceType, sourceId: o.sourceId, variant: o.variant, locale: o.locale }, png);
+  const storageVariant = o.anonymous ? `${o.variant}_anon` : o.variant;
+  return storeCard(admin, { userId: o.userId, sourceType: o.sourceType, sourceId: o.sourceId, variant: storageVariant, locale: o.locale }, png);
 }
 
 // ── Compatibility card (audit F1.T9): the two members' palms joined by the claret heart-thread. ──

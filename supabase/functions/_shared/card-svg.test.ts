@@ -52,6 +52,13 @@ Deno.test('buildCardSvg: escapes user-influenced text', () => {
   assertStringIncludes(svg, '&lt;b&gt;');
 });
 
+Deno.test('buildCardSvg: the sender byline is omitted without attribution (F1.T9 anonymous draft)', () => {
+  const named = buildCardSvg({ variant: 'feed_4x5', headline: 'x', chips: ['y'], lineGeometry: geom, attribution: 'Zara' });
+  const anon = buildCardSvg({ variant: 'feed_4x5', headline: 'x', chips: ['y'], lineGeometry: geom });
+  assertStringIncludes(named, '>Zara</text>'); // the consent-gated byline
+  assert(!anon.includes('Zara'), 'the anonymous (show-my-name-off) draft carries no sender byline');
+});
+
 Deno.test('deriveCardContent: rich palm → element headline + notable chips + 2 signature lines', () => {
   const c = deriveCardContent(palm01 as Record<string, unknown>);
   assertStringIncludes(c.headline, 'Water hand');

@@ -55,19 +55,23 @@ const setStatus = (db: SupabaseClient, id: string, status: string, failure_reaso
   db.from('scans').update({ status, ...(failure_reason ? { failure_reason } : {}) }).eq('id', id);
 
 /** Fire the card-render function to pre-render the share card (§6.1). Best-effort — a failure here
- *  must never fail the reading (the card can be rendered on-demand at share time). */
+ *  must never fail the reading (the card can be rendered on-demand at share time). Two drafts are
+ *  rendered: the named `feed_4x5` and the byline-less `feed_4x5_anon` (F1.T9 "show my name" consent
+ *  toggle) so the share sheet can preview/publish either instantly without a re-render. */
 async function preRenderCard(featureSetId: string, readingId: string): Promise<void> {
-  try {
-    const url = Deno.env.get('SUPABASE_URL');
-    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (!url || !key) return;
-    await fetch(`${url}/functions/v1/card-render`, {
+  const url = Deno.env.get('SUPABASE_URL');
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!url || !key) return;
+  const render = (anonymous: boolean) =>
+    fetch(`${url}/functions/v1/card-render`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ feature_set_id: featureSetId, variant: 'feed_4x5', source_type: 'reading', source_id: readingId }),
+      body: JSON.stringify({ feature_set_id: featureSetId, variant: 'feed_4x5', source_type: 'reading', source_id: readingId, anonymous }),
     });
-  } catch (e) {
-    console.error('[worker-narrative] card pre-render invoke failed (non-fatal):', e instanceof Error ? e.message : e);
+  // Both are best-effort and independent — one failing must not block the other or the reading.
+  const results = await Promise.allSettled([render(false), render(true)]);
+  for (const r of results) {
+    if (r.status === 'rejected') console.error('[worker-narrative] card pre-render invoke failed (non-fatal):', r.reason);
   }
 }
 

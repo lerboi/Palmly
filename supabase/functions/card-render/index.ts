@@ -19,6 +19,7 @@ interface Body {
   source_type?: 'reading' | 'compatibility' | 'fortune';
   source_id?: string; // reading id (solo) or pair id (compatibility)
   attribution?: string; // consent-gated "«Name»'s" byline (the sheet passes it only when opted in)
+  anonymous?: boolean; // solo consent gate (F1.T9): render the byline-less draft, stored as `${variant}_anon`
 }
 
 Deno.serve(
@@ -95,6 +96,7 @@ Deno.serve(
       variant,
       features: fs.features as Record<string, unknown>,
       attribution: profile?.display_name ?? undefined,
+      anonymous: body.anonymous ?? false, // consent gate → byline-less `${variant}_anon` draft
       locale: profile?.locale ?? 'en',
     });
     return jsonResponse(res);
