@@ -94,8 +94,7 @@ export async function publishShareCard(cardId: string): Promise<string> {
   return res.publicUrl;
 }
 
-/** The pre-composed share message (UIUX §2.6) — the essence + a compare invite when a URL is present. */
-export function composeShareText(headline: string, url?: string): string {
-  const lead = `Palmly read my palm — ${headline}`;
-  return url ? `${lead}\nSee what yours says & compare palms: ${url}` : lead;
-}
+/** The pre-composed share message (UIUX §2.6) — now channel-aware; lives in the pure `shareText`
+ *  module so it unit-tests without the supabase SDK. Re-exported here so existing call sites keep
+ *  importing it from `@/lib/invite`. */
+export { composeShareText } from './shareText';

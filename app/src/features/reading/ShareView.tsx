@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, Platform, Pressable, Share, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, Share, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Circle, Path } from 'react-native-svg';
 import Animated, {
@@ -191,7 +191,8 @@ export function ShareView({
     // Sanctioned push moment (F1.T10): the first compat invite send. Once ever, device-only.
     if (variant === 'compat' && invite) void maybeAskFirstCompatPush();
     try {
-      await Share.share({ message: composeShareText(headline, url) });
+      // Per-channel copy (§2.6): messaging apps get the compare invite; IG/TikTok a short caption.
+      await Share.share({ message: composeShareText(headline, url, channel) });
     } catch {
       /* native OS sheet is device-only ([~]); web / dismissed → no-op */
     }
@@ -242,13 +243,27 @@ export function ShareView({
         <Toggle on={invite} />
       </Pressable>
 
-      {/* Channel row — real, tappable. Message/More open the OS share sheet; Copy writes the link
-          to the clipboard and flips to a confirmed state. (Branded market-ordered row is F1.T9.) */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginVertical: theme.spacing.md }}>
-        <ChannelButton icon="chat" label="Message" onPress={() => onShare('message')} />
-        <ChannelButton icon="thread" label={copied ? 'Link copied ✓' : 'Copy link'} onPress={onCopyLink} />
-        <ChannelButton icon="share" label="More" onPress={() => onShare('more')} />
-      </View>
+      {/* Market-ordered channel row (F1.T9, UIUX §2.6) — SE-Asia messaging first, then social, then
+          Copy/More. Real brand SDKs + logos are device-only ([~]); no brand glyph ships in the icon
+          set, so each channel is an honest monogram tile + label (never a faked logo). A brand tap
+          opens the OS share sheet with per-channel copy; Copy writes the link + flips to confirmed;
+          More is the generic sheet. (The QR tile joins in its market slot with the real encoder.) */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: theme.spacing.lg, paddingHorizontal: theme.spacing.xs }}
+        style={{ marginVertical: theme.spacing.md }}
+      >
+        {CHANNELS.map((c) => (
+          <ChannelButton
+            key={c.key}
+            icon={c.icon}
+            mono={c.mono}
+            label={c.action === 'copy' && copied ? 'Link copied ✓' : c.label}
+            onPress={c.action === 'copy' ? onCopyLink : () => onShare(c.key)}
+          />
+        ))}
+      </ScrollView>
 
       <Button
         label="Share"
@@ -342,7 +357,23 @@ function FramingPill({ label, active, onPress }: { label: string; active: boolea
   );
 }
 
-function ChannelButton({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+/** The market-ordered share channels (F1.T9, UIUX §2.6). Messaging apps that dominate the launch
+ *  markets come first, then the social-video pair, then Copy + More. No brand logos exist in the
+ *  icon set, so brand tiles carry an honest monogram; Copy/More use real glyphs. `key` is the
+ *  analytics channel tag threaded through `onShare`. (QR slots before More once its encoder lands.) */
+const CHANNELS: { key: string; label: string; mono?: string; icon?: IconName; action: 'brand' | 'copy' | 'more' }[] = [
+  { key: 'whatsapp', label: 'WhatsApp', mono: 'W', action: 'brand' },
+  { key: 'line', label: 'LINE', mono: 'L', action: 'brand' },
+  { key: 'zalo', label: 'Zalo', mono: 'Z', action: 'brand' },
+  { key: 'instagram', label: 'Instagram', mono: 'IG', action: 'brand' },
+  { key: 'tiktok', label: 'TikTok', mono: 'TT', action: 'brand' },
+  { key: 'copy', label: 'Copy link', icon: 'thread', action: 'copy' },
+  { key: 'more', label: 'More', icon: 'share', action: 'more' },
+];
+
+/** One channel tile — a glyph tile (Copy/More) or an honest brand monogram (no faked logos), with a
+ *  label below. Both share the same round accent tile so the row reads as one family. */
+function ChannelButton({ icon, mono, label, onPress }: { icon?: IconName; mono?: string; label: string; onPress: () => void }) {
   const theme = useTheme();
   const { scaleStyle: style, onPressIn, onPressOut } = usePressSpring(0.9);
   return (
@@ -353,7 +384,7 @@ function ChannelButton({ icon, label, onPress }: { icon: IconName; label: string
         onPressOut={onPressOut}
         accessibilityRole="button"
         accessibilityLabel={label}
-        style={{ alignItems: 'center', gap: theme.spacing.xs }}
+        style={{ alignItems: 'center', gap: theme.spacing.xs, width: 68 }}
       >
         <View
           style={{
@@ -365,9 +396,15 @@ function ChannelButton({ icon, label, onPress }: { icon: IconName; label: string
             justifyContent: 'center',
           }}
         >
-          <Icon name={icon} size={24} color={theme.colors.accent} decorative />
+          {icon ? (
+            <Icon name={icon} size={24} color={theme.colors.accent} decorative />
+          ) : (
+            <Text variant="bodyMedium" color={theme.colors.accent} style={{ fontWeight: '700' }}>
+              {mono}
+            </Text>
+          )}
         </View>
-        <Text variant="caption" tone="secondary">
+        <Text variant="caption" tone="secondary" numberOfLines={1}>
           {label}
         </Text>
       </Pressable>
