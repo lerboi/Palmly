@@ -30,13 +30,13 @@ the two ledgers never diverge.
 
 | Field | Value |
 |---|---|
-| **Current phase** | D1 — Power the engine room (D1.T1 `[~]`, D1.T2 `[x]` done; D1.T3 next) |
-| **Next task** | **D1.T3** 🤖 ∥ (populate the 141 KB embeddings via gemini-embedding-001) |
+| **Current phase** | D1 — Power the engine room (D1.T1 `[~]`, D1.T2/T3 `[x]`; D1.G gate next) |
+| **Next task** | **D1.G** 🚦 (the engine runs unattended — assert D1 + all three suites green) |
 | **Blocked on** | — |
 | **Waiting on human** | R1 items out of scope (never block this loop). Carried dependency: **H4c / R1.T3 (paid Gemini)** gates the raw-scan IMAGE-extraction leg of D1.T1 and guaranteed nightly-fortune completeness (free-tier single-shot is RPM-partial). D1.T3 uses `gemini-embedding-001` which is proven to work on the current free-tier key (so it should NOT be H4c-blocked). Mark any H4c-gated leg `[~]`, name it, keep going. |
 | **Last run (date, by whom)** | 2026-07-20, 🤖 Claude (Audit-3 loop) |
-| **Last completed task** | D1.T2 `[x]` — today's fortunes 61/61 (fortune-generate, idempotent-resumable); read path returns full almanac content (generic + day-pillar), user_fortunes receipt write/read verified under RLS; nightly cron wired (self-confirms tomorrow). |
-| **Notes for next run** | **D1.T3 — populate the 141 KB embeddings (A4 / Plan R2.T3).** ∥ One-off THROWAWAY script (Node or Deno, `.env.staging` creds + `GEMINI_API_KEY`) embedding all `kb_chunks` via **`gemini-embedding-001`** (proven on the current key — free-tier OK, NOT H4c-blocked). Don't commit the script with secrets inline (read from `.env.staging`; delete after). The `kb_chunks` table has an `embedding` vector column (currently 0/141 non-null). Check the embedding DIMENSION expected by the schema/kb_search (gemini-embedding-001 default 3072 dims; the column may be a fixed vector(N) — MATCH it, or use the model's output_dimensionality param). Verify: `execute_sql` → embeddings 141/141 non-null; the live retrieval eval `eval/p9t6.ts` ranks the heart-line chunk first for a love query; chat's `kb_search` returns grounded citations. Batch the embed calls (RPM-throttle like fortunes — may need waves). cron.job = 7 palmly jobs (engine running). **Docker still running (28.1.1).** |
+| **Last completed task** | D1.T3 `[x]` — 141/141 KB embeddings populated (gemini-embedding-001 @1024; 0 failed); eval/p9t6 --live P9T6_OK (heart-line nearest the love query); live kb_search returns grounded heart_line chunks. Chat fuzzy-retrieval live; graceful-degradation ends. |
+| **Notes for next run** | **D1.G phase gate** — assert: a scan enqueued at rest becomes a reading with no human in the loop (D1.T1 ✓ — narrative drain → reading unattended; raw-scan image extraction is the H4c `[~]` leg), fortunes roll nightly (D1.T2 ✓ — 61/61 today + nightly cron wired), deletion promises kept by machinery (D1.T1 ✓ — cleanup swept a >24h crop unattended). Run **all three suites** (app 64/64 · Deno 208/208 · Node 135/135) to confirm the phase, mark D1.G, update Plan R2.G, then proceed to **D2.T1** (the Docker-unlocked share-card craft tail — read the Audit-2 F1.T9 task + notes first; Docker still running 28.1.1; card-render v5 live). |
 
 ---
 
@@ -305,13 +305,22 @@ the two ledgers never diverge.
     RPM-partial (guaranteed completeness is H4c/R1.T3, but the run is resumable). (iii) Literal
     FortuneHome web-screenshot not re-shot — read path returns full real content + rendering is
     jest-tested (`fortune.test.ts`) + prior `docs/checkpoints/p9-fortune-*.png` show the layout.
-- [ ] **D1.T3** 🤖 ∥ **Populate the 141 KB embeddings.** (= R2.T3; audit A4.)
+- [x] **D1.T3** 🤖 ∥ **Populate the 141 KB embeddings.** (= R2.T3; audit A4.)
   - Build: one-off throwaway script (Node or Deno, `.env.staging` creds + the Gemini key per
     `docs/ENVIRONMENT.md`) embedding all `kb_chunks` via `gemini-embedding-001` (proven to work
     on the current key). Do not commit the script with secrets inline.
   - Verify: `execute_sql` → embeddings 141/141 non-null; the live retrieval eval
     (`eval/p9t6.ts`) ranks the heart-line chunk first for a love query; chat's `kb_search` path
     returns grounded citations (graceful-degradation ends).
+  - **NOTE (2026-07-20):** Throwaway script embedded every `kb_chunks.content` via
+    **`gemini-embedding-001` @ 1024 dims** (matches `vector(1024)` + `_shared/embeddings.ts embedText`,
+    stored raw — `kb_search` uses cosine `<=>`, scale-invariant). All **141/141** embedded, 0 failed
+    (free-tier had NO throttling issue for embeddings — NOT H4c-blocked). Verified: `execute_sql` →
+    141/141 non-null (21 heart_line chunks); **`eval/p9t6.ts --live` → P9T6_OK** (heart-line chunk
+    nearest the love query, 0.344 < 0.474 < 0.477; grounded answer with citations; medical deflection
+    no-model-call); **live `kb_search` RPC** for a love query returns all heart_line chunks
+    (heart_line.depth.deep @0.351 top) — chat's `fuzzyGrounding` path is grounded, graceful-degradation
+    ends. Script read creds from `.env.staging`, no secrets committed, deleted after.
 - [ ] **D1.G** 🚦 **The engine runs unattended.** A scan enqueued at rest becomes a reading with
   no human in the loop; fortunes roll nightly; deletion promises are kept by machinery.
   All three suites green. Update Plan R2.G.
@@ -347,6 +356,7 @@ the two ledgers never diverge.
 | 2026-07-20 | D0.T1 | Redeployed all 19 pure-code Edge Functions from git (all except `card-render`) via `npx supabase@latest functions deploy` — every version bumped +1, `updated_at`=today; `card-render` left at v4 (D0.T3). Posture spot-checks live-verified: invite-create no-JWT→401, worker-scan no-key→403 & +service-key→200 (`{"processed":0}`), chat-send non-premium→402. Deno 208/208. Minted anon users for the chat check cleaned up. |
 | 2026-07-20 | D0.T2 | `migration repair --status applied 20260719000031 20260719000032` (via `--db-url` from `.env.staging`) → history now 32 rows, max `20260719000032`, both present. `db push --dry-run` → "Remote database is up to date." (no-op). One-apply-path standing rule (db push only; never out-of-band DDL) documented in `docs/ENVIRONMENT.md`. Node 135/135. |
 | 2026-07-20 | D0.T3 | Started Docker Desktop (engine 28.1.1); deployed `card-render --use-docker` → v5, script 13 MB (resvg wasm + Noto fonts bundled as static_files). Live verify (seed fresh anon user + scan + feature_set from `eval/samples/narrative/palm_01.json`): render → 200 `{cardId,path,published:false}`, 74 956-byte PNG (PNG magic) in `card-drafts`; all seeds cleaned up. Edge logs: card-render v5 = 200, no new 500s. Deno 208/208. Unblocks D2. |
+| 2026-07-20 | D1.T3 | Populated the 141 KB embeddings (A4). Throwaway script embedded every `kb_chunks.content` via `gemini-embedding-001` @1024 dims (matches vector(1024)+embedText; stored raw, kb_search is cosine `<=>`). 141/141 non-null, 0 failed (no free-tier throttle). Verified: `eval/p9t6.ts --live` P9T6_OK (heart-line nearest the love query; grounded answer+citations; medical deflection no-model-call); live `kb_search` RPC for a love query → all heart_line chunks (heart_line.depth.deep @0.351 top). Chat fuzzy-retrieval grounding live; graceful-degradation ends. Script (.env.staging creds, no committed secrets) deleted. |
 | 2026-07-20 | D1.T2 | Nightly fortunes real (A4). `fortune-generate` (secret/apikey) generated today `2026-07-20` → `fortune_templates` **61/61** (60 pillars + generic, en; DB-verified). Intermittent 500s were per-minute RPM throttling (upserts persist; resumed to 61/61, idempotent), not the daily cap. Live-verified as a real owner: READ today's fortune → full almanac content (generic + day-pillar `bingchen`); `user_fortunes` receipt WRITE+read under RLS. Nightly cron wired (03:00 UTC, empty body→tomorrow; self-confirms next-day; free-tier single-shot may be RPM-partial → H4c). Client user_fortunes auto-write intentionally not built (streaks = DO-NOT-BUILD; path ready). Seeds cleaned. |
 | 2026-07-20 | D1.T1 `[~]` | Cron→worker wiring LIVE (A4). Migration `0034` enables `pg_net` 0.20.3 + `cron.schedule`s 7 jobs (scan/narrative 10s, compat/push 15s, cleanup+ops-alerts hourly, fortune-generate nightly 03:00 UTC), each a `net.http_post` reading `project_url`+`edge_service_key` from Vault by name (no ref/secret in the file; 2 Vault secrets seeded by an uncommitted, now-deleted script; auth via the `apikey` header for the sb_secret key). Live: `cron.job`=7; 30/30 drain runs succeeded, all HTTP 200; seeded `narrative_jobs` → reading + scan `complete` UNATTENDED (~20s); `cleanup` swept a seeded >24h crop (object gone + `image_deleted_at` set). Seeds cleaned. Pending leg: raw-scan Gemini image extraction → `complete` (H4c/R1.T3; worker-scan is cron-invoked + 200). |
 | 2026-07-20 | D0.G 🚦 | **D0 phase gate PASSED — Staging == git.** Every function current (D0.T1), ledger repaired + db push no-op (D0.T2), card-render v5 Docker 200 (D0.T3), no scanId-less `/analyzing` route — code done, camera device leg `[~]` (D0.T4), 8 dark events emitting (D0.T5), hygiene clean + advisors cleaned (D0.T6). All three suites green: app 64/64 · Deno 208/208 · Node 135/135. |

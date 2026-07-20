@@ -49,7 +49,7 @@
   - Verify: `cron.job` populated; an enqueued test scan progresses to a reading with **zero manual invocations**; a crop older than 24h is deleted by the sweep with `image_deleted_at` set.
 - [x] **R2.T2** 🤖 **Nightly fortunes real**: after R2.T1, confirm tomorrow's 61/61 buckets generate on schedule; re-run today's 4 failed buckets; fortune home shows a real row every morning. _Done 2026-07-20 (D1.T2): today 2026-07-20 = 61/61 (fortune-generate, resumable through RPM throttling); read path returns full almanac content (generic + day-pillar); user_fortunes receipt write/read verified under RLS. Nightly cron wired (D1.T1, 03:00 UTC → tomorrow; self-confirms next-day; free-tier single-shot completeness is H4c-limited). Client streak-write is DO-NOT-BUILD._
   - Verify: `fortune_templates` has full coverage for today+tomorrow; a fortune-open writes `user_fortunes`.
-- [ ] **R2.T3** 🤖 ∥ **Populate the 141 KB embeddings** (`gemini-embedding-001` — proven to work on the current key) via a one-off script; chat's pgvector `kb_search` goes live (graceful-degradation ends).
+- [x] **R2.T3** 🤖 ∥ **Populate the 141 KB embeddings** (`gemini-embedding-001` — proven to work on the current key) via a one-off script; chat's pgvector `kb_search` goes live (graceful-degradation ends). _Done 2026-07-20 (D1.T3): 141/141 embedded @1024 dims (0 failed); eval/p9t6 --live P9T6_OK (heart-line nearest the love query); live kb_search returns grounded heart_line chunks. Chat fuzzy-retrieval live._
   - Verify: `kb_chunks` embeddings 141/141; the live retrieval eval (`eval/p9t6.ts`) ranks the heart-line chunk first for a love query.
 - [ ] **R2.G** 🚦 A scan enqueued at rest becomes a reading unattended; fortunes roll nightly; deletion promises are kept by machinery, not humans.
 
