@@ -63,7 +63,7 @@ export default function Pair() {
     presentedRef.current = true;
     const id = setTimeout(() => {
       void markCompatPromptSeen(pairId);
-      router.push('/share?initialVariant=compat&source=compat' as Href);
+      router.push(`/share?initialVariant=compat&source=compat&pairId=${pairId}` as Href);
     }, AUTO_PRESENT_DELAY_MS);
     return () => clearTimeout(id);
   }, [status, promptSeen, pairId, router]);
@@ -75,7 +75,7 @@ export default function Pair() {
         geometry={PREVIEW_GEOMETRY}
         onBack={() => router.back()}
         onFullReading={() => router.push('/reveal' as Href)}
-        onShare={() => router.push('/share?initialVariant=compat' as Href)}
+        onShare={() => router.push(`/share?initialVariant=compat&source=compat&pairId=${pairId}` as Href)}
       />
     );
   }

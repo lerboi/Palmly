@@ -43,10 +43,26 @@ export async function createInvite(params: {
 }
 
 /**
+ * The caller's pre-rendered DRAFT share card for a reading (audit A6). worker-narrative pre-renders
+ * one keyed `source_id = readingId`, `variant = 'feed_4x5'` (§6.1); `share_cards_select_own` RLS
+ * scopes the read to the owner, so at most one row. Returns its id (to {@link publishShareCard}) or
+ * `null` when no draft exists yet — the share still mints, just without an OG image.
+ */
+export async function loadDraftShareCardId(readingId: string, variant = 'feed_4x5'): Promise<string | null> {
+  const { data } = await supabase
+    .from('share_cards')
+    .select('id')
+    .eq('source_id', readingId)
+    .eq('variant', variant)
+    .maybeSingle();
+  return (data as { id?: string } | null)?.id ?? null;
+}
+
+/**
  * Publish the caller's pre-rendered share card to the public CDN via the deployed user-mode
  * `share-card-publish` (audit F0.4; ownership-checked server-side) → the public URL to pass as
- * {@link createInvite}'s `cardImageUrl`. The ShareView draft-lookup + publish-on-share integration
- * (preview == posted) lands in F1.T9; this is the client half of the server enabler.
+ * {@link createInvite}'s `cardImageUrl`. Wired at share time in ShareView via
+ * {@link loadDraftShareCardId} (audit A6 — this path used to be called by nothing).
  */
 export async function publishShareCard(cardId: string): Promise<string> {
   const { data, error } = await supabase.functions.invoke('share-card-publish', { body: { card_id: cardId } });

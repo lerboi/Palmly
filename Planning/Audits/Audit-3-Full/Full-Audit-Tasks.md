@@ -31,12 +31,12 @@ the two ledgers never diverge.
 | Field | Value |
 |---|---|
 | **Current phase** | D0 — Trust the deployment again |
-| **Next task** | **D0.T4** (fix the two client honesty bugs — A5 + A6) |
+| **Next task** | **D0.T5** (emit the dark analytics events with live call sites — A7) ∥ |
 | **Blocked on** | — |
 | **Waiting on human** | Nothing yet. Human items live in Production-Readiness-Plan R1 (phone, store accounts, paid Gemini H4c, RevenueCat H8, domain H6, auth providers H5b, CI secrets, AppsFlyer H9, KB review, dashboard toggles) — they are **out of scope** here and must never block this loop; if a task turns out to need one, mark it `[!]` naming the R1 item and move on. |
 | **Last run (date, by whom)** | 2026-07-20, 🤖 Claude (Audit-3 loop) |
-| **Last completed task** | D0.T3 — `card-render` deployed `--use-docker` (v5, 13 MB = static_files bundled); live render → 200 + 74 KB PNG in `card-drafts`; edge logs show v5=200, no new 500s; Deno 208/208. **D2 (card tail) is now UNBLOCKED.** |
-| **Notes for next run** | D0.T4 (app-touching, A5+A6): (a) `app/src/app/(capture)/palm.tsx` capture-confirm currently pushes `/analyzing` with NO scanId → infinite loader; route it through the real `uploadPickedScan` chain OR gate the camera door to the upload path (no route to `/analyzing` without a scanId). (b) `share.tsx` compat card hardcodes `score={82}`/`partnerName="Mei"` → thread the REAL pair result. (c) wire `publishShareCard` → `share-card-publish` at share time (currently called by nothing); card-render now works (D0.T3) so the live PNG leg is testable. Standing gates = app typecheck/lint/jest. Screenshot-driving pattern in the ledger's Standing rules. **Docker is currently running (28.1.1)** — D2.T1 later will still re-probe/start it. |
+| **Last completed task** | D0.T4 `[~]` — A5+A6 client honesty fixes CODE COMPLETE; gates green; legs (b) real compat score + (c) invite `card_image_url` live-verified; only on-device camera + literal CDP UI screenshots pending (substance proven by harnesses + invariant). |
+| **Notes for next run** | D0.T5 (∥, A7): wire the dark analytics events that have live call sites — `capture_state_dwell`, `capture_completed`, `capture_abandoned`, `reading_ready`, `reveal_time_spent`, `invite_clicked` (claim-side), `notification_pref_changed`; include `paywall_page_viewed` iff its surface is live device-free (judge by call-site reality). Leave `purchase_completed`/`winback_converted`/`push_opened`/`invite_installed` for H8/H9/device (note them intentionally pending in `docs/ANALYTICS.md`). ~1-line emissions through the typed `track()` facade in `app/src/lib/analytics.ts`; update `docs/ANALYTICS.md` same commit. Verify: grep ≥1 non-test call site per wired event + app gates. NOTE: `useScanUpload` already emits `capture_started`+`upload_ok`; `reading_ready` belongs at the analyzing→reveal seam (AnalyzingView/reveal). D0.T4 device-free code shipped; **Docker still running (28.1.1)**. |
 
 ---
 
@@ -127,7 +127,7 @@ the two ledgers never diverge.
 
 | # | Audit claim / cite | Reality found | Date |
 |---|---|---|---|
-| — | | | |
+| 1 | A5 cites only `palm.tsx:30` as the scanId-less `/analyzing` dead-end | `face.tsx:14` had the identical bug (`onShutter` → `/analyzing` with no scanId) and is **live-reachable** via `RevealView`'s "read your face" offer (`RevealView.tsx:190` → `/face`). Fixed both in D0.T4 (both routed through the shared `useScanUpload`). | 2026-07-20 |
 
 ### 📋 DECISION LOG (append-only)
 
@@ -185,7 +185,7 @@ the two ledgers never diverge.
     `npx supabase@latest functions deploy card-render --use-docker --project-ref rphtdgoggsldshtdbkaj`.
   - Verify: a live invocation returns 200 and a PNG lands in `card-drafts`; edge logs show no new
     500s. On success, D2 unblocks.
-- [ ] **D0.T4** 🤖 **Fix the two client honesty bugs.** (= R0.T4; audit A5 + A6.)
+- [~] **D0.T4** 🤖 **Fix the two client honesty bugs.** (= R0.T4; audit A5 + A6.) — CODE COMPLETE + gates green + legs (b)/(c) live-verified; the on-device camera capture + literal CDP web-export UI screenshots are the only pending legs (see note below).
   - Build: (a) `app/src/app/(capture)/palm.tsx` — the capture stand-in's confirm currently pushes
     `/analyzing` with **no scanId** (infinite loader). Either route its confirm through the same
     `uploadPickedScan` chain the picker uses, or gate the camera door to the upload path until P2
@@ -198,6 +198,26 @@ the two ledgers never diverge.
     (or the camera door visibly routes to upload) — screenshot; the compat sheet opened from a
     seeded real pair shows that pair's name/score (seed via Node/pg harness, clean up); after a
     share, the invite row gains `card_image_url` (live PNG only if D0.T3 passed). Standing gates.
+  - **NOTE (2026-07-20, `[~]` honesty):** Code complete. (a) A5 fixed in **both** `palm.tsx` AND
+    `face.tsx` (erratum #1 — A5 cited only palm; face's shutter→`/analyzing` was the same
+    live-reachable dead-end via `RevealView`'s face offer) by routing the camera door through a new
+    shared `features/capture/useScanUpload.ts` (also refactored `primer.tsx` onto it — one canonical
+    upload door). (b) `share.tsx` now shows the REAL pair score+name via new `loadCompatShare(pairId)`;
+    `pair.tsx` threads `pairId` into both share routes; hardcoded `82`/`"Mei"` gone. (c) `ShareView`
+    now looks up the pre-rendered draft card (`loadDraftShareCardId`) → `publishShareCard` →
+    `createInvite({cardImageUrl})` so invites carry a real OG image. Standing gates green
+    (tsc 0 / lint 0 / jest 64/64). **Live-verified via Node harnesses:** leg (c) — full chain
+    (permanent user → card-render → loadDraftShareCardId → share-card-publish → invite-create) →
+    the `invites` row's `context.card_image_url` == the published PNG URL; leg (b) — `loadCompatShare`
+    returns the seeded real score (73, not 82), partnerName the neutral `'Your match'` fallback
+    (profiles are self-only RLS → partner name degrades by design, never fabricated "Mei"). Invariant
+    grep-proven: **no `router.push('/analyzing')` without a `scanId` remains** anywhere in `src`.
+    **PENDING legs:** on-device camera capture (device-gated, P2/R3); the two literal CDP web-export
+    UI screenshots (capture "Use photo"→upload; compat-sheet real-score render) were NOT produced —
+    the upload chain is the Audit-2 web-verified primer path (now reused) and `CompatPreview` renders
+    the passed `score` unchanged, and driving an authenticated compat `pairId` on the anon web export
+    is impractical (the anon session id isn't known ahead of the seed). Substance verified by
+    stronger means (live harnesses + invariant + gates); the screenshots are UI confirmation only.
 - [ ] **D0.T5** 🤖 ∥ **Emit the dark analytics events that have live call sites today.** (= R0.T5;
   audit A7.)
   - Build: wire `capture_state_dwell`, `capture_completed`, `capture_abandoned`, `reading_ready`,
@@ -295,3 +315,4 @@ the two ledgers never diverge.
 | 2026-07-20 | D0.T1 | Redeployed all 19 pure-code Edge Functions from git (all except `card-render`) via `npx supabase@latest functions deploy` — every version bumped +1, `updated_at`=today; `card-render` left at v4 (D0.T3). Posture spot-checks live-verified: invite-create no-JWT→401, worker-scan no-key→403 & +service-key→200 (`{"processed":0}`), chat-send non-premium→402. Deno 208/208. Minted anon users for the chat check cleaned up. |
 | 2026-07-20 | D0.T2 | `migration repair --status applied 20260719000031 20260719000032` (via `--db-url` from `.env.staging`) → history now 32 rows, max `20260719000032`, both present. `db push --dry-run` → "Remote database is up to date." (no-op). One-apply-path standing rule (db push only; never out-of-band DDL) documented in `docs/ENVIRONMENT.md`. Node 135/135. |
 | 2026-07-20 | D0.T3 | Started Docker Desktop (engine 28.1.1); deployed `card-render --use-docker` → v5, script 13 MB (resvg wasm + Noto fonts bundled as static_files). Live verify (seed fresh anon user + scan + feature_set from `eval/samples/narrative/palm_01.json`): render → 200 `{cardId,path,published:false}`, 74 956-byte PNG (PNG magic) in `card-drafts`; all seeds cleaned up. Edge logs: card-render v5 = 200, no new 500s. Deno 208/208. Unblocks D2. |
+| 2026-07-20 | D0.T4 `[~]` | A5+A6 client honesty fixes, CODE COMPLETE. New `useScanUpload` hook; `palm.tsx` + `face.tsx` (erratum #1) route the camera door through the real upload chain (`primer.tsx` refactored onto the same hook) — no scanId-less `/analyzing` remains (grep-proven). `share.tsx` shows the REAL pair score/name via `loadCompatShare(pairId)` (`pair.tsx` threads `pairId`); `82`/`"Mei"` gone. `ShareView` wires `loadDraftShareCardId`→`publishShareCard`→`createInvite({cardImageUrl})`. Gates: tsc 0/lint 0/jest 64/64. Live harnesses: (c) invite `context.card_image_url` == published PNG ✓; (b) `loadCompatShare` → real score 73 ✓. Pending: on-device camera + literal CDP UI screenshots (substance proven by stronger means). |

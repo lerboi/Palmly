@@ -64,6 +64,23 @@ export async function loadPartnerName(pairId: string): Promise<string> {
   return prof?.display_name ?? 'Your match';
 }
 
+/**
+ * One-shot: a completed pair's REAL score + the partner's name, for the compat SHARE card (audit A6).
+ * The compat share sheet only opens after the score has landed (`shouldAutoPresent` gates on
+ * `complete`, and the manual "Share this match" only renders on `complete`), so a `null` here means
+ * "not loaded / not ready" — the caller shows a neutral placeholder, never a fabricated score/name
+ * (the old `score={82}` / `partnerName="Mei"` that real users were prompted to send).
+ */
+export async function loadCompatShare(pairId: string): Promise<{ score: number; partnerName: string } | null> {
+  const [{ data }, partnerName] = await Promise.all([
+    supabase.from('compatibility_results').select('score, status').eq('pair_id', pairId).maybeSingle(),
+    loadPartnerName(pairId),
+  ]);
+  const row = data as { score?: number | null; status?: string } | null;
+  if (!row || row.status !== 'complete' || typeof row.score !== 'number') return null;
+  return { score: row.score, partnerName };
+}
+
 /** Map a completed `compatibility_results` row → the {@link PairData} the reveal renders. */
 export function toPairData(result: CompatResultRow, partnerName: string): PairData {
   const subs = (result.sub_scores ?? {}) as Record<string, number>;

@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { AppHeader, Button, Card, Icon, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { useScanUpload } from '@/features/capture/useScanUpload';
 import { useReducedMotion, useTheme } from '@/theme';
-import { uploadPickedScan, type Hand } from '@/lib/scan';
+import { type Hand } from '@/lib/scan';
 import { loadClaimContext } from '@/lib/claim';
 import { recordCameraConsent } from '@/lib/consent';
 import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
-import { captureError, track } from '@/lib/analytics';
+import { track } from '@/lib/analytics';
 
 /**
  * Capture B — camera primer + consent (UIUX §2.2, Backend §9, redesign R13 / v2 V11). Shown at the
@@ -44,8 +44,9 @@ export default function Primer() {
   const hand: Hand | undefined = params.hand === 'left' || params.hand === 'right' ? params.hand : undefined;
   const handSuffix = hand ? `?hand=${hand}` : '';
 
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // The real device-free door into the pipeline — shared with the palm capture review's "Use photo"
+  // (audit A5) so there is exactly one upload path and no scanId-less route to /analyzing.
+  const { pickAndUpload, uploading, error } = useScanUpload({ kind: 'palm', hand });
 
   // Recipient context (audit F0.5): when the user arrived from an invite claim, name the match they
   // are about to reveal so the capture reads as "scan to match with «Name»", not a cold camera ask.
@@ -58,25 +59,6 @@ export default function Primer() {
       active = false;
     };
   }, []);
-
-  const onUploadInstead = async () => {
-    setError(null);
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 });
-    if (result.canceled || !result.assets?.[0]) return; // user backed out — no-op
-    setUploading(true);
-    try {
-      track('capture_started', { kind: 'palm', hand });
-      const { scanId } = await uploadPickedScan({ kind: 'palm', hand, imageUri: result.assets[0].uri });
-      track('upload_ok', { scan_id: scanId, kind: 'palm' });
-      // Thread the local image URI so the analyzing loader shows THEIR hand under the tracing (F1.4).
-      router.push(`/analyzing?scanId=${scanId}&capturedUri=${encodeURIComponent(result.assets[0].uri)}` as Href);
-    } catch (e) {
-      captureError(e, { where: 'primer.upload' });
-      setError('That didn’t upload — check your connection and try again.');
-    } finally {
-      setUploading(false);
-    }
-  };
 
   return (
     <Screen>
@@ -168,7 +150,7 @@ export default function Primer() {
           variant="secondary"
           fullWidth
           loading={uploading}
-          onPress={onUploadInstead}
+          onPress={pickAndUpload}
         />
       </Animated.View>
     </Screen>

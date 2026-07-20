@@ -18,7 +18,7 @@ import { AppHeader, Button, Icon, Logomark, Screen, Text } from '@/components/ui
 import type { IconName } from '@/components/ui';
 import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
-import { composeShareText, createInvite, type CreatedInvite, type Framing } from '@/lib/invite';
+import { composeShareText, createInvite, loadDraftShareCardId, publishShareCard, type CreatedInvite, type Framing } from '@/lib/invite';
 import { savePendingCompat } from '@/lib/pendingCompat';
 import { maybeAskFirstCompatPush } from '@/lib/notifications';
 
@@ -114,16 +114,27 @@ export function ShareView({
   const ensureInvite = useCallback((): Promise<CreatedInvite> => {
     if (presetInviteUrl) return Promise.resolve({ inviteId: '', url: presetInviteUrl });
     if (!mintRef.current) {
-      mintRef.current = createInvite({ readingId, kind: 'compatibility', channel: 'link', framing: framingRef.current })
-        .then((inv) => {
-          track('invite_created', { channel: 'link', kind: 'compatibility' });
-          void savePendingCompat({ url: inv.url }); // home red-thread nudge re-shares this exact link
-          return inv;
-        })
-        .catch((e) => {
-          mintRef.current = null;
-          throw e;
-        });
+      mintRef.current = (async () => {
+        // Publish the reading's pre-rendered card so the invite carries a real OG image (audit A6 —
+        // this publish path used to be wired to nothing). Best-effort: an invite without an image
+        // still works, so a missing draft or a publish hiccup never blocks the share.
+        let cardImageUrl: string | undefined;
+        if (readingId) {
+          try {
+            const cardId = await loadDraftShareCardId(readingId);
+            if (cardId) cardImageUrl = await publishShareCard(cardId);
+          } catch {
+            /* no draft card yet / publish failed — mint without the OG image */
+          }
+        }
+        const inv = await createInvite({ readingId, cardImageUrl, kind: 'compatibility', channel: 'link', framing: framingRef.current });
+        track('invite_created', { channel: 'link', kind: 'compatibility' });
+        void savePendingCompat({ url: inv.url }); // home red-thread nudge re-shares this exact link
+        return inv;
+      })().catch((e) => {
+        mintRef.current = null;
+        throw e;
+      });
     }
     return mintRef.current;
   }, [readingId, presetInviteUrl]);
