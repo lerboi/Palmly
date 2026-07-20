@@ -31,12 +31,12 @@ the two ledgers never diverge.
 | Field | Value |
 |---|---|
 | **Current phase** | D0 — Trust the deployment again |
-| **Next task** | **D0.T3** (Docker deploy of `card-render`) — ∥ conditional |
+| **Next task** | **D0.T4** (fix the two client honesty bugs — A5 + A6) |
 | **Blocked on** | — |
 | **Waiting on human** | Nothing yet. Human items live in Production-Readiness-Plan R1 (phone, store accounts, paid Gemini H4c, RevenueCat H8, domain H6, auth providers H5b, CI secrets, AppsFlyer H9, KB review, dashboard toggles) — they are **out of scope** here and must never block this loop; if a task turns out to need one, mark it `[!]` naming the R1 item and move on. |
 | **Last run (date, by whom)** | 2026-07-20, 🤖 Claude (Audit-3 loop) |
-| **Last completed task** | D0.T2 — migration ledger repaired (`0031`/`0032` marked applied); `db push --dry-run` → "Remote database is up to date."; history now 32 rows, max `20260719000032`; one-apply-path rule documented in `docs/ENVIRONMENT.md`; Node 135/135. |
-| **Notes for next run** | D0.T3 (∥, conditional): probe Docker (`docker info`); if unreachable, try starting Docker Desktop then re-probe ~2 min; if genuinely absent → mark `[!]` "needs human: install/start Docker Desktop" and continue (D2 stays gated). If reachable: `npx supabase@latest functions deploy card-render --use-docker --project-ref rphtdgoggsldshtdbkaj`; verify a live 200 + PNG in `card-drafts`. NOTE for all deploys: `SUPABASE_ACCESS_TOKEN` (root `.env`) is a valid `sbp_` PAT — source it from **repo-root cwd** (Bash tool persists cwd between calls; wrong cwd → empty token → 403). For DB commands build `--db-url` from `.env.staging` via node `encodeURIComponent(pw)` (password has special chars). |
+| **Last completed task** | D0.T3 — `card-render` deployed `--use-docker` (v5, 13 MB = static_files bundled); live render → 200 + 74 KB PNG in `card-drafts`; edge logs show v5=200, no new 500s; Deno 208/208. **D2 (card tail) is now UNBLOCKED.** |
+| **Notes for next run** | D0.T4 (app-touching, A5+A6): (a) `app/src/app/(capture)/palm.tsx` capture-confirm currently pushes `/analyzing` with NO scanId → infinite loader; route it through the real `uploadPickedScan` chain OR gate the camera door to the upload path (no route to `/analyzing` without a scanId). (b) `share.tsx` compat card hardcodes `score={82}`/`partnerName="Mei"` → thread the REAL pair result. (c) wire `publishShareCard` → `share-card-publish` at share time (currently called by nothing); card-render now works (D0.T3) so the live PNG leg is testable. Standing gates = app typecheck/lint/jest. Screenshot-driving pattern in the ledger's Standing rules. **Docker is currently running (28.1.1)** — D2.T1 later will still re-probe/start it. |
 
 ---
 
@@ -177,7 +177,7 @@ the two ledgers never diverge.
     **db push is the one apply path** going forward.
   - Verify: `execute_sql` on `supabase_migrations.schema_migrations` → max version =
     `20260719000032` (32 rows); `db push` reports nothing to apply; Node schema suite green.
-- [ ] **D0.T3** 🤖(conditional)/🧑 **Docker deploy of `card-render`.** (= R0.T3; audit A2.) ∥
+- [x] **D0.T3** 🤖(conditional)/🧑 **Docker deploy of `card-render`.** (= R0.T3; audit A2.) ∥
   - Build: probe Docker first (`docker info`). If the engine is unreachable, try starting Docker
     Desktop if installed (`Start-Process` + poll `docker info` ~2 min). If Docker is genuinely
     absent/unstartable → mark `[!]` "needs human: install/start Docker Desktop" and continue the
@@ -294,3 +294,4 @@ the two ledgers never diverge.
 | 2026-07-20 | D0.T0 | Toolchain proven (`supabase projects list`→palmly-staging ACTIVE_HEALTHY; Deno 2.9.2; `.env`/`.env.staging` present; MCP `list_migrations` answers=30). Planning reorg + this ledger + Prompt.txt committed as one baseline. Baseline suites pinned green: app 64/64 · Deno 208/208 · Node 135/135. |
 | 2026-07-20 | D0.T1 | Redeployed all 19 pure-code Edge Functions from git (all except `card-render`) via `npx supabase@latest functions deploy` — every version bumped +1, `updated_at`=today; `card-render` left at v4 (D0.T3). Posture spot-checks live-verified: invite-create no-JWT→401, worker-scan no-key→403 & +service-key→200 (`{"processed":0}`), chat-send non-premium→402. Deno 208/208. Minted anon users for the chat check cleaned up. |
 | 2026-07-20 | D0.T2 | `migration repair --status applied 20260719000031 20260719000032` (via `--db-url` from `.env.staging`) → history now 32 rows, max `20260719000032`, both present. `db push --dry-run` → "Remote database is up to date." (no-op). One-apply-path standing rule (db push only; never out-of-band DDL) documented in `docs/ENVIRONMENT.md`. Node 135/135. |
+| 2026-07-20 | D0.T3 | Started Docker Desktop (engine 28.1.1); deployed `card-render --use-docker` → v5, script 13 MB (resvg wasm + Noto fonts bundled as static_files). Live verify (seed fresh anon user + scan + feature_set from `eval/samples/narrative/palm_01.json`): render → 200 `{cardId,path,published:false}`, 74 956-byte PNG (PNG magic) in `card-drafts`; all seeds cleaned up. Edge logs: card-render v5 = 200, no new 500s. Deno 208/208. Unblocks D2. |
