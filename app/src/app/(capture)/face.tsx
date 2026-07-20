@@ -1,9 +1,11 @@
+import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { CaptureView } from '@/features/capture/CaptureView';
 import { useScanUpload } from '@/features/capture/useScanUpload';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme';
+import { track } from '@/lib/analytics';
 
 /**
  * Capture C — face-reading variant (UIUX §2.3, redesign R13, audit A5). Oval guide + alignment
@@ -17,7 +19,18 @@ import { useTheme } from '@/theme';
  */
 export default function FaceCapture() {
   const theme = useTheme();
-  const { pickAndUpload, error } = useScanUpload({ kind: 'face' });
+  const { pickAndUpload, error, hasCompleted } = useScanUpload({ kind: 'face' });
+  // Capture-funnel abandonment (A7): leaving face capture without completing is a drop-off. Init the
+  // timestamp in the effect (Date.now() is impure — never at render).
+  const mountedAt = useRef(0);
+  useEffect(() => {
+    mountedAt.current = Date.now();
+    return () => {
+      if (!hasCompleted()) {
+        track('capture_abandoned', { kind: 'face', last_state: 'searching', duration_ms: Date.now() - mountedAt.current });
+      }
+    };
+  }, [hasCompleted]);
   return (
     <View style={{ flex: 1 }}>
       <CaptureView

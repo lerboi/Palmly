@@ -53,15 +53,24 @@ Sources: **UIUX §8** (instrumentation map) · **Backend §14** (events) · **mv
 Exact prop shapes are the source of truth in `AnalyticsEventMap` (`app/src/lib/analytics.ts`).
 
 ## Wiring status
-The typed catalogue exists and is **emitted from its wired surfaces** (F0.T12 sweep): `app_opened`
-(root), `onboarding_step_viewed`/`onboarding_skipped`/`hand_selected` (onboarding A1–A3),
-`camera_primer_viewed` (primer), `capture_started`/`upload_ok` (upload flow), `reveal_viewed`/
-`reveal_section_viewed` (reveal), `share_sheet_opened`/`invite_created`/`share_completed` (share sheet),
-`invite_accepted` (claim), `pair_reveal_viewed` (pair), `account_linked` (account sheet),
-`paywall_viewed{trigger}`/`paywall_dismissed` (paywall — every `/paywall` push now carries a `trigger`),
-`fortune_opened` (fortune), `analyzing_notify_me` (analyzing overrun). Still device/human-gated:
-`permission_result` + `capture_completed`/`_abandoned`/`_state_dwell` (camera contract F1.T3/T4),
-`purchase_completed`/`winback_converted` (RC H8), `chat_message_sent` (real chat F1.T11),
-`invite_clicked`/`invite_installed` (attribution H9), `push_opened`/`notification_pref_changed` (push
-F1.T5/T10). Server-side counterparts (invite state, subscription events) live in the DB tables and join
-in PostHog via the shared UUID.
+The typed catalogue exists and is **emitted from its wired surfaces** (F0.T12 sweep + Audit-3 D0.T5):
+`app_opened` (root), `onboarding_step_viewed`/`onboarding_skipped`/`hand_selected` (onboarding A1–A3),
+`camera_primer_viewed`/`permission_result{kind:'camera'}` (primer), `capture_started`/`upload_ok`/
+`capture_completed` (upload flow, `useScanUpload`), `capture_state_dwell` (palm capture state machine),
+`capture_abandoned` (palm + face capture, on leave-without-completing), `reading_ready` (analyzing→reveal
+seam), `reveal_viewed`/`reveal_section_viewed`/`reveal_scroll_depth`/`reveal_time_spent` (reveal),
+`share_sheet_opened`/`invite_created`/`share_completed` (share sheet), `invite_clicked{source:'web'}`
+(claim landing, deep-link arrival), `invite_accepted` (claim), `pair_reveal_viewed` (pair),
+`account_linked` (account sheet), `paywall_viewed{trigger}`/`paywall_page_viewed{page:0}`/
+`paywall_dismissed` (paywall), `fortune_opened` (fortune), `notification_pref_changed` (notification
+settings toggle), `analyzing_notify_me` (analyzing overrun).
+
+**Intentionally still pending** (no honest device-free call site — do NOT wire until their gate lands):
+`purchase_completed`/`winback_converted` (RevenueCat, H8), `chat_message_sent`/`chat_deflected` (real
+chat transport, F1.T11), `invite_installed` (install attribution, H9), `push_opened` (push delivery,
+device + H9), the OS-grant leg of `permission_result{kind:'push'}` (device), `consistency_survey`
+(fires after a live repeat-scan resolve, device), `account_deleted`/`scans_deleted` (emit at the
+privacy actions — device/live). `invite_clicked` install-attribution sources
+(`clipboard`/`referrer`/`appsflyer`) also ride H9; the `web`/`manual_code` sources are device-free.
+Server-side counterparts (invite state, subscription events) live in the DB tables and join in PostHog
+via the shared UUID.

@@ -7,6 +7,7 @@ import { t } from '@/lib/i18n';
 import { useTheme } from '@/theme';
 import { loadNotifPrefs, saveNotifPref, type NotifPref, type NotifPrefs } from '@/lib/privacy';
 import { getPushPermission, openSystemNotificationSettings, type PushPermission } from '@/lib/notifications';
+import { track } from '@/lib/analytics';
 import { SettingGroup, SettingRow } from './settingsUi';
 
 /**
@@ -37,6 +38,7 @@ export function NotificationSettings() {
 
   const toggle = (key: NotifPref) => (value: boolean) => {
     setPrefs((p) => ({ ...p, [key]: value }));
+    track('notification_pref_changed', { pref: key, enabled: value });
     void saveNotifPref(key, value);
   };
 

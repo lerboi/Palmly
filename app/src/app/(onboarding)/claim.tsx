@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Platform, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import Animated, { ZoomIn } from 'react-native-reanimated';
@@ -36,6 +36,17 @@ export default function Claim() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // invite_clicked (A7, claim-side): the recipient opened an invite link (deep link → this landing
+  // carries the token). Fire once; install-attribution sources (clipboard/referrer/appsflyer) ride
+  // H9/device — this device-free path is the `web` link arrival.
+  const clickTracked = useRef(false);
+  useEffect(() => {
+    if (token && !clickTracked.current) {
+      clickTracked.current = true;
+      track('invite_clicked', { source: 'web' });
+    }
+  }, [token]);
 
   // Load any persisted context, and persist the un-claimed token so a reload re-offers this landing.
   useEffect(() => {

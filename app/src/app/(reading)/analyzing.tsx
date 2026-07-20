@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { AnalyzingView } from '@/features/reading/AnalyzingView';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
@@ -21,8 +21,9 @@ import { track } from '@/lib/analytics';
  * beat is a device follow-up (P5 / F1.T4); the real per-scan geometry only exists post-extraction.
  */
 export default function Analyzing() {
-  const { scanId, capturedUri } = useLocalSearchParams<{ scanId?: string; capturedUri?: string }>();
+  const { scanId, capturedUri, kind: kindParam } = useLocalSearchParams<{ scanId?: string; capturedUri?: string; kind?: string }>();
   const id = scanId ?? null;
+  const kind: 'palm' | 'face' = kindParam === 'face' ? 'face' : 'palm';
   const { status, failureReason, error } = useScanStatus(id);
 
   // Mount timer → elapsedMs (a pure accumulating tick), driving the staged messages, the 45s soften
@@ -37,16 +38,21 @@ export default function Analyzing() {
   // Auto-advance to the reveal once the reading is ready. A `matched` resolve (a repeat of a palm/face
   // they've read before, Backend §6.6) records the real consistency signal + threads `?matched=1` so
   // the reveal can surface the "consistent?" micro-survey (F1.10); a fresh `complete` clears it.
+  // Emit `reading_ready` once when the pipeline resolves (A7 — metric "is the wow landing?"). The
+  // mount timer's `elapsedMs` is the wait the user actually felt; guard so a late duplicate broadcast
+  // can't double-count.
+  const readyEmitted = useRef(false);
   useEffect(() => {
     if (!id) return;
-    if (status === 'matched') {
-      void setLastScanMatched(true);
-      router.replace(`/reveal?scanId=${id}&matched=1` as Href);
-    } else if (status === 'complete') {
-      void setLastScanMatched(false);
-      router.replace(`/reveal?scanId=${id}` as Href);
+    if (status === 'matched' || status === 'complete') {
+      if (!readyEmitted.current) {
+        readyEmitted.current = true;
+        track('reading_ready', { scan_id: id, kind, latency_ms: elapsedMs });
+      }
+      void setLastScanMatched(status === 'matched');
+      router.replace(`/reveal?scanId=${id}${status === 'matched' ? '&matched=1' : ''}` as Href);
     }
-  }, [id, status]);
+  }, [id, status, kind, elapsedMs]);
 
   const onNotifyMe = () => {
     track('analyzing_notify_me', id ? { scan_id: id } : {});

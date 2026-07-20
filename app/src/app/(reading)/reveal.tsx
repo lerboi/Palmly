@@ -64,6 +64,16 @@ export default function Reveal() {
     };
   }, [readingId, scanId, reloads]);
 
+  // reveal_time_spent (A7 — depth of engagement with the reveal): start the clock when the reading
+  // lands, emit the elapsed ms when the user leaves the reveal (unmount) or opens a different reading.
+  useEffect(() => {
+    if (state !== 'ready' || !loadedId) return;
+    const startedAt = Date.now();
+    return () => {
+      track('reveal_time_spent', { reading_id: loadedId, ms: Date.now() - startedAt });
+    };
+  }, [state, loadedId]);
+
   return (
     <RevealView
       reading={reading}

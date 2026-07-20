@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { router, type Href } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadPickedScan, type Hand, type ScanKind } from '@/lib/scan';
@@ -18,18 +18,28 @@ import { captureError, track } from '@/lib/analytics';
 export function useScanUpload({ kind, hand }: { kind: ScanKind; hand?: Hand }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Lets the capture screens skip `capture_abandoned` on unmount once a capture has completed (A7).
+  // Exposed as a stable getter (not the raw ref) so a screen's unmount cleanup can read the LATEST
+  // value without tripping the "ref read in cleanup" lint (which assumes refs point at DOM nodes).
+  const completedRef = useRef(false);
+  const hasCompleted = useCallback(() => completedRef.current, []);
 
   const pickAndUpload = async () => {
     setError(null);
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 });
     if (result.canceled || !result.assets?.[0]) return; // user backed out — no-op, no navigation
     setUploading(true);
+    const startedAt = Date.now();
     try {
       track('capture_started', { kind, hand });
       const { scanId } = await uploadPickedScan({ kind, hand, imageUri: result.assets[0].uri });
       track('upload_ok', { scan_id: scanId, kind });
-      // Thread the local image URI so the analyzing loader shows THEIR image under the tracing (F1.4).
-      router.push(`/analyzing?scanId=${scanId}&capturedUri=${encodeURIComponent(result.assets[0].uri)}` as Href);
+      // Capture-funnel completion (A7) — device-free the acquisition is a library pick, so `manual`.
+      track('capture_completed', { kind, method: 'manual', duration_ms: Date.now() - startedAt });
+      completedRef.current = true;
+      // Thread the local image URI (analyzing shows THEIR image, F1.4) + `kind` (analyzing emits
+      // `reading_ready` with it, A7 — useScanStatus doesn't carry the scan's kind).
+      router.push(`/analyzing?scanId=${scanId}&kind=${kind}&capturedUri=${encodeURIComponent(result.assets[0].uri)}` as Href);
     } catch (e) {
       captureError(e, { where: 'useScanUpload' });
       setError('That didn’t upload — check your connection and try again.');
@@ -38,5 +48,5 @@ export function useScanUpload({ kind, hand }: { kind: ScanKind; hand?: Hand }) {
     }
   };
 
-  return { pickAndUpload, uploading, error };
+  return { pickAndUpload, uploading, error, hasCompleted };
 }

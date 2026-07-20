@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { CaptureView, type CaptureState } from '@/features/capture/CaptureView';
 import { useScanUpload } from '@/features/capture/useScanUpload';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme';
+import { track } from '@/lib/analytics';
 
 /**
  * Capture C — guided palm capture (UIUX §2.3, audit F1.4 / A5). The live camera + landmark state
@@ -21,13 +22,39 @@ export default function PalmCapture() {
   const params = useLocalSearchParams<{ hand?: string }>();
   const [handSide, setHandSide] = useState<'left' | 'right'>(params.hand === 'left' ? 'left' : 'right');
   const [state, setState] = useState<CaptureState>('ready');
-  const { pickAndUpload, error } = useScanUpload({ kind: 'palm', hand: handSide });
+  const { pickAndUpload, error, hasCompleted } = useScanUpload({ kind: 'palm', hand: handSide });
 
   const onShutter = () => {
     // Auto-capture choreography (§2.3): shutter → freeze-frame → review ("Retake / Use photo").
     setState('captured');
     setTimeout(() => setState('review'), 500);
   };
+
+  // Capture-funnel timing (A7). Dwell: emit the ms spent in each state as it changes. Abandoned:
+  // emit on unmount UNLESS a capture completed (completedRef) — so leaving without a reading is
+  // measured, but a finished capture is not miscounted as a drop-off. Timestamps init in the mount
+  // effect (Date.now() is impure — never at render) and refs are only written inside effects.
+  const enteredAt = useRef(0);
+  const prevState = useRef<CaptureState>('ready');
+  const stateRef = useRef<CaptureState>('ready');
+  const mountedAt = useRef(0);
+  useEffect(() => {
+    const now = Date.now();
+    enteredAt.current = now;
+    mountedAt.current = now;
+    return () => {
+      if (!hasCompleted()) {
+        track('capture_abandoned', { kind: 'palm', last_state: stateRef.current, duration_ms: Date.now() - mountedAt.current });
+      }
+    };
+  }, [hasCompleted]);
+  useEffect(() => {
+    stateRef.current = state;
+    if (state === prevState.current) return;
+    track('capture_state_dwell', { kind: 'palm', state: prevState.current, ms: Date.now() - enteredAt.current });
+    prevState.current = state;
+    enteredAt.current = Date.now();
+  }, [state]);
 
   return (
     <View style={{ flex: 1 }}>

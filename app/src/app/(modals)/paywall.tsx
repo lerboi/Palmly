@@ -77,6 +77,9 @@ export default function Paywall() {
 
   useEffect(() => {
     track('paywall_viewed', { trigger });
+    // The paywall is a single page (page 0), consistent with `paywall_dismissed`'s page — this
+    // completes the funnel view→page→dismiss (A7). A multi-page pager would emit one per page.
+    track('paywall_page_viewed', { trigger, page: 0 });
   }, [trigger]);
 
   const onClose = () => {
