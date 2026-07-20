@@ -59,6 +59,27 @@ export async function loadDraftShareCardId(readingId: string, variant = 'feed_4x
 }
 
 /**
+ * A short-lived signed URL for the user's OWN pre-rendered draft card PNG (audit F1.T9 —
+ * "preview == posted"): the sheet displays this exact image, and publishing copies the SAME bytes
+ * onto the CDN, so what the user previews is what a friend receives. `card-drafts` is private, so this
+ * signs it as the owner (RLS `share_cards_select_own` + storage `card_drafts_owner_select`). Returns
+ * `null` when no draft exists yet (dev fixtures, or a card that never pre-rendered) → the caller falls
+ * back to the in-app vector preview.
+ */
+export async function loadDraftCardPreviewUrl(readingId: string, variant = 'feed_4x5'): Promise<string | null> {
+  const { data: card } = await supabase
+    .from('share_cards')
+    .select('storage_path')
+    .eq('source_id', readingId)
+    .eq('variant', variant)
+    .maybeSingle();
+  const path = (card as { storage_path?: string } | null)?.storage_path;
+  if (!path) return null;
+  const { data } = await supabase.storage.from('card-drafts').createSignedUrl(path, 3600);
+  return data?.signedUrl ?? null;
+}
+
+/**
  * Publish the caller's pre-rendered share card to the public CDN via the deployed user-mode
  * `share-card-publish` (audit F0.4; ownership-checked server-side) → the public URL to pass as
  * {@link createInvite}'s `cardImageUrl`. Wired at share time in ShareView via

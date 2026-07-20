@@ -366,8 +366,20 @@ the two ledgers never diverge.
       **Deno 216/216**; no CJK. (Live render needs the card-render `source_type='fortune'` integration
       — a follow-up, since a fortune card is keyed on (date, bucket) + a sharing user, not a
       feature_set; Decision-Log the input/owner then.)
-    - **REMAINING chunks (next iterations):** (3b) `solo face` SVG class + card-render integration for
-      the `fortune` & `face` source types (live-render each). (4) client sheet
+    - **Chunk 4a ✅ (2026-07-20): client "preview == posted" (the defining F1.T9 deliverable).**
+      `lib/invite.ts loadDraftCardPreviewUrl(readingId)` (reads the owner's `share_cards.storage_path`
+      → `supabase.storage.from('card-drafts').createSignedUrl(path, 3600)`); `ShareView` shows the REAL
+      pre-rendered draft PNG (`<RealCardPreview>`, 4:5) in the solo slot when present, else falls back
+      to the vector `SoloPreview`. Gates: tsc 0 / lint 0 / jest 64/64. LIVE-verified (harness, real
+      RLS): as the owner → read storage_path → sign the private object (200) → fetch the signed URL →
+      **200 + the real 74 956-byte PNG** (same bytes that publish to the CDN → preview == posted).
+      Screenshot of the sheet-with-real-PNG not produced (the anon web export has no rendered card;
+      the signed-URL path is harness-verified + the `<Image>` render is code/jest-verified).
+    - **REMAINING chunks (next iterations):** (4b) "Show my name" consent toggle (gates the byline —
+      the pre-render bakes `attribution` in worker-narrative, so toggling off needs a re-render or a
+      publish-time strip; Decision-Log). (4c) market-ordered channel row (WhatsApp·LINE·Zalo·IG·TikTok·
+      Copy·QR·More; check `Icon` names — brand logos may be absent → labelled). (3b) `solo face` SVG
+      class + card-render integration for `fortune` & `face` (live-render each). (5-9) client sheet
       honesty in `ShareView` — real draft-PNG preview (signed `card-drafts` URL, preview==posted),
       "Show my name" consent toggle gating the byline, market-ordered channel row (WhatsApp·LINE·Zalo·
       IG·TikTok·Copy·QR·More) with per-channel text + channel tag on `invite-create`. (5) real QR

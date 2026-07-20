@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, Share, View } from 'react-native';
+import { Image, Platform, Pressable, Share, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Circle, Path } from 'react-native-svg';
 import Animated, {
@@ -18,7 +18,7 @@ import { AppHeader, Button, Icon, Logomark, Screen, Text } from '@/components/ui
 import type { IconName } from '@/components/ui';
 import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
-import { composeShareText, createInvite, loadDraftShareCardId, publishShareCard, type CreatedInvite, type Framing } from '@/lib/invite';
+import { composeShareText, createInvite, loadDraftCardPreviewUrl, loadDraftShareCardId, publishShareCard, type CreatedInvite, type Framing } from '@/lib/invite';
 import { savePendingCompat } from '@/lib/pendingCompat';
 import { maybeAskFirstCompatPush } from '@/lib/notifications';
 
@@ -97,6 +97,9 @@ export function ShareView({
   const [variant, setVariant] = useState<Variant>(initialVariant);
   const [invite, setInvite] = useState(true);
   const [copied, setCopied] = useState(false);
+  // "preview == posted" (F1.T9): the REAL pre-rendered draft PNG when one exists (solo, owned by the
+  // caller); null → fall back to the in-app vector preview (dev fixtures / no card yet).
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   // The sender's relationship framing (§2.7) — rides into the invite context; the picker resets the
   // (not-yet-minted) cache so the LATEST choice mints. A ref keeps ensureInvite's identity stable.
   const [framing, setFraming] = useState<Framing>('friend');
@@ -143,6 +146,18 @@ export function ShareView({
   useEffect(() => {
     track('share_sheet_opened', readingId ? { source, reading_id: readingId } : { source });
   }, [source, readingId]);
+
+  // Fetch the real draft-PNG preview (solo, owned reading). Falls back to the vector preview otherwise.
+  // Resolve to null (not a synchronous setState) when not applicable, so setPreviewUrl only runs in the
+  // async callback (react-hooks/set-state-in-effect).
+  useEffect(() => {
+    let active = true;
+    const load = variant === 'solo' && readingId ? loadDraftCardPreviewUrl(readingId) : Promise.resolve(null);
+    load.then((u) => active && setPreviewUrl(u)).catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [variant, readingId]);
 
   // Pre-mint the SOLO share on open (so "Copy link" / "Share" are instant). The compat share waits
   // for the framing pick, so it mints on-demand in the handlers instead — otherwise a framing change
@@ -195,7 +210,7 @@ export function ShareView({
       <View style={{ flex: 1, justifyContent: 'flex-start' }}>
         {variant === 'solo' ? (
           <Animated.View key="solo" entering={shouldAnimate ? FadeIn.duration(theme.motion.duration.base) : undefined}>
-            <SoloPreview geometry={geometry} headline={headline} />
+            {previewUrl ? <RealCardPreview uri={previewUrl} /> : <SoloPreview geometry={geometry} headline={headline} />}
           </Animated.View>
         ) : (
           <Animated.View key="compat" entering={shouldAnimate ? FadeIn.duration(theme.motion.duration.base) : undefined}>
@@ -404,6 +419,22 @@ function CardSeal() {
       </Text>
       <View style={{ flex: 1 }} />
       <Logomark size={30} variant="stamp" filled tone="heritage" accessibilityLabel="Palmly seal" />
+    </View>
+  );
+}
+
+/** "preview == posted" (F1.T9) — the ACTUAL server-rendered draft PNG the friend will receive, so the
+ *  in-sheet preview can never drift from the posted card. 4:5 to match the feed card (1080×1350). */
+function RealCardPreview({ uri }: { uri: string }) {
+  const theme = useTheme();
+  return (
+    <View style={[{ borderRadius: theme.radii.lg, overflow: 'hidden', alignSelf: 'center', width: '100%', maxWidth: 340 }, theme.shadow.lg]}>
+      <Image
+        source={{ uri }}
+        style={{ width: '100%', aspectRatio: 4 / 5 }}
+        resizeMode="cover"
+        accessibilityLabel="Your share card — exactly what your friend will see"
+      />
     </View>
   );
 }
