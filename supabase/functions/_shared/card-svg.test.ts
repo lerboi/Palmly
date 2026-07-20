@@ -15,7 +15,7 @@ Deno.test('buildCardSvg: feed variant has the right dimensions and core elements
   assertStringIncludes(svg, 'Deep heart line'); // chip
   assertStringIncludes(svg, '#FAF9F7'); // warm-paper field (matches the app preview, V21)
   assertStringIncludes(svg, '#FBE7E2'); // tonal accentMuted trait chip (branded pill, V21)
-  assertStringIncludes(svg, '#9E3B2E'); // CJK-free claret heritage logomark stamp (the corner seal, §3.2)
+  assertStringIncludes(svg, 'rx="10" fill="#9E3B2E"'); // FILLED claret heritage chop-seal (name-chop, F2.T1 §5.4 #2)
   assert(!svg.includes('#4B57C4'), 'retired indigo accent appears nowhere'); // §3/§8
   assert(!/[一-鿿]/.test(svg), 'no CJK anywhere in the redesigned card'); // §2/§7
   assert((svg.match(/<path /g) ?? []).length >= 6, 'engraved strokes rendered (underlay + main per line)');

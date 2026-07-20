@@ -102,6 +102,21 @@ function wrapLines(text: string, maxChars: number, maxLines: number): string[] {
   return lines.slice(0, maxLines);
 }
 
+/** The heritage "name chop" (§3.2 / F2.T1 §5.4 #2) — a FILLED claret seal with the palm emblem
+ *  knocked out in paper, the way a carved chop actually prints. Shared by all three card classes
+ *  (was a triplicated OUTLINE logomark). Drawn on the 48-unit Logomark tile, scaled to 56px. */
+function chopSeal(x: number, y: number): string {
+  return (
+    `<g transform="translate(${r1(x)},${r1(y)}) scale(${r1(56 / 48)})">` +
+    `<rect x="3" y="3" width="42" height="42" rx="10" fill="${PALETTE.heritage}"/>` +
+    `<g fill="none" stroke="${PALETTE.paper}" stroke-width="3.4" stroke-linecap="round">` +
+    `<path d="M19.5 12.5 C14 18.5 13 28 18.5 36"/>` +
+    `<path d="M11.5 24.5 C20 21.5 29.5 22.5 35.5 26"/>` +
+    `<path d="M12 18.5 C20 14 30 15 36.5 19.5"/>` +
+    `</g></g>`
+  );
+}
+
 export function buildCardSvg(input: CardInput): string {
   const { w, h } = DIMS[input.variant];
   const domain = input.domain ?? 'palmly.app';
@@ -160,17 +175,9 @@ export function buildCardSvg(input: CardInput): string {
     chipX += cw + 22;
   }
 
-  // ── footer rail: CJK-free logomark stamp + domain + optional attribution ──
+  // ── footer rail: heritage chop-seal + domain + optional attribution ──
   const railY = h - 96;
-  const stampScale = 56 / 48; // the Logomark stamp is a 48-frame tile
-  const seal =
-    `<g transform="translate(${pad},${railY - 6}) scale(${r1(stampScale)})">` +
-    `<rect x="3" y="3" width="42" height="42" rx="10" fill="none" stroke="${PALETTE.heritage}" stroke-width="2.6"/>` +
-    `<g fill="none" stroke="${PALETTE.heritage}" stroke-width="3" stroke-linecap="round">` +
-    `<path d="M19.5 12.5 C14 18.5 13 28 18.5 36"/>` +
-    `<path d="M11.5 24.5 C20 21.5 29.5 22.5 35.5 26"/>` +
-    `<path d="M12 18.5 C20 14 30 15 36.5 19.5"/>` +
-    `</g></g>`;
+  const seal = chopSeal(pad, railY - 6);
   const brand =
     `<text x="${pad + 74}" y="${railY + 34}" font-family="Noto Sans, sans-serif" font-size="30" fill="${PALETTE.ink}">${esc(domain)}</text>` +
     (input.attribution
@@ -369,14 +376,9 @@ export function buildCompatCardSvg(input: CompatCardInput): string {
     })
     .join('');
 
-  // footer rail: claret logomark seal + domain + optional consent byline
+  // footer rail: heritage chop-seal + domain + optional consent byline
   const railY = h - 96;
-  const seal =
-    `<g transform="translate(${pad},${railY - 6}) scale(${r1(56 / 48)})">` +
-    `<rect x="3" y="3" width="42" height="42" rx="10" fill="none" stroke="${PALETTE.heritage}" stroke-width="2.6"/>` +
-    `<g fill="none" stroke="${PALETTE.heritage}" stroke-width="3" stroke-linecap="round">` +
-    `<path d="M19.5 12.5 C14 18.5 13 28 18.5 36"/><path d="M11.5 24.5 C20 21.5 29.5 22.5 35.5 26"/><path d="M12 18.5 C20 14 30 15 36.5 19.5"/>` +
-    `</g></g>`;
+  const seal = chopSeal(pad, railY - 6);
   const brand =
     `<text x="${pad + 74}" y="${railY + 34}" font-family="Noto Sans, sans-serif" font-size="30" fill="${PALETTE.ink}">${esc(domain)}</text>` +
     (input.attribution ? `<text x="${w - pad}" y="${railY + 34}" text-anchor="end" font-family="Noto Sans, sans-serif" font-size="28" fill="${PALETTE.inkWash}">${esc(input.attribution)}</text>` : '');
@@ -486,12 +488,7 @@ export function buildFortuneCardSvg(input: FortuneCardInput): string {
     .join('');
 
   const railY = h - 96;
-  const seal =
-    `<g transform="translate(${pad},${railY - 6}) scale(${r1(56 / 48)})">` +
-    `<rect x="3" y="3" width="42" height="42" rx="10" fill="none" stroke="${PALETTE.heritage}" stroke-width="2.6"/>` +
-    `<g fill="none" stroke="${PALETTE.heritage}" stroke-width="3" stroke-linecap="round">` +
-    `<path d="M19.5 12.5 C14 18.5 13 28 18.5 36"/><path d="M11.5 24.5 C20 21.5 29.5 22.5 35.5 26"/><path d="M12 18.5 C20 14 30 15 36.5 19.5"/>` +
-    `</g></g>`;
+  const seal = chopSeal(pad, railY - 6);
   const brand = `<text x="${pad + 74}" y="${railY + 34}" font-family="Noto Sans, sans-serif" font-size="30" fill="${PALETTE.ink}">${esc(domain)}</text>`;
 
   const panelInset = 28;
