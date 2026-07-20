@@ -31,12 +31,12 @@ the two ledgers never diverge.
 | Field | Value |
 |---|---|
 | **Current phase** | D0 — Trust the deployment again |
-| **Next task** | **D0.T2** (repair the migration ledger; prove `db push` no-op) |
+| **Next task** | **D0.T3** (Docker deploy of `card-render`) — ∥ conditional |
 | **Blocked on** | — |
 | **Waiting on human** | Nothing yet. Human items live in Production-Readiness-Plan R1 (phone, store accounts, paid Gemini H4c, RevenueCat H8, domain H6, auth providers H5b, CI secrets, AppsFlyer H9, KB review, dashboard toggles) — they are **out of scope** here and must never block this loop; if a task turns out to need one, mark it `[!]` naming the R1 item and move on. |
 | **Last run (date, by whom)** | 2026-07-20, 🤖 Claude (Audit-3 loop) |
-| **Last completed task** | D0.T1 — all 19 pure-code Edge Functions redeployed from git (versions bumped, `updated_at` = today); posture spot-checks pass (invite-create no-JWT→401, worker-scan no-key→403/+key→200, chat-send non-premium→402); Deno 208/208. |
-| **Notes for next run** | D0.T2: staging migration ledger records **30** (ends `20260717000030`), repo has **32** — objects from `20260719000031`/`0032` exist live (A3). Run `npx supabase@latest migration repair --status applied 20260719000031 20260719000032` (db creds from `.env.staging`), then prove `supabase db push` is a clean no-op; document db push as the one apply path. `SUPABASE_ACCESS_TOKEN` (root `.env`) is a valid `sbp_` PAT with deploy privilege — **source it from repo-root cwd** (the Bash tool persists cwd between calls; `cd` back to repo root or the `.env` grep fails silently → empty token → 403). |
+| **Last completed task** | D0.T2 — migration ledger repaired (`0031`/`0032` marked applied); `db push --dry-run` → "Remote database is up to date."; history now 32 rows, max `20260719000032`; one-apply-path rule documented in `docs/ENVIRONMENT.md`; Node 135/135. |
+| **Notes for next run** | D0.T3 (∥, conditional): probe Docker (`docker info`); if unreachable, try starting Docker Desktop then re-probe ~2 min; if genuinely absent → mark `[!]` "needs human: install/start Docker Desktop" and continue (D2 stays gated). If reachable: `npx supabase@latest functions deploy card-render --use-docker --project-ref rphtdgoggsldshtdbkaj`; verify a live 200 + PNG in `card-drafts`. NOTE for all deploys: `SUPABASE_ACCESS_TOKEN` (root `.env`) is a valid `sbp_` PAT — source it from **repo-root cwd** (Bash tool persists cwd between calls; wrong cwd → empty token → 403). For DB commands build `--db-url` from `.env.staging` via node `encodeURIComponent(pw)` (password has special chars). |
 
 ---
 
@@ -170,7 +170,7 @@ the two ledgers never diverge.
   - Verify: `mcp__supabase__list_edge_functions` shows every function's `updated_at` ≥ today and
     version bumped; live posture spot-checks pass (invite-create no-JWT → 401/403; worker-scan
     no-service-key → 401/403 and +key → 200; chat-send non-premium → 402); Deno suite green.
-- [ ] **D0.T2** 🤖 **Repair the migration ledger.** (= R0.T2; audit A3.)
+- [x] **D0.T2** 🤖 **Repair the migration ledger.** (= R0.T2; audit A3.)
   - Build: `npx supabase@latest migration repair --status applied 20260719000031 20260719000032`
     against staging (db creds from `.env.staging`), then prove `supabase db push` is a clean
     no-op. Document (one line in `docs/ENVIRONMENT.md` or the Buildplan standing rules) that
@@ -293,3 +293,4 @@ the two ledgers never diverge.
 |---|---|---|
 | 2026-07-20 | D0.T0 | Toolchain proven (`supabase projects list`→palmly-staging ACTIVE_HEALTHY; Deno 2.9.2; `.env`/`.env.staging` present; MCP `list_migrations` answers=30). Planning reorg + this ledger + Prompt.txt committed as one baseline. Baseline suites pinned green: app 64/64 · Deno 208/208 · Node 135/135. |
 | 2026-07-20 | D0.T1 | Redeployed all 19 pure-code Edge Functions from git (all except `card-render`) via `npx supabase@latest functions deploy` — every version bumped +1, `updated_at`=today; `card-render` left at v4 (D0.T3). Posture spot-checks live-verified: invite-create no-JWT→401, worker-scan no-key→403 & +service-key→200 (`{"processed":0}`), chat-send non-premium→402. Deno 208/208. Minted anon users for the chat check cleaned up. |
+| 2026-07-20 | D0.T2 | `migration repair --status applied 20260719000031 20260719000032` (via `--db-url` from `.env.staging`) → history now 32 rows, max `20260719000032`, both present. `db push --dry-run` → "Remote database is up to date." (no-op). One-apply-path standing rule (db push only; never out-of-band DDL) documented in `docs/ENVIRONMENT.md`. Node 135/135. |

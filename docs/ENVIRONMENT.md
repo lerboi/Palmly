@@ -17,6 +17,14 @@ on this one project. Backend §12's three-project sketch (`dev`/`staging`/`prod`
 target, not the pre-launch setup. **Tripwire:** once real beta users exist on this project, split a
 separate prod back out (or stop running the destructive test harness against it).
 
+**The one migration apply path (standing rule, Audit-3 D0.T2 · 2026-07-20):** schema changes
+reach staging via **`supabase db push`** and nothing else. Never apply DDL out-of-band (ad-hoc
+psql/scripts, the MCP `apply_migration`, or the dashboard SQL editor) — doing so leaves the object
+live but absent from `supabase_migrations.schema_migrations`, so the next `db push` collides (this
+was A3: `20260719000031`/`0032` had to be `migration repair --status applied`'d back into the
+ledger). If a row ever drifts again: `npx supabase@latest migration repair --status applied <ver…>
+--db-url <staging>` then confirm `db push --dry-run` reports "Remote database is up to date."
+
 ---
 
 ## 1. Accounts (human-provisioned — P0)
