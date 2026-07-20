@@ -403,3 +403,113 @@ export function buildCompatCardSvg(input: CompatCardInput): string {
   ${brand}
 </svg>`;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// Daily-fortune card (§3.1 class 4, audit F1.T9) — text-forward (no palm hero): the day's essence
+// headline over the almanac's actionable triad (lucky direction / color / hours), ≤3 "do" hooks, seal.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+export interface FortuneCardContent {
+  headline: string;
+  chips: string[]; // ≤3 English "do" hooks
+  luckyDirection?: string;
+  luckyColor?: string;
+  luckyHours?: string;
+}
+
+/** Derive the fortune card's fields from a `fortune_templates.content` jsonb (deterministic). */
+export function deriveFortuneCardContent(content: Rec): FortuneCardContent {
+  const headline = str(content.overall) ?? "Today's almanac";
+  const doList = Array.isArray(content.do) ? (content.do as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+  return {
+    headline,
+    chips: doList.slice(0, 3),
+    luckyDirection: str(content.lucky_direction),
+    luckyColor: str(content.lucky_color),
+    luckyHours: str(content.lucky_hours),
+  };
+}
+
+export interface FortuneCardInput {
+  variant: CardVariant;
+  headline: string;
+  dateLabel: string; // e.g. "Today's Almanac · July 20" (English/romanized — no CJK on the card)
+  luckyDirection?: string;
+  luckyColor?: string;
+  luckyHours?: string;
+  chips: string[];
+  domain?: string;
+}
+
+export function buildFortuneCardSvg(input: FortuneCardInput): string {
+  const { w, h } = DIMS[input.variant];
+  const domain = input.domain ?? 'palmly.app';
+  const pad = 64;
+  const story = input.variant === 'story_9x16';
+
+  // eyebrow date line (accent, tracked) + the day's essence headline (≤3 lines)
+  const dateY = story ? 260 : 168;
+  const dateEl = `<text x="${r1(w / 2)}" y="${dateY}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="30" letter-spacing="3" fill="${PALETTE.accent}">${esc(input.dateLabel.toUpperCase())}</text>`;
+  const hlSize = input.headline.length > 46 ? 50 : 58;
+  const hlEl = wrapLines(input.headline, 24, 3)
+    .map((ln, i) => `<tspan x="${r1(w / 2)}" dy="${i === 0 ? 0 : hlSize * 1.2}">${esc(ln)}</tspan>`)
+    .join('');
+
+  // lucky triad tiles (only those present — honest: no invented values)
+  const triad = ([['Direction', input.luckyDirection], ['Lucky color', input.luckyColor], ['Lucky hours', input.luckyHours]] as [string, string | undefined][]).filter((t): t is [string, string] => !!t[1]);
+  const tileY = story ? 940 : 700;
+  const tileH = 210;
+  const tileGap = 28;
+  const tileW = triad.length ? (w - pad * 2 - tileGap * (triad.length - 1)) / triad.length : 0;
+  const tiles = triad
+    .map(([label, val], i) => {
+      const x = pad + i * (tileW + tileGap);
+      return (
+        `<rect x="${r1(x)}" y="${tileY}" width="${r1(tileW)}" height="${tileH}" rx="24" fill="${PALETTE.bg}" stroke="${PALETTE.edge}" stroke-width="2"/>` +
+        `<text x="${r1(x + tileW / 2)}" y="${tileY + 58}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="26" fill="${PALETTE.inkWash}">${esc(label)}</text>` +
+        `<text x="${r1(x + tileW / 2)}" y="${tileY + 138}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="38" font-weight="700" fill="${PALETTE.accent}">${esc(val)}</text>`
+      );
+    })
+    .join('');
+
+  // ≤3 "do" hooks, centred as a chip row below the tiles
+  const picked = input.chips.slice(0, 3);
+  const chipW = picked.map((c) => 34 + c.length * 18);
+  const gap = 20;
+  const totalW = chipW.reduce((s, x) => s + x, 0) + gap * Math.max(0, picked.length - 1);
+  let chipX = (w - totalW) / 2;
+  const chipY = tileY + tileH + 48;
+  const chips = picked
+    .map((c, i) => {
+      const cw = chipW[i];
+      const el =
+        `<rect x="${r1(chipX)}" y="${chipY}" rx="30" ry="30" width="${r1(cw)}" height="60" fill="${PALETTE.accentMuted}"/>` +
+        `<text x="${r1(chipX + cw / 2)}" y="${chipY + 40}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="26" fill="${PALETTE.accent}">${esc(c)}</text>`;
+      chipX += cw + gap;
+      return el;
+    })
+    .join('');
+
+  const railY = h - 96;
+  const seal =
+    `<g transform="translate(${pad},${railY - 6}) scale(${r1(56 / 48)})">` +
+    `<rect x="3" y="3" width="42" height="42" rx="10" fill="none" stroke="${PALETTE.heritage}" stroke-width="2.6"/>` +
+    `<g fill="none" stroke="${PALETTE.heritage}" stroke-width="3" stroke-linecap="round">` +
+    `<path d="M19.5 12.5 C14 18.5 13 28 18.5 36"/><path d="M11.5 24.5 C20 21.5 29.5 22.5 35.5 26"/><path d="M12 18.5 C20 14 30 15 36.5 19.5"/>` +
+    `</g></g>`;
+  const brand = `<text x="${pad + 74}" y="${railY + 34}" font-family="Noto Sans, sans-serif" font-size="30" fill="${PALETTE.ink}">${esc(domain)}</text>`;
+
+  const panelInset = 28;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  <defs><filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="12" stdDeviation="26" flood-color="${PALETTE.ink}" flood-opacity="0.10"/>
+  </filter></defs>
+  <rect width="${w}" height="${h}" fill="${PALETTE.bg}"/>
+  <rect x="${panelInset}" y="${panelInset}" width="${w - panelInset * 2}" height="${h - panelInset * 2}" rx="40" fill="${PALETTE.paper}" stroke="${PALETTE.edge}" stroke-width="2" filter="url(#cardShadow)"/>
+  ${dateEl}
+  <text x="${r1(w / 2)}" y="${dateY + 88}" text-anchor="middle" font-family="Noto Sans, sans-serif" font-size="${hlSize}" font-weight="800" fill="${PALETTE.ink}">${hlEl}</text>
+  ${tiles}
+  ${chips}
+  ${seal}
+  ${brand}
+</svg>`;
+}

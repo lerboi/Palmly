@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertStringIncludes } from '@std/assert';
-import { buildCardSvg, buildCompatCardSvg, deriveCardContent, deriveCompatCardContent, type Point } from './card-svg.ts';
+import { buildCardSvg, buildCompatCardSvg, buildFortuneCardSvg, deriveCardContent, deriveCompatCardContent, deriveFortuneCardContent, type Point } from './card-svg.ts';
 import palm01 from '../../../eval/samples/narrative/palm_01.json' with { type: 'json' };
 import palm02 from '../../../eval/samples/narrative/palm_02.json' with { type: 'json' };
 
@@ -99,6 +99,37 @@ Deno.test('deriveCompatCardContent: shared-trait (top sub) + friction (low sub),
   assert(c.chips.includes('Emotion in tune')); // highest sub-score
   assert(c.chips.includes('Mind to bridge')); // lowest sub-score
   assert(c.chips.length <= 2);
+});
+
+// ── Daily-fortune card class (audit F1.T9) ──
+Deno.test('buildFortuneCardSvg: date eyebrow, essence headline, lucky triad, do-chips', () => {
+  const svg = buildFortuneCardSvg({ variant: 'feed_4x5', headline: 'A steady day to plant seeds and mend fences.', dateLabel: "Today's Almanac · July 20", luckyDirection: 'Southeast', luckyColor: 'Vermilion', luckyHours: '7–9am', chips: ['Sign paperwork', 'Reach out first'] });
+  assertStringIncludes(svg, 'width="1080" height="1350"');
+  assertStringIncludes(svg, "TODAY'S ALMANAC · JULY 20"); // eyebrow (upper-cased)
+  assertStringIncludes(svg, 'plant'); // headline word (the headline wraps across tspans)
+  assertStringIncludes(svg, '>Direction</text>');
+  assertStringIncludes(svg, '>Southeast</text>');
+  assertStringIncludes(svg, '>Vermilion</text>');
+  assertStringIncludes(svg, 'Sign paperwork'); // do-chip
+  assertStringIncludes(svg, 'palmly.app');
+  assertStringIncludes(svg, '#9E3B2E'); // claret seal
+  assert(!/[一-鿿]/.test(svg), 'no CJK on the fortune card');
+});
+
+Deno.test('buildFortuneCardSvg: omits absent triad values (no invented almanac data)', () => {
+  const svg = buildFortuneCardSvg({ variant: 'feed_4x5', headline: 'x', dateLabel: 'Today', luckyDirection: 'North', chips: [] });
+  assertStringIncludes(svg, '>North</text>');
+  assert(!svg.includes('>Lucky color</text>'), 'no color tile when absent');
+  assert(!svg.includes('>Lucky hours</text>'), 'no hours tile when absent');
+});
+
+Deno.test('deriveFortuneCardContent: essence headline + do-hooks + lucky triad from content jsonb', () => {
+  const c = deriveFortuneCardContent({ overall: 'A calm, favorable day.', do: ['Rest', 'Plan ahead', 'Call family', 'Ignore this fourth'], dont: ['Overspend'], lucky_direction: 'East', lucky_color: 'Jade', lucky_hours: '5–7pm' });
+  assertEquals(c.headline, 'A calm, favorable day.');
+  assertEquals(c.chips.length, 3); // capped at 3
+  assert(c.chips.includes('Rest'));
+  assertEquals(c.luckyDirection, 'East');
+  assertEquals(c.luckyColor, 'Jade');
 });
 
 Deno.test('card SVG source stays tiny (guards a runaway toward the 450KB PNG budget)', () => {
