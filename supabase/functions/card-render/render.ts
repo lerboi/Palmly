@@ -4,7 +4,7 @@
 // PNG and upload to the public `cards` bucket with immutable cache headers.
 import { initWasm, Resvg } from '@resvg/resvg-wasm';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { buildCardSvg, deriveCardContent, type CardVariant, type Point } from '../_shared/card-svg.ts';
+import { buildCardSvg, buildCompatCardSvg, deriveCardContent, type CardVariant, type Point } from '../_shared/card-svg.ts';
 import { DRAFT_BUCKET, PUBLIC_BUCKET, publishCard } from '../_shared/card-publish.ts';
 
 // Re-export so existing importers (card-render/index.ts) keep their path; the logic now lives in
@@ -63,22 +63,14 @@ export interface RenderCardOpts {
   locale?: string;
 }
 
-/**
- * Build → rasterize → upload to the PRIVATE draft bucket → record a share_cards row (unpublished).
- * Returns the card id + path; there is deliberately no public URL yet — `publishCard` mints that on
- * share intent (H8).
- */
-export async function renderAndStoreCard(admin: SupabaseClient, o: RenderCardOpts): Promise<{ cardId: string; path: string; published: boolean }> {
-  const content = deriveCardContent(o.features);
-  const svg = buildCardSvg({
-    variant: o.variant,
-    headline: content.headline,
-    chips: content.chips,
-    signatureLines: content.signatureLines,
-    lineGeometry: (o.features.line_geometry ?? {}) as Record<string, Point[]>,
-    attribution: o.attribution,
-  });
-  const png = await renderCardPng(svg);
+/** Rasterized PNG → upload to the PRIVATE draft bucket + upsert the `share_cards` row. Shared by
+ *  every card class (solo, compat, fortune). Returns the card id + path; no public URL yet —
+ *  `publishCard` mints that on share intent (H8). */
+async function storeCard(
+  admin: SupabaseClient,
+  o: { userId: string; sourceType: 'reading' | 'compatibility' | 'fortune'; sourceId: string; variant: CardVariant; locale?: string },
+  png: Uint8Array,
+): Promise<{ cardId: string; path: string; published: boolean }> {
   const path = `${o.userId}/${o.sourceId}_${o.variant}.png`;
   // Private by default (H8). The immutable cache header rides along to the public copy, so a
   // published card is still CDN-cacheable forever.
@@ -94,14 +86,7 @@ export async function renderAndStoreCard(admin: SupabaseClient, o: RenderCardOpt
   const { data: card, error: insErr } = await admin
     .from('share_cards')
     .upsert(
-      {
-        user_id: o.userId,
-        source_type: o.sourceType,
-        source_id: o.sourceId,
-        variant: o.variant,
-        locale: o.locale ?? 'en',
-        storage_path: path,
-      },
+      { user_id: o.userId, source_type: o.sourceType, source_id: o.sourceId, variant: o.variant, locale: o.locale ?? 'en', storage_path: path },
       { onConflict: 'user_id,source_id,variant', ignoreDuplicates: false },
     )
     .select('id, published_at')
@@ -114,6 +99,53 @@ export async function renderAndStoreCard(admin: SupabaseClient, o: RenderCardOpt
     const { error: cpErr } = await admin.storage.from(DRAFT_BUCKET).copy(path, path, { destinationBucket: PUBLIC_BUCKET });
     if (cpErr) throw cpErr;
   }
-
   return { cardId: card.id, path, published: Boolean(card.published_at) };
+}
+
+/** Build → rasterize → store the SOLO palm/face card. */
+export async function renderAndStoreCard(admin: SupabaseClient, o: RenderCardOpts): Promise<{ cardId: string; path: string; published: boolean }> {
+  const content = deriveCardContent(o.features);
+  const svg = buildCardSvg({
+    variant: o.variant,
+    headline: content.headline,
+    chips: content.chips,
+    signatureLines: content.signatureLines,
+    lineGeometry: (o.features.line_geometry ?? {}) as Record<string, Point[]>,
+    attribution: o.attribution,
+  });
+  const png = await renderCardPng(svg);
+  return storeCard(admin, { userId: o.userId, sourceType: o.sourceType, sourceId: o.sourceId, variant: o.variant, locale: o.locale }, png);
+}
+
+// ── Compatibility card (audit F1.T9): the two members' palms joined by the claret heart-thread. ──
+export interface CompatRenderOpts {
+  userId: string; // owner of this share_cards row (the sharing member)
+  sourceId: string; // the pair id
+  variant: CardVariant;
+  headline: string;
+  score: number | null;
+  nameA: string;
+  nameB: string;
+  geometryA: Record<string, Point[]>;
+  geometryB: Record<string, Point[]>;
+  chips: string[];
+  attribution?: string;
+  locale?: string;
+}
+
+/** Build → rasterize → store the COMPATIBILITY card (two palms + red thread + score ring). */
+export async function renderAndStoreCompatCard(admin: SupabaseClient, o: CompatRenderOpts): Promise<{ cardId: string; path: string; published: boolean }> {
+  const svg = buildCompatCardSvg({
+    variant: o.variant,
+    headline: o.headline,
+    score: o.score,
+    nameA: o.nameA,
+    nameB: o.nameB,
+    geometryA: o.geometryA,
+    geometryB: o.geometryB,
+    chips: o.chips,
+    attribution: o.attribution,
+  });
+  const png = await renderCardPng(svg);
+  return storeCard(admin, { userId: o.userId, sourceType: 'compatibility', sourceId: o.sourceId, variant: o.variant, locale: o.locale }, png);
 }
