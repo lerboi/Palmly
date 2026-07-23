@@ -54,6 +54,12 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Palmly uses your camera to read your palm from a photo."
+        }
+      ],
+      [
         "@sentry/react-native",
         {
           "organization": "makeitai",

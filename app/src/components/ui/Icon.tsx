@@ -37,7 +37,8 @@ export type IconName =
   | 'globe'
   | 'document'
   | 'settings'
-  | 'info';
+  | 'info'
+  | 'torch';
 
 // Geometry only — stroke/fill/caps come from the shared <G> below.
 const PATHS: Record<IconName, ReactNode> = {
@@ -211,6 +212,8 @@ const PATHS: Record<IconName, ReactNode> = {
       <Path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </G>
   ),
+  // Lightning bolt — the guided-capture torch toggle (§2.3 'dark' guidance stand-in).
+  torch: <Path d="M13 2.5 L6.5 13.5 H11 L10 21.5 L17.5 10.5 H12.5 Z" />,
 };
 
 const DEFAULT_LABELS: Record<IconName, string> = {
@@ -242,6 +245,7 @@ const DEFAULT_LABELS: Record<IconName, string> = {
   document: 'Document',
   settings: 'Settings',
   info: 'Information',
+  torch: 'Torch',
 };
 
 export interface IconProps {

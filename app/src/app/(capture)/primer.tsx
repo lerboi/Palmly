@@ -4,8 +4,7 @@ import { router, useLocalSearchParams, type Href } from 'expo-router';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { AppHeader, Button, Card, Icon, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
-import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { HandOutline } from '@/components/palm-diagram/HandOutline';
 import { useScanUpload } from '@/features/capture/useScanUpload';
 import { useReducedMotion, useTheme } from '@/theme';
 import { type Hand } from '@/lib/scan';
@@ -65,16 +64,15 @@ export default function Primer() {
       <AppHeader onBack={() => router.back()} />
 
       <View style={{ flex: 1 }}>
-        {/* F2.T2 §5.5: an engraved two-tone camera+open-palm spot illustration (~200px) replaces the
-            small glyph tile, so the primer reads as a Palmly moment — not a styled permission dialog.
-            The palm is the existing engraved diagram (ink silhouette + accent heart line = two-tone);
-            the accent camera badge is the "we see your palm" half of the motif. */}
+        {/* A two-tone camera + open-palm spot illustration (~200px), so the primer reads as a Palmly
+            moment — not a styled permission dialog. The palm is the clean outline hero (ink outline +
+            accent heart line = two-tone); the accent camera badge is the "we see your palm" half. */}
         <View style={{ alignItems: 'center', marginBottom: theme.spacing.xl }}>
           <Animated.View
             entering={shouldAnimate ? ZoomIn.duration(theme.motion.duration.base) : undefined}
             style={{ width: 200, height: 200, alignItems: 'center', justifyContent: 'center' }}
           >
-            <PalmDiagram geometry={PREVIEW_GEOMETRY} size={190} animate={false} silhouette signatureLines={['heart_line']} />
+            <HandOutline size={188} accent accessibilityLabel="An open palm" />
             <View
               style={[
                 {
@@ -106,7 +104,7 @@ export default function Primer() {
 
         <Animated.View entering={enter(0)}>
           <Text variant="title" style={{ textAlign: 'center' }}>
-            Palmly needs your camera to see your palm
+            Palmly needs your camera
           </Text>
         </Animated.View>
 
@@ -139,9 +137,10 @@ export default function Primer() {
           disabled={uploading}
           onPress={() => {
             // The reassurance rows ARE the biometric-consent text (Backend §9) — log the version the
-            // user accepted, then proceed. The OS permission grant/denial is the device leg (F1.T3).
+            // user accepted, then proceed. The OS prompt fires on the capture screen at the moment of
+            // intent, and the REAL grant/denial is tracked there (useLiveCapture) — this button no
+            // longer fabricates a `permission_result` before any prompt existed.
             void recordCameraConsent();
-            track('permission_result', { granted: true, kind: 'camera' });
             router.push(`/palm${handSuffix}` as Href);
           }}
         />

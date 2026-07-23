@@ -160,18 +160,19 @@ function roundRect(x0: number, y0: number, x1: number, y1: number, r: number): s
   ].join(' ');
 }
 
-/** A digit: a capsule from `base` (flat — sinks into the palm) to `tip` (rounded), radius `r`. */
-function capsule(bx: number, by: number, tx: number, ty: number, r: number): string {
+/** A tapered digit: a flat `base` (half-width `rBase`, sinks into the palm) narrowing to a rounded
+ *  `tip` (half-width `rTip`) — so fingers read as fingers, not uniform capsules/sausages. */
+function taperedDigit(bx: number, by: number, tx: number, ty: number, rBase: number, rTip: number): string {
   const dx = tx - bx, dy = ty - by;
   const len = Math.hypot(dx, dy) || 1;
   const nx = dx / len, ny = dy / len; // axis base→tip
   const px = -ny, py = nx; // perpendicular
-  const k = r * 1.33; // cubic control → ~semicircular tip cap
+  const k = rTip * 1.33; // cubic control → ~semicircular tip cap
   return [
-    `M ${r1(bx + px * r)} ${r1(by + py * r)}`,
-    `L ${r1(tx + px * r)} ${r1(ty + py * r)}`,
-    `C ${r1(tx + px * r + nx * k)} ${r1(ty + py * r + ny * k)} ${r1(tx - px * r + nx * k)} ${r1(ty - py * r + ny * k)} ${r1(tx - px * r)} ${r1(ty - py * r)}`,
-    `L ${r1(bx - px * r)} ${r1(by - py * r)} Z`,
+    `M ${r1(bx + px * rBase)} ${r1(by + py * rBase)}`,
+    `L ${r1(tx + px * rTip)} ${r1(ty + py * rTip)}`,
+    `C ${r1(tx + px * rTip + nx * k)} ${r1(ty + py * rTip + ny * k)} ${r1(tx - px * rTip + nx * k)} ${r1(ty - py * rTip + ny * k)} ${r1(tx - px * rTip)} ${r1(ty - py * rTip)}`,
+    `L ${r1(bx - px * rBase)} ${r1(by - py * rBase)} Z`,
   ].join(' ');
 }
 
@@ -202,27 +203,29 @@ export function handSilhouette(geometry: LineGeometry): HandSilhouette {
 
   const Wp = R - L, Hp = B - T;
   const cxMid = (L + R) / 2;
-  const palm = roundRect(L, T, R, B, Wp * 0.16);
+  const palm = roundRect(L, T, R, B, Wp * 0.2); // softer heel/corners so the palm reads less boxy
 
-  // Four fingers rising into the headroom (the frame-top → palm-top gap).
+  // Four tapered fingers rising into the headroom (the frame-top → palm-top gap), their bases set on
+  // a gentle knuckle arch (middle knuckle highest, pinky lowest) and each narrowing to a rounded tip.
   const headroom = T;
   const bandL = L + Wp * 0.14, bandR = R - Wp * 0.01;
   const slot = (bandR - bandL) / 4;
   const rf = (slot * 0.68) / 2;
   const lenFrac = [0.8, 0.95, 0.87, 0.66]; // index · middle · ring · pinky
+  const archY = [0.012, 0, 0.006, 0.03]; // per-finger base dip (knuckle arch), as a fraction of F
   const fingers = lenFrac.map((frac, i) => {
     const cx = bandL + slot * i + slot / 2;
-    const baseY = T + rf * 0.9; // sunk into the palm so the flat base merges
+    const baseY = T + rf * 0.9 + archY[i] * F; // sunk into the palm so the flat base merges
     const tipY = Math.max(F * 0.03, T - headroom * frac * 0.9);
     const lean = (cx - cxMid) * 0.14; // slight outward fan
-    return capsule(cx, baseY, cx + lean, tipY, rf);
+    return taperedDigit(cx, baseY, cx + lean, tipY, rf, rf * 0.62);
   });
 
-  // An articulated thumb off the lower-left, angled up-and-out.
-  const thumb = capsule(
+  // An articulated thumb off the lower-left, angled up-and-out, thick at the base → rounded tip.
+  const thumb = taperedDigit(
     L + Wp * 0.1, T + Hp * 0.44,
     Math.max(F * 0.03, L - Wp * 0.05), T + Hp * 0.04,
-    Wp * 0.085,
+    Wp * 0.095, Wp * 0.06,
   );
 
   return { parts: [palm, ...fingers, thumb], palm: { x0: r1(L), y0: r1(T), x1: r1(R), y1: r1(B) } };

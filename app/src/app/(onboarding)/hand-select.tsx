@@ -2,19 +2,19 @@ import { useEffect, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import Animated, { ZoomIn } from 'react-native-reanimated';
-import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
+import { HandOutline } from '@/components/palm-diagram/HandOutline';
 import { AppHeader, Button, Icon, Screen, Text } from '@/components/ui';
 import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { track } from '@/lib/analytics';
 
 type Hand = 'left' | 'right';
 
 /**
- * Onboarding A3 (UIUX §2.1 / U5, redesign R12 / v2 V10) — the one "quiz" question, which doubles
- * as pipeline input. Two selectable hand cards with a press-spring + an animated selection (the
- * check pops in), grouped as a `radiogroup`, plus a cultural note that sidesteps gender.
- * CTA: "Read my palm." English-first, no CJK.
+ * Onboarding A3 (UIUX §2.1 / U5, redesign "premium outline") — the one "quiz" question, which
+ * doubles as pipeline input. Two selectable hand cards (clean outline, mirrored for the left) with
+ * a press-spring + an animated check, grouped as a `radiogroup`. Copy pared to the question + one
+ * line; the old tradition note + ghost watermark are gone (aggressive-minimal pass). CTA: "Read my
+ * palm." English-first, no CJK.
  */
 export default function HandSelect() {
   const theme = useTheme();
@@ -33,39 +33,20 @@ export default function HandSelect() {
     <Screen>
       <AppHeader title="Set up" onBack={() => router.back()} />
 
-      <View style={{ flex: 1 }}>
-        <Text variant="title">Which hand do you write with?</Text>
-        <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.sm }}>
-          We read your dominant hand first — it shows the life you&apos;re actively shaping.
+      <View style={{ flex: 1, justifyContent: 'center' }}>
+        <Text variant="title" style={{ textAlign: 'center' }}>
+          Which hand do you write with?
+        </Text>
+        <Text variant="body" tone="secondary" style={{ textAlign: 'center', marginTop: theme.spacing.sm }}>
+          We read your dominant hand first.
         </Text>
 
         <View
           accessibilityRole="radiogroup"
-          style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xl }}
+          style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xxxl }}
         >
           <HandCard label="Left" hand="left" selected={hand === 'left'} onSelect={() => setHand('left')} />
           <HandCard label="Right" hand="right" selected={hand === 'right'} onSelect={() => setHand('right')} />
-        </View>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: theme.spacing.sm,
-            marginTop: theme.spacing.xl,
-            alignItems: 'flex-start',
-          }}
-        >
-          <Icon name="sparkle" size={18} color={theme.colors.textTertiary} decorative />
-          <Text variant="caption" tone="tertiary" style={{ flex: 1 }}>
-            Traditional readers weigh both hands — one innate, one cultivated. You can add your other
-            hand later.
-          </Text>
-        </View>
-
-        {/* F2.T2 §5.5: a full-bleed ghost-palm watermark fills the dead band below the note — identity,
-            not decoration. Silhouette-only + ~5% opacity so it never competes with the cards/CTA. */}
-        <View pointerEvents="none" style={{ flex: 1, alignItems: 'center', justifyContent: 'center', opacity: 0.05 }}>
-          <PalmDiagram geometry={PREVIEW_GEOMETRY} size={300} animate={false} silhouette />
         </View>
       </View>
 
@@ -108,8 +89,8 @@ function HandCard({
         style={[
           {
             alignItems: 'center',
-            paddingVertical: theme.spacing.lg,
-            borderRadius: theme.radii.md,
+            paddingVertical: theme.spacing.xl,
+            borderRadius: theme.radii.lg,
             borderWidth: selected ? theme.strokes.bold : theme.strokes.hairline,
             borderColor: selected ? theme.colors.accent : theme.colors.border,
             backgroundColor: selected ? theme.colors.accentMuted : theme.colors.surfaceRaised,
@@ -117,14 +98,13 @@ function HandCard({
           theme.shadow.sm,
         ]}
       >
-        <PalmDiagram
-          geometry={PREVIEW_GEOMETRY}
-          size={96}
-          animate={false}
-          highlightedLine={selected ? 'life_line' : undefined}
-          style={hand === 'left' ? { transform: [{ scaleX: -1 }] } : undefined}
+        <HandOutline
+          size={104}
+          mirror={hand === 'left'}
+          color={selected ? theme.colors.accent : theme.colors.textSecondary}
+          accessibilityLabel=""
         />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.md }}>
           {selected ? (
             <Animated.View entering={shouldAnimate ? ZoomIn.duration(theme.motion.duration.fast) : undefined}>
               <Icon name="check" size={18} color={theme.colors.accent} decorative />

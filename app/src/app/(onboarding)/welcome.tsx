@@ -1,17 +1,17 @@
 import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
 import { router, type Href } from 'expo-router';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
-import { AppHeader, Button, Logomark, Screen, Text } from '@/components/ui';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { HandOutline } from '@/components/palm-diagram/HandOutline';
+import { AppHeader, Button, Screen, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { track } from '@/lib/analytics';
 
 /**
- * Onboarding A1 (UIUX §2.1, redesign R12 / v2 V10) — the value prop over a **label-free** traced-
- * palm hero, with a small Logomark for brand presence; headline / subhead / CTA **stagger in**.
- * Reframed off ethnicity (§6): "rooted in centuries of palmistry", English-first, no CJK.
+ * Onboarding A1 (UIUX §2.1, redesign "premium outline") — the value prop over a single clean
+ * open-palm outline with one accent heart line (two-tone: "this is a reading"), a small Logomark,
+ * and a headline / subhead / CTA that **stagger in**. English-first, no CJK; copy pared to the
+ * essential (aggressive-minimal pass).
  */
 export default function Welcome() {
   const theme = useTheme();
@@ -38,14 +38,11 @@ export default function Welcome() {
         right={<Button label="Skip" variant="ghost" size="md" onPress={onSkip} />}
       />
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <PalmDiagram
-          geometry={PREVIEW_GEOMETRY}
-          size={240}
-          signatureLines={['heart_line', 'fate_line']}
-        />
-        <Logomark size={34} tone="ink" compact style={{ marginTop: theme.spacing.lg }} />
+        <Animated.View entering={shouldAnimate ? FadeIn.duration(theme.motion.duration.slow) : undefined}>
+          <HandOutline size={248} accent accessibilityLabel="An open palm" />
+        </Animated.View>
         <Animated.View entering={enter(0)}>
-          <Text variant="display" style={{ textAlign: 'center', marginTop: theme.spacing.md }}>
+          <Text variant="display" style={{ textAlign: 'center', marginTop: theme.spacing.xxl }}>
             Your palm remembers
           </Text>
         </Animated.View>
@@ -53,9 +50,9 @@ export default function Welcome() {
           <Text
             variant="bodyLarge"
             tone="secondary"
-            style={{ textAlign: 'center', marginTop: theme.spacing.sm, maxWidth: 300 }}
+            style={{ textAlign: 'center', marginTop: theme.spacing.sm, maxWidth: 280 }}
           >
-            Rooted in centuries of palmistry — read from a single photo, in about a minute.
+            One photo. A reading in about a minute.
           </Text>
         </Animated.View>
       </View>

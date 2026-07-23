@@ -9,6 +9,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Button, Icon, Text } from '@/components/ui';
+import { HAND_OUTLINE_PATH } from '@/components/palm-diagram/handOutlinePath';
 import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { captureInstruction, type CaptureMode, type CaptureState } from './capture';
 
@@ -36,21 +37,20 @@ const OVERLAY = {
   track: 'rgba(255,255,255,0.16)',
 } as const;
 
-// A credible upright five-digit hand outline for the palm guide (single closed path, 320 box) —
-// four fingers with valleys + an articulated thumb, so it frames a real hand, not a cartoon paw
-// (audit F0.11 / UIUX §2.3).
-const PALM_GUIDE =
-  'M118 298 C96 250 78 250 74 214 C66 200 50 200 44 196 C36 188 30 176 34 168 Q40 156 52 152 ' +
-  'C64 148 70 150 92 150 L96 78 Q106 66 116 78 L118 150 Q128 160 138 150 L146 52 Q156 40 166 52 ' +
-  'L168 150 Q177 160 186 150 L194 68 Q204 56 214 68 L216 150 Q224 160 232 152 L240 98 Q249 88 258 98 ' +
-  'L256 158 C252 230 240 270 202 298 C180 312 140 312 118 298 Z';
-
 interface CaptureViewProps {
   mode: CaptureMode;
   state: CaptureState;
   handSide?: 'left' | 'right';
   /** The native module's hand landmarks (0–1 normalized points), drawn as a faint skeleton. Device-only. */
   landmarks?: [number, number][];
+  /** The live camera preview (or a frozen captured frame) rendered full-bleed behind the overlay
+   *  chrome. Device-only — omitted on web/tests, where the flat feed stand-in shows instead. */
+  feed?: React.ReactNode;
+  /** Torch toggle (palm/back-camera only — the Phase-1 stand-in for the §2.3 `dark` guidance).
+   *  Omit to hide the control (face/front camera, review, stand-in). */
+  torch?: { on: boolean; onToggle: () => void };
+  /** Disables Retake + spins "Use photo" while the confirmed frame uploads (no double-submit). */
+  confirmLoading?: boolean;
   onShutter?: () => void;
   onSwitchHand?: () => void;
   onHelp?: () => void;
@@ -64,6 +64,9 @@ export function CaptureView({
   state,
   handSide = 'right',
   landmarks,
+  feed,
+  torch,
+  confirmLoading = false,
   onShutter,
   onSwitchHand,
   onHelp,
@@ -84,8 +87,11 @@ export function CaptureView({
 
   return (
     <View style={{ flex: 1, backgroundColor: OVERLAY.feed }}>
-      {/* Paper-toned radial vignette over the flat feed stand-in (UIUX §2.3) — a warm centre glow
-          fading to a soft dark edge, so the placeholder reads with depth, not as a flat block. */}
+      {/* The live camera preview (or frozen captured frame) sits full-bleed at the back on device;
+          web/tests pass no feed and keep the flat `OVERLAY.feed` stand-in below the vignette. */}
+      {feed ? <View style={StyleSheet.absoluteFill}>{feed}</View> : null}
+      {/* Paper-toned radial vignette over the feed (UIUX §2.3) — a warm centre glow fading to a soft
+          dark edge, so the frame reads with depth, not as a flat block. */}
       <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" pointerEvents="none">
         <Defs>
           <RadialGradient id="feedVignette" cx="50%" cy="42%" r="72%">
@@ -120,37 +126,63 @@ export function CaptureView({
               {instruction}
             </Text>
           </View>
+          {/* Torch toggle under the pill, right-aligned (never overlapping the centered pill). */}
+          {torch ? (
+            <View style={{ alignSelf: 'flex-end', paddingRight: theme.spacing.xl, marginTop: theme.spacing.sm }}>
+              <PressScale>
+                <Pressable
+                  onPress={torch.onToggle}
+                  accessibilityRole="button"
+                  accessibilityLabel="Torch"
+                  accessibilityState={{ selected: torch.on }}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: torch.on ? OVERLAY.pill : OVERLAY.control,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon name="torch" size={22} color={torch.on ? theme.colors.accent : OVERLAY.onControl} decorative />
+                </Pressable>
+              </PressScale>
+            </View>
+          ) : null}
         </View>
 
-        {/* Center: framing guide (uniform 320×320, centered path/oval). */}
+        {/* Center: framing guide (uniform 320×320, centered in the shared 0–1000 frame). The palm
+            guide is the same clean open-palm outline as the onboarding hero, so the shape the user
+            aligns to matches the brand imagery they just saw. */}
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Svg width={320} height={320} viewBox="0 0 320 320">
+          <Svg width={320} height={320} viewBox="0 0 1000 1000">
             {mode === 'palm' ? (
               <Path
-                d={PALM_GUIDE}
-                transform={handSide === 'left' ? 'translate(320,0) scale(-1,1)' : undefined}
+                d={HAND_OUTLINE_PATH}
+                transform={handSide === 'left' ? 'translate(1000,0) scale(-1,1)' : undefined}
                 fill="none"
                 stroke={guideColor}
-                strokeWidth={3}
+                strokeWidth={9}
                 strokeLinejoin="round"
-                strokeDasharray={state === 'searching' ? '10 10' : undefined}
+                strokeLinecap="round"
+                strokeDasharray={state === 'searching' ? '34 28' : undefined}
               />
             ) : (
               <Ellipse
-                cx={160}
-                cy={160}
-                rx={110}
-                ry={140}
+                cx={500}
+                cy={500}
+                rx={344}
+                ry={438}
                 fill="none"
                 stroke={guideColor}
-                strokeWidth={3}
-                strokeDasharray={state === 'searching' ? '10 10' : undefined}
+                strokeWidth={9}
+                strokeDasharray={state === 'searching' ? '34 28' : undefined}
               />
             )}
             {/* The native module's landmarks render as faint fingertip nodes — the "we can see you"
                 signal (§2.3). Device-only: `landmarks` is undefined in the web/stand-in render. */}
             {landmarks?.map((p, i) => (
-              <Circle key={`lm-${i}`} cx={p[0] * 320} cy={p[1] * 320} r={3.5} fill={theme.colors.accent} fillOpacity={0.7} />
+              <Circle key={`lm-${i}`} cx={p[0] * 1000} cy={p[1] * 1000} r={11} fill={theme.colors.accent} fillOpacity={0.7} />
             ))}
           </Svg>
         </View>
@@ -158,8 +190,8 @@ export function CaptureView({
         {/* Bottom: the review step (§2.3) swaps in Retake / Use photo; otherwise help · shutter · toggle. */}
         {isReview ? (
           <View style={{ flexDirection: 'row', gap: theme.spacing.md, paddingHorizontal: theme.spacing.xl, paddingBottom: theme.spacing.lg }}>
-            <Button label="Retake" variant="secondary" onPress={onRetake} style={{ flex: 1 }} />
-            <Button label="Use photo" variant="primary" onPress={onConfirm} style={{ flex: 1 }} />
+            <Button label="Retake" variant="secondary" onPress={onRetake} disabled={confirmLoading} style={{ flex: 1 }} />
+            <Button label="Use photo" variant="primary" onPress={onConfirm} loading={confirmLoading} style={{ flex: 1 }} />
           </View>
         ) : (
           <View

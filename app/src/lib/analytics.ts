@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import { PostHog } from 'posthog-react-native';
-import { Platform } from 'react-native';
+import { LogBox, Platform } from 'react-native';
 
 /**
  * Thin, typed analytics + crash facade (mvp_spec §5.8 — required from day one, not bolted on later:
@@ -106,6 +106,15 @@ export function initAnalytics(): void {
       sendDefaultPii: false,
       tracesSampleRate: 0.2,
     });
+  }
+
+  // Offline dev devices: PostHog's periodic flush (every ~30s) and the boot-time Supabase
+  // sign-in each console.error on connectivity failure, and every one raises a full-screen dev
+  // LogBox over the running app (they swallowed taps during on-device testing). Pure offline
+  // noise — silence ONLY these patterns in the dev overlay (LogBox is dev-only; events still
+  // queue, callers still surface their own warm error states, Sentry still captures real errors).
+  if (__DEV__) {
+    LogBox.ignoreLogs([/Error while flushing PostHog/, /Unable to resolve host/]);
   }
 
   if (POSTHOG_KEY) {

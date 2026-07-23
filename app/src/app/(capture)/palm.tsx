@@ -1,60 +1,80 @@
-import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
-import { router, useLocalSearchParams, type Href } from 'expo-router';
-import { CaptureView, type CaptureState } from '@/features/capture/CaptureView';
-import { useScanUpload } from '@/features/capture/useScanUpload';
+import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { CameraView } from 'expo-camera';
+import { Image } from 'expo-image';
+import { CaptureView } from '@/features/capture/CaptureView';
+import { CameraDeniedView } from '@/features/capture/CameraDeniedView';
+import { useLiveCapture } from '@/features/capture/useLiveCapture';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme';
-import { track } from '@/lib/analytics';
 
 /**
- * Capture C — guided palm capture (UIUX §2.3, audit F1.4 / A5). The live camera + landmark state
- * machine are device-only ([~]) so the stand-in sits at `ready`; the manual shutter exercises the real
- * capture → freeze → review choreography device-free. Help opens the do/don't sheet.
- *
- * "Use photo" (review confirm) routes through the SAME upload chain the primer's picker uses
- * ({@link useScanUpload}) — device-free there is no captured frame, so confirm opens the library and
- * lands on `/analyzing?scanId=…`. This closes A5: the confirm used to push `/analyzing` with NO scanId
- * (an infinite loader). The toggle honours the A3 hand answer threaded in as `?hand=…`.
+ * Capture C — guided palm capture (UIUX §2.3, Phase 1 live camera). All capture logic lives in the
+ * shared {@link useLiveCapture} engine (permission lifecycle, real searching→ready off
+ * `onCameraReady`, shutter → freeze → review → upload, haptics, funnel analytics); this screen
+ * renders it: a back-facing `CameraView` (autofocus on — the SDK default is OFF, which softens
+ * close-up creases) under the framing guide, the frozen frame during review, the torch toggle, and
+ * the A3 hand answer (`?hand=…`) driving the guide mirror + upload metadata. Denied → the warm
+ * recovery view (re-ask while the OS allows it, else Settings), never a dead end. Web keeps the
+ * device-free stand-in (audit A5: confirm falls back to the library pick — no id-less /analyzing).
  */
 export default function PalmCapture() {
   const theme = useTheme();
   const params = useLocalSearchParams<{ hand?: string }>();
   const [handSide, setHandSide] = useState<'left' | 'right'>(params.hand === 'left' ? 'left' : 'right');
-  const [state, setState] = useState<CaptureState>('ready');
-  const { pickAndUpload, error, hasCompleted } = useScanUpload({ kind: 'palm', hand: handSide });
+  // Destructured (not kept as one object) so the ref stays its own binding — the React Compiler
+  // otherwise treats every member read on the returned object as a render-time ref access.
+  const {
+    gate,
+    state,
+    capturedUri,
+    cameraRef,
+    onCameraReady,
+    onMountError,
+    onShutter,
+    onRetake,
+    onConfirm,
+    torchOn,
+    toggleTorch,
+    uploading,
+    displayError,
+    retryPermission,
+    pickAndUpload,
+  } = useLiveCapture({ kind: 'palm', hand: handSide });
 
-  const onShutter = () => {
-    // Auto-capture choreography (§2.3): shutter → freeze-frame → review ("Retake / Use photo").
-    setState('captured');
-    setTimeout(() => setState('review'), 500);
-  };
+  if (gate === 'blocked') {
+    return <CameraDeniedView onUploadInstead={pickAndUpload} onBack={() => router.back()} />;
+  }
+  if (gate === 'ask_again') {
+    return (
+      <CameraDeniedView
+        onRequestAgain={() => void retryPermission()}
+        onUploadInstead={pickAndUpload}
+        onBack={() => router.back()}
+      />
+    );
+  }
 
-  // Capture-funnel timing (A7). Dwell: emit the ms spent in each state as it changes. Abandoned:
-  // emit on unmount UNLESS a capture completed (completedRef) — so leaving without a reading is
-  // measured, but a finished capture is not miscounted as a drop-off. Timestamps init in the mount
-  // effect (Date.now() is impure — never at render) and refs are only written inside effects.
-  const enteredAt = useRef(0);
-  const prevState = useRef<CaptureState>('ready');
-  const stateRef = useRef<CaptureState>('ready');
-  const mountedAt = useRef(0);
-  useEffect(() => {
-    const now = Date.now();
-    enteredAt.current = now;
-    mountedAt.current = now;
-    return () => {
-      if (!hasCompleted()) {
-        track('capture_abandoned', { kind: 'palm', last_state: stateRef.current, duration_ms: Date.now() - mountedAt.current });
-      }
-    };
-  }, [hasCompleted]);
-  useEffect(() => {
-    stateRef.current = state;
-    if (state === prevState.current) return;
-    track('capture_state_dwell', { kind: 'palm', state: prevState.current, ms: Date.now() - enteredAt.current });
-    prevState.current = state;
-    enteredAt.current = Date.now();
-  }, [state]);
+  // Live feed + frozen review frame. The preview stays MOUNTED under the frozen frame (paused by
+  // the engine) so Retake resumes instantly instead of re-initializing the camera.
+  const feed =
+    gate === 'live' ? (
+      <>
+        <CameraView
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          autofocus="on"
+          enableTorch={torchOn}
+          onCameraReady={onCameraReady}
+          onMountError={onMountError}
+        />
+        {capturedUri ? (
+          <Image source={{ uri: capturedUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : null}
+      </>
+    ) : undefined;
 
   return (
     <View style={{ flex: 1 }}>
@@ -62,13 +82,16 @@ export default function PalmCapture() {
         mode="palm"
         state={state}
         handSide={handSide}
+        feed={feed}
+        torch={gate === 'live' && !capturedUri ? { on: torchOn, onToggle: toggleTorch } : undefined}
+        confirmLoading={uploading}
         onSwitchHand={() => setHandSide((h) => (h === 'right' ? 'left' : 'right'))}
-        onShutter={onShutter}
-        onHelp={() => router.push('/capture-help' as Href)}
-        onConfirm={pickAndUpload}
-        onRetake={() => setState('ready')}
+        onShutter={() => void onShutter()}
+        onHelp={() => router.push('/capture-help')}
+        onConfirm={onConfirm}
+        onRetake={onRetake}
       />
-      {error ? (
+      {displayError ? (
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 100, alignItems: 'center', paddingHorizontal: theme.spacing.xl }}>
           <Text
             variant="caption"
@@ -82,7 +105,7 @@ export default function PalmCapture() {
               overflow: 'hidden',
             }}
           >
-            {error}
+            {displayError}
           </Text>
         </View>
       ) : null}

@@ -24,29 +24,56 @@ export function useScanUpload({ kind, hand }: { kind: ScanKind; hand?: Hand }) {
   const completedRef = useRef(false);
   const hasCompleted = useCallback(() => completedRef.current, []);
 
+  // Re-entrancy latch: a double-tap on "Use photo" (or shutter-spam) must never start two uploads /
+  // push /analyzing twice. State alone lags a tap; the ref is synchronous.
+  const uploadingRef = useRef(false);
+
+  // The shared tail both acquisition paths run: scan-create → PUT → scan-ingest → /analyzing. A
+  // failed leg surfaces `error` and leaves the caller where it was (never a hang / id-less push).
+  const uploadUri = useCallback(
+    async (imageUri: string) => {
+      if (uploadingRef.current) return;
+      uploadingRef.current = true;
+      setUploading(true);
+      const startedAt = Date.now();
+      try {
+        track('capture_started', { kind, hand });
+        const { scanId } = await uploadPickedScan({ kind, hand, imageUri });
+        track('upload_ok', { scan_id: scanId, kind });
+        // Capture-funnel completion (A7). Phase 1 acquisition is a manual shutter tap / library pick,
+        // so `manual`; the auto-capture (`auto`) arrives with the landmark-guided flow (Phase 2).
+        track('capture_completed', { kind, method: 'manual', duration_ms: Date.now() - startedAt });
+        completedRef.current = true;
+        // Thread the local image URI (analyzing shows THEIR image, F1.4) + `kind` (analyzing emits
+        // `reading_ready` with it, A7 — useScanStatus doesn't carry the scan's kind).
+        router.push(`/analyzing?scanId=${scanId}&kind=${kind}&capturedUri=${encodeURIComponent(imageUri)}` as Href);
+      } catch (e) {
+        captureError(e, { where: 'useScanUpload' });
+        setError('That didn’t upload — check your connection and try again.');
+      } finally {
+        uploadingRef.current = false;
+        setUploading(false);
+      }
+    },
+    [kind, hand],
+  );
+
   const pickAndUpload = async () => {
     setError(null);
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 });
     if (result.canceled || !result.assets?.[0]) return; // user backed out — no-op, no navigation
-    setUploading(true);
-    const startedAt = Date.now();
-    try {
-      track('capture_started', { kind, hand });
-      const { scanId } = await uploadPickedScan({ kind, hand, imageUri: result.assets[0].uri });
-      track('upload_ok', { scan_id: scanId, kind });
-      // Capture-funnel completion (A7) — device-free the acquisition is a library pick, so `manual`.
-      track('capture_completed', { kind, method: 'manual', duration_ms: Date.now() - startedAt });
-      completedRef.current = true;
-      // Thread the local image URI (analyzing shows THEIR image, F1.4) + `kind` (analyzing emits
-      // `reading_ready` with it, A7 — useScanStatus doesn't carry the scan's kind).
-      router.push(`/analyzing?scanId=${scanId}&kind=${kind}&capturedUri=${encodeURIComponent(result.assets[0].uri)}` as Href);
-    } catch (e) {
-      captureError(e, { where: 'useScanUpload' });
-      setError('That didn’t upload — check your connection and try again.');
-    } finally {
-      setUploading(false);
-    }
+    await uploadUri(result.assets[0].uri);
   };
 
-  return { pickAndUpload, uploading, error, hasCompleted };
+  // The live-camera path (Phase 1): a frame already captured by `CameraView.takePictureAsync` is fed
+  // straight into the same pipeline — no library round-trip.
+  const captureAndUpload = useCallback(
+    (imageUri: string) => {
+      setError(null);
+      return uploadUri(imageUri);
+    },
+    [uploadUri],
+  );
+
+  return { pickAndUpload, captureAndUpload, uploading, error, hasCompleted };
 }
