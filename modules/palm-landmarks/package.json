@@ -1,0 +1,42 @@
+{
+  "name": "palm-landmarks",
+  "version": "0.1.0",
+  "description": "Palmly's custom VisionCamera V5 frame-output plugin: Google MediaPipe Tasks HandLandmarker (P2 native spike)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "react-native": "src/index.ts",
+  "source": "src/index.ts",
+  "files": [
+    "src",
+    "nitrogen",
+    "android/build.gradle",
+    "android/gradle.properties",
+    "android/fix-prefab.gradle",
+    "android/CMakeLists.txt",
+    "android/src",
+    "nitro.json",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "specs": "nitrogen"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "nitrogen": "0.36.1",
+    "react": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-nitro-image": "0.15.1",
+    "react-native-nitro-modules": "0.36.1",
+    "react-native-vision-camera": "5.1.1",
+    "typescript": "~6.0.3"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*",
+    "react-native-nitro-modules": ">= 0.35",
+    "react-native-vision-camera": ">= 5.0"
+  }
+}

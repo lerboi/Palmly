@@ -55,3 +55,8 @@ docs/checkpoints/**/*.jpg
 docs/checkpoints/**/*.jpeg
 docs/checkpoints/**/*.mp4
 docs/checkpoints/**/*.mov
+
+# native module build intermediates (palm-landmarks + any future modules/*)
+modules/*/android/.cxx/
+modules/*/android/build/
+modules/*/lib/

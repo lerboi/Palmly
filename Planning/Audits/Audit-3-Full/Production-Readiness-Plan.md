@@ -57,7 +57,7 @@
 
 > This is `MVP_Buildplan.md` P2 (kill/pivot decision) + P4, unchanged — execute it there, per its own task list. Summary of what it is:
 
-- [ ] **R3.T1** 🤖 P2 spike: VisionCamera V5 + worklets; `modules/palm-landmarks` Kotlin MediaPipe HandLandmarker plugin (≥15fps on the mid-range phone); quality signals → `CaptureQuality`; face detector path. **Timebox ~2 focused weeks; the pre-registered fallback (P2.T6: fast-tflite DIY or per-OS split) is a decision, not a crisis.**
+- [~] **R3.T1** 🤖 P2 spike: VisionCamera V5 + worklets; `modules/palm-landmarks` Kotlin MediaPipe HandLandmarker plugin (≥15fps on the mid-range phone); quality signals → `CaptureQuality`; face detector path. **Timebox ~2 focused weeks; the pre-registered fallback (P2.T6: fast-tflite DIY or per-OS split) is a decision, not a crisis.** _2026-07-24: IN PROGRESS on the physical S20+ — module built + live, hand tracked at **15.8fps** (bar met); the kill/pivot risk is effectively RETIRED. State + evidence: `MVP_Buildplan.md` P2 boxes + Build Log/Decision Log 2026-07-24._
 - [ ] **R3.T2** 🤖 P4: wire `CaptureQuality` into the already-built 7-state machine + corrective copy + review step; auto-capture; canonical crop/warp determinism test (contact sheet); the capture funnel events light up.
 - [ ] **R3.T3** 🤖 With H4c live: the repeat-scan trust proof on device (same hand 3× → one extraction, `matched` short-circuit, "unchanged" brag earned) + the 5-image live extraction verify (P5.T2/T3).
 - [ ] **R3.G** 🚦 = **M1**: fresh user, physical device, install → reveal, no signup, < 4 minutes. iOS via EAS cloud build afterwards, not concurrently.

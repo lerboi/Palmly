@@ -65,6 +65,16 @@ export default function Welcome() {
           style={{ marginBottom: theme.spacing.md }}
           onPress={() => router.push('/how-it-works' as Href)}
         />
+        {/* TEMP (P2 spike session): direct door to the landmark bench — remove before commit */}
+        {__DEV__ ? (
+          <Button
+            label="Dev · landmark bench"
+            variant="ghost"
+            size="md"
+            style={{ alignSelf: 'center' }}
+            onPress={() => router.push('/dev/landmarks' as Href)}
+          />
+        ) : null}
       </Animated.View>
     </Screen>
   );

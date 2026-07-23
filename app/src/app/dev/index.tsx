@@ -61,6 +61,10 @@ const GROUPS: { title: string; routes: { href: string; label: string }[] }[] = [
     routes: [{ href: '/dev/theme', label: 'theme showcase (light + dark)' }],
   },
   {
+    title: 'dev — P2 native spike (device-only)',
+    routes: [{ href: '/dev/landmarks', label: 'landmarks bench (VisionCamera + MediaPipe)' }],
+  },
+  {
     title: 'dev — state previews',
     routes: [
       { href: '/dev/analyzing-failed', label: 'analyzing · failed' },
