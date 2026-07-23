@@ -24,7 +24,7 @@ describe('capture state machine (F1.4)', () => {
   it('searching is hand-aware for palm, ready holds still', () => {
     expect(captureInstruction('searching', 'palm', 'left')).toBe('Hold your left palm up to the camera');
     expect(captureInstruction('searching', 'palm', 'right')).toContain('right');
-    expect(captureInstruction('ready', 'palm')).toBe('Hold still…');
+    expect(captureInstruction('ready', 'palm')).toBe('Perfect — tap to capture');
     expect(captureInstruction('review', 'palm')).toBe('Looks sharp');
   });
 });

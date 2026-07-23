@@ -1,3 +1,4 @@
+import { ensureSession } from './auth';
 import { supabase } from './supabase';
 
 /**
@@ -79,7 +80,15 @@ async function readImageAsBlob(uri: string): Promise<{ body: BodyInit; contentTy
 }
 
 /** Production wiring: real Supabase functions + fetch. */
-export function uploadPickedScan(input: { kind: ScanKind; hand?: Hand; imageUri: string }): Promise<{ scanId: string }> {
+export async function uploadPickedScan(input: { kind: ScanKind; hand?: Hand; imageUri: string }): Promise<{ scanId: string }> {
+  // scan-create requires a user JWT (verify_jwt) — but if the app booted OFFLINE, the launch-time
+  // anonymous sign-in failed and was never retried, so every upload 403'd with a misleading
+  // "check your connection" toast even after connectivity returned (found live 2026-07-24).
+  // Re-ensuring the session here makes the first upload after reconnect self-heal.
+  const userId = await ensureSession();
+  if (!userId) {
+    throw new ScanUploadError('scan-create', 'could not sign in — check your connection and try again');
+  }
   return createAndUploadScan(input, {
     invoke: (fn, body) => supabase.functions.invoke(fn, { body }),
     readImage: readImageAsBlob,

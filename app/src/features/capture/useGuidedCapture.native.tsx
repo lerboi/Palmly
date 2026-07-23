@@ -95,8 +95,8 @@ export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }
   const frozenRef = useRef(false); // captured/review — guidance frames are ignored
   const busyRef = useRef(false);
   const voteRef = useRef<{ candidate: CaptureState; count: number }>({ candidate: 'searching', count: 0 });
-  const readyDeadlineRef = useRef<number | null>(null);
   // How the frame under review was acquired — carried into `capture_completed` at upload (A7).
+  // (Always 'manual' since the 2026-07-24 no-auto-capture decision; kept for the funnel schema.)
   const lastMethodRef = useRef<'auto' | 'manual'>('manual');
 
   const device = useCameraDevice('back');
@@ -107,8 +107,11 @@ export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }
     if (__DEV__) console.log(`[P4] state ${stateRef.current} → ${next}`);
     stateRef.current = next;
     setState(next);
-    // §2.3 haptic vocabulary: a light tick on every guidance state change.
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    // §2.3 haptic vocabulary: a light tick per state change — and a firmer tap on entering
+    // `ready`, the "now's the moment, press the shutter" nudge (no auto-capture).
+    void Haptics.impactAsync(
+      next === 'ready' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light,
+    ).catch(() => {});
   }, []);
 
   const capture = useCallback(
@@ -117,7 +120,6 @@ export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }
       if (__DEV__) console.log(`[P4] capture (${method})`);
       busyRef.current = true;
       frozenRef.current = true;
-      readyDeadlineRef.current = null;
       stateRef.current = 'captured';
       setState('captured');
       // §2.3 capture haptic: a double tap.
@@ -161,21 +163,17 @@ export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }
       }
 
       // Vote: a state switch needs `voteFrames` consecutive agreeing frames (anti-flicker).
+      // No auto-capture (user product decision 2026-07-24, amending §2.3): `ready` is a GO
+      // SIGNAL — the UI lights up and the user takes the photo themselves with the shutter.
       const candidate = deriveTarget(res);
       const vote = voteRef.current;
       if (vote.candidate === candidate) vote.count += 1;
       else voteRef.current = { candidate, count: 1 };
       if (voteRef.current.count >= T.voteFrames && stateRef.current !== candidate) {
         transition(candidate);
-        readyDeadlineRef.current = candidate === 'ready' ? Date.now() + T.readyHoldMs : null;
-      }
-
-      // Auto-capture: tolerances held through the 800ms ring (§2.3).
-      if (stateRef.current === 'ready' && readyDeadlineRef.current != null && Date.now() >= readyDeadlineRef.current) {
-        void capture('auto');
       }
     },
-    [viewW, viewH, transition, capture],
+    [viewW, viewH, transition],
   );
 
   const handOutput = useHandLandmarkerOutput({
@@ -206,7 +204,6 @@ export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }
     setCameraError(null);
     frozenRef.current = false;
     voteRef.current = { candidate: 'searching', count: 0 };
-    readyDeadlineRef.current = null;
     stateRef.current = 'searching';
     setState('searching');
   }, []);

@@ -22,7 +22,7 @@ export const messages = {
   'capture.tilted.palm': 'Face your palm to the camera',
   'capture.tilted.face': 'Face the camera straight on',
   'capture.dark': 'Find a little more light',
-  'capture.ready': 'Hold still…',
+  'capture.ready': 'Perfect — tap to capture',
   'capture.captured': 'Got it',
   'capture.review': 'Looks sharp',
 

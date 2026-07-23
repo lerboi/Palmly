@@ -5,7 +5,10 @@ import Svg, { Circle, Defs, Ellipse, Line, Path, RadialGradient, Rect, Stop } fr
 import Animated, {
   Easing,
   useAnimatedProps,
+  useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import { Button, Icon, Text } from '@/components/ui';
@@ -90,9 +93,15 @@ export function CaptureView({
   const theme = useTheme();
   const instruction = captureInstruction(state, mode, handSide);
   const isReview = state === 'review';
-  const ready = state === 'ready' || state === 'captured';
-  const guideColor = ready || isReview ? theme.colors.accent : OVERLAY.guide;
-  const ringTarget = state === 'captured' ? 1 : state === 'ready' ? 0.7 : 0;
+  // `ready` is the GO SIGNAL (user decision 2026-07-24, amending §2.3's auto-capture): the
+  // guide + ring turn success-green and the shutter pulses — the USER takes the photo.
+  const isGo = state === 'ready';
+  const guideColor = isGo
+    ? theme.colors.success
+    : state === 'captured' || isReview
+      ? theme.colors.accent
+      : OVERLAY.guide;
+  const ringTarget = state === 'captured' || isGo ? 1 : 0;
 
   // Announce the guidance to screen readers whenever it changes (the pill is also a live region).
   useEffect(() => {
@@ -245,7 +254,13 @@ export function CaptureView({
               <Icon name="help" size={24} color={OVERLAY.onControl} />
             </ControlButton>
 
-            <Shutter target={ringTarget} accent={theme.colors.accent} animate={ready} onPress={onShutter} />
+            <Shutter
+              target={ringTarget}
+              accent={isGo ? theme.colors.success : theme.colors.accent}
+              animate={isGo || state === 'captured'}
+              go={isGo}
+              onPress={onShutter}
+            />
 
             {mode === 'palm' ? (
               <PressScale>
@@ -312,16 +327,22 @@ function ControlButton({
   );
 }
 
-/** The shutter + the auto-capture ring, which fills ~800ms when ready (native; web → static end). */
+/**
+ * The shutter + its status ring. In the GO state (`go`) the ring sweeps full in success-green and
+ * the whole control pulses gently — "now's the moment, you press it" (user decision 2026-07-24;
+ * no auto-capture). Reduced-motion / web render the end state statically.
+ */
 function Shutter({
   target,
   accent,
   animate,
+  go = false,
   onPress,
 }: {
   target: number;
   accent: string;
   animate: boolean;
+  go?: boolean;
   onPress?: () => void;
 }) {
   const r = 34;
@@ -341,17 +362,30 @@ function Shutter({
   }, [shouldAnimate, target, progress]);
   const ringProps = useAnimatedProps(() => ({ strokeDashoffset: c * (1 - progress.value) }));
 
+  // The go-pulse: a slow breathe on the whole shutter while it's a good moment to capture.
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    if (go && shouldAnimate) {
+      pulse.value = withRepeat(withSequence(withTiming(1.07, { duration: 520 }), withTiming(1, { duration: 520 })), -1);
+    } else {
+      pulse.value = withTiming(1, { duration: 150 });
+    }
+  }, [go, shouldAnimate, pulse]);
+  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
   return (
-    <Animated.View style={style}>
+    <Animated.View style={[style, pulseStyle]}>
       <Pressable
         onPress={onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         accessibilityRole="button"
         accessibilityLabel="Capture"
+        accessibilityHint={go ? 'Good moment — capture now' : undefined}
         hitSlop={8}
       >
         <Svg width={84} height={84}>
+          {go ? <Circle cx={42} cy={42} r={40} fill={accent} fillOpacity={0.18} /> : null}
           <Circle cx={42} cy={42} r={r} stroke={OVERLAY.track} strokeWidth={4} fill="none" />
           <AnimatedCircle
             cx={42}
