@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
-import Svg, { Circle, G, Line } from 'react-native-svg';
+import Svg, { Circle, G, Line, Rect } from 'react-native-svg';
 import { useHandLandmarkerOutput, type HandFrameResult } from 'palm-landmarks';
+import {
+  createFaceDetectorOutput,
+  type Face,
+} from 'react-native-vision-camera-face-detector';
 
 /**
  * /dev/landmarks — the P2 native-spike bench (device-only).
@@ -27,6 +31,40 @@ export default function DevLandmarks() {
   return useNative();
 }
 
+/**
+ * Bench counters — a module-scope singleton (the bench is a single dev screen). All writes go
+ * through the module-scope record* helpers below so no component closure mutates state the
+ * React Compiler tracks; components only read via the HUD interval (event time, not render).
+ */
+const COUNTERS = { results: 0, errors: 0, lastError: '', inferMs: 0 };
+
+function recordHandResult(res: HandFrameResult): void {
+  COUNTERS.results += 1;
+  COUNTERS.inferMs = res.inferenceTimeMs;
+  if (COUNTERS.results % 30 === 1) {
+    console.log(
+      `[P2] result #${COUNTERS.results} hands=${res.hands.length} infer=${res.inferenceTimeMs.toFixed(1)}ms ${res.width}×${res.height}`,
+    );
+  }
+}
+
+function recordFaceResult(faces: Face[]): void {
+  COUNTERS.results += 1;
+  if (COUNTERS.results % 30 === 1) {
+    const f = faces[0];
+    console.log(
+      `[P2.T5] result #${COUNTERS.results} faces=${faces.length}` +
+        (f ? ` yaw=${f.yawAngle.toFixed(0)} pitch=${f.pitchAngle.toFixed(0)} roll=${f.rollAngle.toFixed(0)}` : ''),
+    );
+  }
+}
+
+function recordBenchError(message: string, tag: string): void {
+  COUNTERS.errors += 1;
+  COUNTERS.lastError = message;
+  if (COUNTERS.errors === 1) console.log(`[${tag}] detect ERROR: ${message}`);
+}
+
 /** MediaPipe hand-skeleton bone pairs (landmark indices). */
 const BONES: [number, number][] = [
   [0, 1], [1, 2], [2, 3], [3, 4],
@@ -43,31 +81,51 @@ function useNative() {
     if (!hasPermission) void requestPermission();
   }, [hasPermission, requestPermission]);
 
-  const device = useCameraDevice('back');
+  // P2.T2 bench = back camera + hand landmarker; P2.T5 bench = front camera + face detector.
+  const [mode, setMode] = useState<'hand' | 'face'>('hand');
+  const backDevice = useCameraDevice('back');
+  const frontDevice = useCameraDevice('front');
+  const device = mode === 'face' ? (frontDevice ?? backDevice) : backDevice;
   const { width: viewW, height: viewH } = useWindowDimensions();
 
   const [result, setResult] = useState<HandFrameResult | null>(null);
-  const counters = useRef({ results: 0, errors: 0, lastError: '', inferMs: 0 });
+  const [face, setFace] = useState<Face | null>(null);
+  // (module-scope COUNTERS: see below — a plain singleton so no ref is touched in render)
 
   const output = useHandLandmarkerOutput({
     onHands(res) {
-      const c = counters.current;
-      c.results += 1;
-      c.inferMs = res.inferenceTimeMs;
-      if (c.results % 30 === 1) {
-        console.log(
-          `[P2] result #${c.results} hands=${res.hands.length} infer=${res.inferenceTimeMs.toFixed(1)}ms ${res.width}×${res.height}`,
-        );
-      }
+      recordHandResult(res);
       setResult(res);
     },
     onError(message) {
-      const c = counters.current;
-      c.errors += 1;
-      c.lastError = message;
-      if (c.errors === 1) console.log(`[P2] detect ERROR: ${message}`);
+      recordBenchError(message, 'P2');
     },
   });
+
+  // P2.T5 face output — their factory, wrapped in OUR stable memo (their useFaceDetectorOutput
+  // hook memoizes on an unstable rest-object and would recreate the native output every render,
+  // and this bench re-renders per detection). autoMode pre-scales bounds to window coords.
+  // `setFace` (state setter) and the module-scope COUNTERS are both stable, so the callbacks
+  // capture them directly — no ref juggling needed.
+  const faceOutput = useMemo(
+    () =>
+      createFaceDetectorOutput({
+        cameraFacing: 'front',
+        performanceMode: 'fast',
+        autoMode: true,
+        windowWidth: viewW,
+        windowHeight: viewH,
+        onFacesDetected(faces) {
+          recordFaceResult(faces);
+          setFace(faces[0] ?? null);
+        },
+        onError(error) {
+          recordBenchError(String(error), 'P2.T5');
+        },
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- construction-time config
+    [],
+  );
 
   const [hud, setHud] = useState({ fps: 0, results: 0, errors: 0, err: '', infer: 0, secs: 0 });
   const startedAt = useRef(0);
@@ -77,7 +135,7 @@ function useNative() {
     lastSample.current = { t: Date.now(), results: 0 };
     const id = setInterval(() => {
       const now = Date.now();
-      const c = counters.current;
+      const c = COUNTERS;
       const dt = (now - lastSample.current.t) / 1000;
       const fps = dt > 0 ? (c.results - lastSample.current.results) / dt : 0;
       lastSample.current = { t: now, results: c.results };
@@ -129,7 +187,7 @@ function useNative() {
         style={StyleSheet.absoluteFill}
         device={device}
         isActive
-        outputs={[output]}
+        outputs={mode === 'face' ? [faceOutput] : [output]}
         onStarted={() => console.log('[P2] session STARTED')}
         onStopped={() => console.log('[P2] session STOPPED')}
         onError={(e: unknown) => console.log(`[P2] session ERROR: ${String(e)}`)}
@@ -137,7 +195,20 @@ function useNative() {
         onPreviewStarted={() => console.log('[P2] preview STARTED')}
         onPreviewStopped={() => console.log('[P2] preview STOPPED')}
       />
-      {result != null && scale > 0 && (
+      {mode === 'face' && face != null && (
+        <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Rect
+            x={face.bounds.x}
+            y={face.bounds.y}
+            width={face.bounds.width}
+            height={face.bounds.height}
+            stroke="#7CFC9B"
+            strokeWidth={3}
+            fill="none"
+          />
+        </Svg>
+      )}
+      {mode === 'hand' && result != null && scale > 0 && (
         <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
           {result.hands.map((hand, hi) => (
             <G key={hi}>
@@ -161,16 +232,24 @@ function useNative() {
         </Svg>
       )}
       <View style={styles.hud} pointerEvents="none">
-        <Text style={styles.hudLine}>P2 · landmark bench</Text>
+        <Text style={styles.hudLine}>P2 · {mode === 'face' ? 'face bench (T5)' : 'landmark bench'}</Text>
         <Text style={styles.hudBig}>{hud.fps} fps</Text>
-        <Text style={styles.hudLine}>
-          hands {result?.hands.length ?? 0}
-          {result?.hands[0] ? ` · ${result.hands[0].handedness} ${Math.round(result.hands[0].confidence * 100)}%` : ''}
-        </Text>
+        {mode === 'hand' ? (
+          <Text style={styles.hudLine}>
+            hands {result?.hands.length ?? 0}
+            {result?.hands[0] ? ` · ${result.hands[0].handedness} ${Math.round(result.hands[0].confidence * 100)}%` : ''}
+          </Text>
+        ) : (
+          <Text style={styles.hudLine}>
+            {face
+              ? `yaw ${face.yawAngle.toFixed(0)}° · pitch ${face.pitchAngle.toFixed(0)}° · roll ${face.rollAngle.toFixed(0)}°`
+              : 'no face'}
+          </Text>
+        )}
         <Text style={styles.hudLine}>infer {hud.infer}ms · results {hud.results}</Text>
         <Text style={styles.hudLine}>errors {hud.errors}</Text>
         <Text style={styles.hudLine}>t = {hud.secs}s</Text>
-        {result != null && (
+        {mode === 'hand' && result != null && (
           <>
             <Text style={styles.hudLine}>— quality (P2.T4) —</Text>
             <Text style={styles.hudLine}>
@@ -184,6 +263,16 @@ function useNative() {
         )}
         {hud.err !== '' && <Text style={styles.hudErr} numberOfLines={3}>{hud.err}</Text>}
       </View>
+      <Pressable
+        style={styles.modeButton}
+        onPress={() => {
+          setResult(null);
+          setFace(null);
+          setMode((m) => (m === 'hand' ? 'face' : 'hand'));
+        }}
+      >
+        <Text style={styles.modeButtonText}>{mode === 'hand' ? 'switch to face' : 'switch to hand'}</Text>
+      </Pressable>
     </View>
   );
 }
@@ -206,4 +295,14 @@ const styles = StyleSheet.create({
   hudBig: { color: '#7CFC9B', fontSize: 28, fontVariant: ['tabular-nums'], fontWeight: '700' },
   hudLine: { color: '#EAEAEA', fontSize: 13, fontVariant: ['tabular-nums'] },
   hudErr: { color: '#FF8888', fontSize: 12 },
+  modeButton: {
+    position: 'absolute',
+    bottom: 48,
+    alignSelf: 'center',
+    borderRadius: 24,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+  },
+  modeButtonText: { color: '#EAEAEA', fontSize: 15, fontWeight: '600' },
 });
