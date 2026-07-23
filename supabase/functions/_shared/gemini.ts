@@ -53,6 +53,18 @@ export async function generateContent(opts: GenerateOpts): Promise<unknown> {
       }),
     opts.retry,
   );
-  if (!res.ok) throw new AppError('gemini_error', `Gemini responded ${res.status}`, 502, await res.text());
+  if (!res.ok) {
+    // withRetry already absorbed transient 429/5xx; a non-429 4xx surviving to here is a
+    // PERMANENT request rejection (e.g. an invalid responseSchema — found live 2026-07-24, when
+    // a 400 spent an hour disguised as "gemini_unavailable"). Distinguish the two so workers can
+    // fail fast instead of burning visibility-timeout retries on a request that can never work.
+    const permanent = res.status >= 400 && res.status < 500 && res.status !== 429;
+    throw new AppError(
+      permanent ? 'gemini_rejected' : 'gemini_error',
+      `Gemini responded ${res.status}`,
+      permanent ? 400 : 502,
+      await res.text(),
+    );
+  }
   return await res.json();
 }

@@ -11,7 +11,7 @@ import { renderNotification } from '../_shared/notif-templates.ts';
 import { KB_VERSION, type GeminiCall, type GeminiResponse } from '../_shared/narrative.ts';
 import { writeTelemetry } from '../_shared/telemetry.ts';
 import { decideFailure, exhausted } from '../_shared/retry.ts';
-import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
+import { AppError, jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 import { createContext, requireMode } from '../_shared/context.ts';
 
 import { SYSTEM_INSTRUCTION as COMPAT_PREFIX } from '../../../prompts/compat/v1/system_instruction.generated.ts';
@@ -89,8 +89,9 @@ async function processMessage(db: SupabaseClient, msg: CompatMessage, geminiCall
       systemInstruction: COMPAT_PREFIX,
       geminiCall,
     });
-  } catch {
-    return applyFailure('gemini_unavailable');
+  } catch (e) {
+    console.error('[worker-compat] generate error:', e instanceof AppError ? `${e.code} ${e.message} :: ${String(e.details).slice(0, 300)}` : String(e));
+    return applyFailure(e instanceof AppError && e.code === 'gemini_rejected' ? 'gemini_rejected' : 'gemini_unavailable');
   }
   if (!narr.ok) return applyFailure(narr.failureReason);
 

@@ -21,6 +21,9 @@ const PERMANENT_FAILURES: ReadonlySet<string> = new Set([
   'content_safety',
   'missing_scan',
   'missing_feature_set',
+  // Gemini rejected the REQUEST itself (non-429 4xx past withRetry) — e.g. an invalid
+  // responseSchema. Retrying an identical bad request cannot help (2026-07-24).
+  'gemini_rejected',
 ]);
 
 export type FailureClass = 'permanent' | 'transient';

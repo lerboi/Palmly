@@ -18,7 +18,7 @@ import {
 } from '../_shared/narrative.ts';
 import { writeTelemetry } from '../_shared/telemetry.ts';
 import { decideFailure, exhausted } from '../_shared/retry.ts';
-import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
+import { AppError, jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 import { createContext, requireMode } from '../_shared/context.ts';
 
 import { SYSTEM_INSTRUCTION as NARRATIVE_PREFIX } from '../../../prompts/narrative/v1/system_instruction.generated.ts';
@@ -147,8 +147,9 @@ async function processMessage(db: SupabaseClient, msg: NarrativeMessage, geminiC
       systemInstruction: NARRATIVE_PREFIX,
       geminiCall,
     });
-  } catch {
-    return applyFailure('gemini_unavailable'); // Gemini unavailable past withRetry → transient
+  } catch (e) {
+    console.error('[worker-narrative] generate error:', e instanceof AppError ? `${e.code} ${e.message} :: ${String(e.details).slice(0, 300)}` : String(e));
+    return applyFailure(e instanceof AppError && e.code === 'gemini_rejected' ? 'gemini_rejected' : 'gemini_unavailable');
   }
   if (!r.ok) return applyFailure(r.failureReason, r.detail);
 

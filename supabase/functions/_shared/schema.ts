@@ -29,6 +29,12 @@ export function toGeminiSchema(root: Record<string, unknown>): unknown {
         if (STRIP.has(k)) continue;
         out[k] = walk(v);
       }
+      // Gemini's Schema proto requires an explicit `type` on every node; JSON Schema allows bare
+      // `enum`. Our schemas use enum-without-type in 15 places (e.g. $defs.major_line fields) and
+      // the API rejects the full schema with a blank 400 INVALID_ARGUMENT once enough of them
+      // accumulate (found live 2026-07-24 — this exact call was H4c-parked until then). All our
+      // enums are string enums.
+      if ('enum' in out && !('type' in out)) out.type = 'string';
       return out;
     }
     return node;

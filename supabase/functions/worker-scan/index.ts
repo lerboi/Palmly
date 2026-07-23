@@ -9,7 +9,7 @@ import { deriveGeometry, featureHash, type Geometry } from '../_shared/features.
 import { fieldMajority, matchSubject, sameFeatures, type SubjectCandidate } from '../_shared/consistency.ts';
 import { writeTelemetry } from '../_shared/telemetry.ts';
 import { alreadyProcessed, decideFailure, exhausted } from '../_shared/retry.ts';
-import { jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
+import { AppError, jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 import { createContext, requireMode } from '../_shared/context.ts';
 
 type Candidate = SubjectCandidate & { scanCount: number };
@@ -127,8 +127,11 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
   let a: Awaited<ReturnType<typeof runExtract>>;
   try {
     a = await runExtract();
-  } catch {
-    return applyFailure('gemini_unavailable'); // Gemini unavailable past withRetry → transient
+  } catch (e) {
+    // A permanent 4xx rejection (gemini_rejected) must fail fast, not masquerade as transient
+    // (found live 2026-07-24: an invalid responseSchema spent an hour as "gemini_unavailable").
+    console.error('[worker-scan] extraction error:', e instanceof AppError ? `${e.code} ${e.message} :: ${String(e.details).slice(0, 300)}` : String(e));
+    return applyFailure(e instanceof AppError && e.code === 'gemini_rejected' ? 'gemini_rejected' : 'gemini_unavailable');
   }
   if (!a.ok) return applyFailure(a.failureReason);
 
