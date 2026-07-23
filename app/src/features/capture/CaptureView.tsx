@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { AccessibilityInfo, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Defs, Ellipse, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, Line, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import Animated, {
   Easing,
   useAnimatedProps,
@@ -37,11 +37,25 @@ const OVERLAY = {
   track: 'rgba(255,255,255,0.16)',
 } as const;
 
+/** MediaPipe hand-skeleton bone pairs (landmark indices) for the faint §2.3 overlay. */
+const HAND_BONES: [number, number][] = [
+  [0, 1], [1, 2], [2, 3], [3, 4],
+  [0, 5], [5, 6], [6, 7], [7, 8],
+  [5, 9], [9, 10], [10, 11], [11, 12],
+  [9, 13], [13, 14], [14, 15], [15, 16],
+  [13, 17], [17, 18], [18, 19], [19, 20],
+  [0, 17],
+];
+/** Fingertip landmark indices — rendered as brighter nodes (§2.3 "fingertip nodes"). */
+const FINGERTIPS = new Set([4, 8, 12, 16, 20]);
+
 interface CaptureViewProps {
   mode: CaptureMode;
   state: CaptureState;
   handSide?: 'left' | 'right';
-  /** The native module's hand landmarks (0–1 normalized points), drawn as a faint skeleton. Device-only. */
+  /** The live hand landmarks in SCREEN-SPACE pixels (the engine pre-maps the camera frame onto
+   *  the cover-fitted preview), drawn as the faint engraved skeleton + fingertip nodes (§2.3
+   *  "we can see you"). Device-only. */
   landmarks?: [number, number][];
   /** The live camera preview (or a frozen captured frame) rendered full-bleed behind the overlay
    *  chrome. Device-only — omitted on web/tests, where the flat feed stand-in shows instead. */
@@ -102,6 +116,35 @@ export function CaptureView({
         </Defs>
         <Rect x="0" y="0" width="100%" height="100%" fill="url(#feedVignette)" />
       </Svg>
+      {/* The live landmarks as a faint engraved skeleton over the feed — the "we can see you"
+          signal (§2.3). Screen-space px from the engine; device-only. */}
+      {landmarks && landmarks.length >= 21 ? (
+        <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+          {HAND_BONES.map(([a, b]) => {
+            const pa = landmarks[a];
+            const pb = landmarks[b];
+            if (!pa || !pb) return null;
+            return (
+              <Line
+                key={`bone-${a}-${b}`}
+                x1={pa[0]} y1={pa[1]} x2={pb[0]} y2={pb[1]}
+                stroke="rgba(255,255,255,0.28)"
+                strokeWidth={1.5}
+              />
+            );
+          })}
+          {landmarks.map((p, i) => (
+            <Circle
+              key={`lm-${i}`}
+              cx={p[0]}
+              cy={p[1]}
+              r={FINGERTIPS.has(i) ? 5 : 2.5}
+              fill={FINGERTIPS.has(i) ? theme.colors.accent : 'rgba(255,255,255,0.4)'}
+              fillOpacity={FINGERTIPS.has(i) ? 0.75 : 1}
+            />
+          ))}
+        </Svg>
+      ) : null}
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         {/* Top: single instruction pill (never stacked, §2.3). */}
         <View style={{ alignItems: 'center', paddingTop: theme.spacing.lg }}>
@@ -179,11 +222,6 @@ export function CaptureView({
                 strokeDasharray={state === 'searching' ? '34 28' : undefined}
               />
             )}
-            {/* The native module's landmarks render as faint fingertip nodes — the "we can see you"
-                signal (§2.3). Device-only: `landmarks` is undefined in the web/stand-in render. */}
-            {landmarks?.map((p, i) => (
-              <Circle key={`lm-${i}`} cx={p[0] * 1000} cy={p[1] * 1000} r={11} fill={theme.colors.accent} fillOpacity={0.7} />
-            ))}
           </Svg>
         </View>
 

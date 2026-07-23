@@ -31,7 +31,7 @@ export function useScanUpload({ kind, hand }: { kind: ScanKind; hand?: Hand }) {
   // The shared tail both acquisition paths run: scan-create → PUT → scan-ingest → /analyzing. A
   // failed leg surfaces `error` and leaves the caller where it was (never a hang / id-less push).
   const uploadUri = useCallback(
-    async (imageUri: string) => {
+    async (imageUri: string, method: 'auto' | 'manual' = 'manual') => {
       if (uploadingRef.current) return;
       uploadingRef.current = true;
       setUploading(true);
@@ -40,9 +40,9 @@ export function useScanUpload({ kind, hand }: { kind: ScanKind; hand?: Hand }) {
         track('capture_started', { kind, hand });
         const { scanId } = await uploadPickedScan({ kind, hand, imageUri });
         track('upload_ok', { scan_id: scanId, kind });
-        // Capture-funnel completion (A7). Phase 1 acquisition is a manual shutter tap / library pick,
-        // so `manual`; the auto-capture (`auto`) arrives with the landmark-guided flow (Phase 2).
-        track('capture_completed', { kind, method: 'manual', duration_ms: Date.now() - startedAt });
+        // Capture-funnel completion (A7). `auto` = the landmark-guided auto-capture (P4.T2);
+        // `manual` = a shutter tap or library pick.
+        track('capture_completed', { kind, method, duration_ms: Date.now() - startedAt });
         completedRef.current = true;
         // Thread the local image URI (analyzing shows THEIR image, F1.4) + `kind` (analyzing emits
         // `reading_ready` with it, A7 — useScanStatus doesn't carry the scan's kind).
@@ -65,12 +65,13 @@ export function useScanUpload({ kind, hand }: { kind: ScanKind; hand?: Hand }) {
     await uploadUri(result.assets[0].uri);
   };
 
-  // The live-camera path (Phase 1): a frame already captured by `CameraView.takePictureAsync` is fed
-  // straight into the same pipeline — no library round-trip.
+  // The live-camera path: a frame already captured by the camera is fed straight into the same
+  // pipeline — no library round-trip. `method` records HOW the frame was acquired (P4.T2
+  // auto-capture vs a manual shutter tap) for the capture funnel.
   const captureAndUpload = useCallback(
-    (imageUri: string) => {
+    (imageUri: string, method: 'auto' | 'manual' = 'manual') => {
       setError(null);
-      return uploadUri(imageUri);
+      return uploadUri(imageUri, method);
     },
     [uploadUri],
   );
