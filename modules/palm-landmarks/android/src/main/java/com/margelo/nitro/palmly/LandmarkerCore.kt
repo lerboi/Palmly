@@ -63,14 +63,14 @@ internal class LandmarkerCore(context: Context, options: HandLandmarkerOptions?)
     val result = landmarker.detectForVideo(BitmapImageBuilder(upright).build(), timestampMs)
     val inferenceMs = (SystemClock.elapsedRealtimeNanos() - startedAt) / 1_000_000.0
 
-    return mapResult(result, inferenceMs, upright.width, upright.height)
+    return mapResult(result, inferenceMs, upright)
   }
 
   fun close() {
     landmarker.close()
   }
 
-  private fun mapResult(result: MPResult, inferenceMs: Double, width: Int, height: Int): HandFrameResult {
+  private fun mapResult(result: MPResult, inferenceMs: Double, upright: Bitmap): HandFrameResult {
     val hands = result.landmarks().mapIndexed { i, landmarks ->
       @Suppress("DEPRECATION")
       val handedness = result.handednesses().getOrNull(i)?.firstOrNull()
@@ -83,10 +83,69 @@ internal class LandmarkerCore(context: Context, options: HandLandmarkerOptions?)
 
     return HandFrameResult(
       hands = hands,
+      quality = computeQuality(hands.firstOrNull(), upright),
       inferenceTimeMs = inferenceMs,
-      width = width.toDouble(),
-      height = height.toDouble(),
+      width = upright.width.toDouble(),
+      height = upright.height.toDouble(),
     )
+  }
+
+  /**
+   * P2.T4: the raw §2.3 guidance signals. Measurements only — thresholds/states are JS (P4.T2).
+   */
+  private fun computeQuality(hand: HandDetection?, upright: Bitmap): CaptureQuality {
+    val exposure = meanLuma(upright)
+    if (hand == null || hand.landmarks.size < 21) {
+      return CaptureQuality(0.0, 0.0, 0.0, 0.0, false, 0.0, exposure)
+    }
+    val lm = hand.landmarks
+
+    // Bounding box (normalized upright coords).
+    val minX = lm.minOf { it.x }; val maxX = lm.maxOf { it.x }
+    val minY = lm.minOf { it.y }; val maxY = lm.maxOf { it.y }
+    val bboxFraction = ((maxX - minX) * (maxY - minY)).coerceIn(0.0, 1.0)
+    val centerX = (minX + maxX) / 2.0
+    val centerY = (minY + maxY) / 2.0
+
+    // Palm plane from wrist(0) → index_mcp(5) / pinky_mcp(17); its normal gives tilt + facing.
+    val wrist = lm[0]; val indexMcp = lm[5]; val pinkyMcp = lm[17]
+    val v1x = indexMcp.x - wrist.x; val v1y = indexMcp.y - wrist.y; val v1z = indexMcp.z - wrist.z
+    val v2x = pinkyMcp.x - wrist.x; val v2y = pinkyMcp.y - wrist.y; val v2z = pinkyMcp.z - wrist.z
+    val nx = v1y * v2z - v1z * v2y
+    val ny = v1z * v2x - v1x * v2z
+    val nz = v1x * v2y - v1y * v2x
+    val nLen = Math.sqrt(nx * nx + ny * ny + nz * nz)
+    // 0° = palm plane parallel to the image plane; 90° = edge-on. |nz| makes it side-agnostic.
+    val tiltDeg = if (nLen > 1e-9) Math.toDegrees(Math.acos((Math.abs(nz) / nLen).coerceIn(0.0, 1.0))) else 90.0
+    // Winding convention (unmirrored back camera): index→pinky wraps one way per hand side.
+    // Sign to be confirmed in the on-device P2.T4 test matrix; flip here if the bench disagrees.
+    val palmFacing = if (hand.handedness == "Right") nz < 0 else nz > 0
+
+    // Fingertip z-spread vs each finger's MCP, normalized by hand size (bbox diagonal).
+    val handSpan = Math.sqrt((maxX - minX) * (maxX - minX) + (maxY - minY) * (maxY - minY))
+    val fingers = arrayOf(4 to 2, 8 to 5, 12 to 9, 16 to 13, 20 to 17)
+    val zSpread = fingers.sumOf { (tip, mcp) -> Math.abs(lm[tip].z - lm[mcp].z) } / fingers.size
+    val flatness = if (handSpan > 1e-9) zSpread / handSpan else 0.0
+
+    return CaptureQuality(bboxFraction, centerX, centerY, tiltDeg, palmFacing, flatness, exposure)
+  }
+
+  /** Mean luma [0,1] over a sparse 16×16 pixel grid — cheap per-frame exposure sample (§2.3 dark/glare). */
+  private fun meanLuma(bitmap: Bitmap): Double {
+    val steps = 16
+    var sum = 0.0
+    val sx = (bitmap.width - 1).coerceAtLeast(1)
+    val sy = (bitmap.height - 1).coerceAtLeast(1)
+    for (i in 0 until steps) {
+      for (j in 0 until steps) {
+        val px = bitmap.getPixel(sx * i / (steps - 1), sy * j / (steps - 1))
+        val r = (px shr 16) and 0xFF
+        val g = (px shr 8) and 0xFF
+        val b = px and 0xFF
+        sum += 0.299 * r + 0.587 * g + 0.114 * b
+      }
+    }
+    return sum / (steps * steps * 255.0)
   }
 
   companion object {

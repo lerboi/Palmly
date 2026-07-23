@@ -10,8 +10,10 @@
 #include <fbjni/fbjni.h>
 #include "HandFrameResult.hpp"
 
+#include "CaptureQuality.hpp"
 #include "HandDetection.hpp"
 #include "HandPoint.hpp"
+#include "JCaptureQuality.hpp"
 #include "JHandDetection.hpp"
 #include "JHandPoint.hpp"
 #include <string>
@@ -38,6 +40,8 @@ namespace margelo::nitro::palmly {
       static const auto clazz = javaClassStatic();
       static const auto fieldHands = clazz->getField<jni::JArrayClass<JHandDetection>>("hands");
       jni::local_ref<jni::JArrayClass<JHandDetection>> hands = this->getFieldValue(fieldHands);
+      static const auto fieldQuality = clazz->getField<JCaptureQuality>("quality");
+      jni::local_ref<JCaptureQuality> quality = this->getFieldValue(fieldQuality);
       static const auto fieldInferenceTimeMs = clazz->getField<double>("inferenceTimeMs");
       double inferenceTimeMs = this->getFieldValue(fieldInferenceTimeMs);
       static const auto fieldWidth = clazz->getField<double>("width");
@@ -55,6 +59,7 @@ namespace margelo::nitro::palmly {
           }
           return __vector;
         }(hands),
+        quality->toCpp(),
         inferenceTimeMs,
         width,
         height
@@ -67,7 +72,7 @@ namespace margelo::nitro::palmly {
      */
     [[maybe_unused]]
     static jni::local_ref<JHandFrameResult::javaobject> fromCpp(const HandFrameResult& value) {
-      using JSignature = JHandFrameResult(jni::alias_ref<jni::JArrayClass<JHandDetection>>, double, double, double);
+      using JSignature = JHandFrameResult(jni::alias_ref<jni::JArrayClass<JHandDetection>>, jni::alias_ref<JCaptureQuality>, double, double, double);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -82,6 +87,7 @@ namespace margelo::nitro::palmly {
           }
           return __array;
         }(value.hands),
+        JCaptureQuality::fromCpp(value.quality),
         value.inferenceTimeMs,
         value.width,
         value.height

@@ -23,6 +23,8 @@ namespace margelo::nitro::palmly { struct HandFrameResult; }
 namespace margelo::nitro::palmly { struct HandDetection; }
 // Forward declaration of `HandPoint` to properly resolve imports.
 namespace margelo::nitro::palmly { struct HandPoint; }
+// Forward declaration of `CaptureQuality` to properly resolve imports.
+namespace margelo::nitro::palmly { struct CaptureQuality; }
 
 #include <memory>
 #include "HybridHandLandmarkerSpec.hpp"
@@ -47,6 +49,8 @@ namespace margelo::nitro::palmly { struct HandPoint; }
 #include "HandPoint.hpp"
 #include "JHandPoint.hpp"
 #include <string>
+#include "CaptureQuality.hpp"
+#include "JCaptureQuality.hpp"
 #include "JFunc_void_std__string.hpp"
 
 namespace margelo::nitro::palmly {

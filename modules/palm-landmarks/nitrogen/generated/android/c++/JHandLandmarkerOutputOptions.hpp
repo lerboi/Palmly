@@ -10,10 +10,12 @@
 #include <fbjni/fbjni.h>
 #include "HandLandmarkerOutputOptions.hpp"
 
+#include "CaptureQuality.hpp"
 #include "HandDelegate.hpp"
 #include "HandDetection.hpp"
 #include "HandFrameResult.hpp"
 #include "HandPoint.hpp"
+#include "JCaptureQuality.hpp"
 #include "JFunc_void_HandFrameResult.hpp"
 #include "JFunc_void_std__string.hpp"
 #include "JHandDelegate.hpp"

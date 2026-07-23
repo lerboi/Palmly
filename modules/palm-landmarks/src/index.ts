@@ -9,6 +9,7 @@ import type {
 } from './specs/HandLandmarkerFactory.nitro';
 
 export type {
+  CaptureQuality,
   HandDetection,
   HandFrameResult,
   HandLandmarker,

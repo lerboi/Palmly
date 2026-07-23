@@ -23,6 +23,9 @@ data class HandFrameResult(
   val hands: Array<HandDetection>,
   @DoNotStrip
   @Keep
+  val quality: CaptureQuality,
+  @DoNotStrip
+  @Keep
   val inferenceTimeMs: Double,
   @DoNotStrip
   @Keep
@@ -37,6 +40,7 @@ data class HandFrameResult(
     if (this === other) return true
     if (other !is HandFrameResult) return false
     return Objects.deepEquals(this.hands, other.hands)
+      && Objects.deepEquals(this.quality, other.quality)
       && Objects.deepEquals(this.inferenceTimeMs, other.inferenceTimeMs)
       && Objects.deepEquals(this.width, other.width)
       && Objects.deepEquals(this.height, other.height)
@@ -45,6 +49,7 @@ data class HandFrameResult(
   override fun hashCode(): Int {
     return arrayOf<Any?>(
       hands,
+      quality,
       inferenceTimeMs,
       width,
       height
@@ -59,8 +64,8 @@ data class HandFrameResult(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(hands: Array<HandDetection>, inferenceTimeMs: Double, width: Double, height: Double): HandFrameResult {
-      return HandFrameResult(hands, inferenceTimeMs, width, height)
+    private fun fromCpp(hands: Array<HandDetection>, quality: CaptureQuality, inferenceTimeMs: Double, width: Double, height: Double): HandFrameResult {
+      return HandFrameResult(hands, quality, inferenceTimeMs, width, height)
     }
   }
 }

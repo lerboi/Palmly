@@ -30,9 +30,12 @@
 
 // Forward declaration of `HandDetection` to properly resolve imports.
 namespace margelo::nitro::palmly { struct HandDetection; }
+// Forward declaration of `CaptureQuality` to properly resolve imports.
+namespace margelo::nitro::palmly { struct CaptureQuality; }
 
 #include "HandDetection.hpp"
 #include <vector>
+#include "CaptureQuality.hpp"
 
 namespace margelo::nitro::palmly {
 
@@ -42,13 +45,14 @@ namespace margelo::nitro::palmly {
   struct HandFrameResult final {
   public:
     std::vector<HandDetection> hands     SWIFT_PRIVATE;
+    CaptureQuality quality     SWIFT_PRIVATE;
     double inferenceTimeMs     SWIFT_PRIVATE;
     double width     SWIFT_PRIVATE;
     double height     SWIFT_PRIVATE;
 
   public:
     HandFrameResult() = default;
-    explicit HandFrameResult(std::vector<HandDetection> hands, double inferenceTimeMs, double width, double height): hands(hands), inferenceTimeMs(inferenceTimeMs), width(width), height(height) {}
+    explicit HandFrameResult(std::vector<HandDetection> hands, CaptureQuality quality, double inferenceTimeMs, double width, double height): hands(hands), quality(quality), inferenceTimeMs(inferenceTimeMs), width(width), height(height) {}
 
   public:
     friend bool operator==(const HandFrameResult& lhs, const HandFrameResult& rhs) = default;
@@ -65,6 +69,7 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::palmly::HandFrameResult(
         JSIConverter<std::vector<margelo::nitro::palmly::HandDetection>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "hands"))),
+        JSIConverter<margelo::nitro::palmly::CaptureQuality>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "quality"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "inferenceTimeMs"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "width"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "height")))
@@ -73,6 +78,7 @@ namespace margelo::nitro {
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::palmly::HandFrameResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "hands"), JSIConverter<std::vector<margelo::nitro::palmly::HandDetection>>::toJSI(runtime, arg.hands));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "quality"), JSIConverter<margelo::nitro::palmly::CaptureQuality>::toJSI(runtime, arg.quality));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "inferenceTimeMs"), JSIConverter<double>::toJSI(runtime, arg.inferenceTimeMs));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "width"), JSIConverter<double>::toJSI(runtime, arg.width));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "height"), JSIConverter<double>::toJSI(runtime, arg.height));
@@ -87,6 +93,7 @@ namespace margelo::nitro {
         return false;
       }
       if (!JSIConverter<std::vector<margelo::nitro::palmly::HandDetection>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "hands")))) return false;
+      if (!JSIConverter<margelo::nitro::palmly::CaptureQuality>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "quality")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "inferenceTimeMs")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "width")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "height")))) return false;

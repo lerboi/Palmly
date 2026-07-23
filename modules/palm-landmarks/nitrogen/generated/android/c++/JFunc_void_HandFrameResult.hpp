@@ -20,6 +20,8 @@
 #include "HandPoint.hpp"
 #include "JHandPoint.hpp"
 #include <string>
+#include "CaptureQuality.hpp"
+#include "JCaptureQuality.hpp"
 
 namespace margelo::nitro::palmly {
 

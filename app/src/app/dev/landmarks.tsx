@@ -170,6 +170,18 @@ function useNative() {
         <Text style={styles.hudLine}>infer {hud.infer}ms · results {hud.results}</Text>
         <Text style={styles.hudLine}>errors {hud.errors}</Text>
         <Text style={styles.hudLine}>t = {hud.secs}s</Text>
+        {result != null && (
+          <>
+            <Text style={styles.hudLine}>— quality (P2.T4) —</Text>
+            <Text style={styles.hudLine}>
+              bbox {(result.quality.bboxFraction * 100).toFixed(0)}% · tilt {result.quality.tiltDeg.toFixed(0)}°
+            </Text>
+            <Text style={styles.hudLine}>
+              {result.quality.palmFacing ? 'palm ✓' : 'back/away'} · flat {result.quality.flatness.toFixed(3)}
+            </Text>
+            <Text style={styles.hudLine}>exposure {(result.quality.exposure * 100).toFixed(0)}%</Text>
+          </>
+        )}
         {hud.err !== '' && <Text style={styles.hudErr} numberOfLines={3}>{hud.err}</Text>}
       </View>
     </View>
