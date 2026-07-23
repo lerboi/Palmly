@@ -27,8 +27,10 @@ export interface HandLandmarkerOptions {
    */
   minTrackingConfidence?: number;
   /**
-   * Compute delegate. GPU is the Backend §2.2 default; CPU is the diagnostics fallback.
-   * @default 'gpu'
+   * Compute delegate. CPU (XNNPACK) is the measured default — on the S20+ it sustains
+   * 16.6-17.8fps tracking vs 13-14.7 on the GPU delegate, whose OpenCL load falls back to an
+   * ICD loader on Samsung (P2 Decision Log 2026-07-24). Pass 'gpu' to A/B on other devices.
+   * @default 'cpu'
    */
   delegate?: HandDelegate;
 }

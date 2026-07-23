@@ -99,7 +99,14 @@ class HybridHandLandmarkerOutput(
   }
 
   companion object {
-    /** 720p-class input is the MediaPipe-recommended live resolution (matches the face-detector). */
-    private val TARGET_RESOLUTION = Size(1280, 720)
+    /**
+     * 960×720: same 4:3 aspect as the preview stream (so the cover-fit overlay mapping stays
+     * exact — a 16:9 analysis stream would crop a different region than the 4:3 preview), but
+     * 3.3× fewer pixels than the 1440×1080 CameraX picked for a 1280×720 target under its
+     * default 4:3 aspect strategy — which made toBitmap+rotate cost ~25ms/frame (11fps on the
+     * S20+). The landmarker scales input to its fixed model size anyway, so detection quality
+     * is unaffected.
+     */
+    private val TARGET_RESOLUTION = Size(960, 720)
   }
 }

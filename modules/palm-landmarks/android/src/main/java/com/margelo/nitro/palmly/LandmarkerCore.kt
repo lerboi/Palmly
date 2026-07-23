@@ -20,8 +20,11 @@ import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult as 
 internal class LandmarkerCore(context: Context, options: HandLandmarkerOptions?) {
   private val landmarker: HandLandmarker = run {
     val delegate = when (options?.delegate) {
-      HandDelegate.CPU -> Delegate.CPU
-      else -> Delegate.GPU // Backend §2.2 default
+      HandDelegate.GPU -> Delegate.GPU
+      // Measured default (Decision Log 2026-07-24): on the S20+ XNNPACK CPU sustains
+      // 16.6-17.8fps tracking vs 13-14.7 on the GPU delegate (whose OpenCL load falls back to
+      // an ICD loader on Samsung). Spec §2.2 named GPU; empirics won.
+      else -> Delegate.CPU
     }
     val base = BaseOptions.builder()
       .setModelAssetPath(MODEL_ASSET)
@@ -54,7 +57,9 @@ internal class LandmarkerCore(context: Context, options: HandLandmarkerOptions?)
       bitmap
     } else {
       val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
-      Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+      // filter=false: 90°-multiple rotations are axis-aligned pixel moves — filtering buys
+      // nothing and costs milliseconds per frame.
+      Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, false)
     }
     val timestampMs = SystemClock.uptimeMillis().coerceAtLeast(lastTimestampMs + 1)
     lastTimestampMs = timestampMs
@@ -90,11 +95,17 @@ internal class LandmarkerCore(context: Context, options: HandLandmarkerOptions?)
     )
   }
 
+  // Exposure changes slowly — sample the luma grid every 5th frame and reuse between.
+  private var lumaFrameCounter = 0
+  private var cachedLuma = 0.0
+
   /**
    * P2.T4: the raw §2.3 guidance signals. Measurements only — thresholds/states are JS (P4.T2).
    */
   private fun computeQuality(hand: HandDetection?, upright: Bitmap): CaptureQuality {
-    val exposure = meanLuma(upright)
+    if (lumaFrameCounter % 5 == 0) cachedLuma = meanLuma(upright)
+    lumaFrameCounter += 1
+    val exposure = cachedLuma
     if (hand == null || hand.landmarks.size < 21) {
       return CaptureQuality(0.0, 0.0, 0.0, 0.0, false, 0.0, exposure)
     }

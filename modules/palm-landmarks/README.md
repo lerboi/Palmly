@@ -62,6 +62,18 @@ const frameOutput = useFrameOutput({
 - The dev bench lives at `/dev/landmarks` in the app (fps HUD + skeleton overlay + logcat `[P2]`
   evidence lines).
 
-## Verified performance
+## Verified performance (2026-07-24, Samsung Galaxy S20+ / SM-G985F, Exynos 990)
 
-_To be recorded at P2.T2 verify: device model + sustained fps over 60s._
+- **Tracked hand (the state that drives capture guidance): 16.6–17.8 fps sustained** — clears
+  the P2 ≥15fps bar. Inference 51–63 ms, `errors 0` over ~3000 consecutive results.
+- Searching (no hand → full palm-detector every frame): 10.9–13.8 fps — affects only
+  hand-acquisition latency, not guidance smoothness.
+- Config: XNNPACK **CPU** delegate (measured faster than the GPU delegate on Samsung, whose
+  OpenCL load falls back to an ICD loader — 13–14.7 fps), 960×720 4:3 analysis stream
+  (matches the preview aspect so the overlay cover-mapping stays exact), bitmap pre-rotated
+  before inference.
+- Full matrix + screenshots: `docs/checkpoints/p2-quality.md`.
+
+Camera-side integration note: use `createHandLandmarkerOutput` / `useHandLandmarkerOutput`
+(the native CameraOutput). Do NOT attach a VisionCamera `useFrameOutput` JS-worklet output —
+V5 5.1.1's `session.configure()` never resolves with one attached (P2 Decision Log 2026-07-24).
