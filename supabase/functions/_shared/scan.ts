@@ -15,6 +15,23 @@ export type ScanSide = 'left' | 'right';
 export interface ScanCreateInput {
   kind: ScanKind;
   side: ScanSide | null; // palm: always set (the A3 hand answer); face: null
+  /** §3.2 `scans.capture_meta`: client cv-pipeline version + shutter-time landmark quality
+   *  (P4.T3). Telemetry/consistency-audit data — never load-bearing, so invalid/oversized
+   *  payloads are DROPPED (null), not rejected: a scan must not fail on its debug stamp. */
+  captureMeta: Record<string, unknown> | null;
+}
+
+/** Max serialized capture_meta the client may attach — anything bigger is silently dropped. */
+const CAPTURE_META_MAX_BYTES = 2048;
+
+function parseCaptureMeta(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  try {
+    if (JSON.stringify(raw).length > CAPTURE_META_MAX_BYTES) return null;
+  } catch {
+    return null; // circular/unserializable — a jsonb column can't hold it anyway
+  }
+  return raw as Record<string, unknown>;
 }
 
 /** Object path inside the private `scans` bucket. Migration 0003 keys owner RLS on segment [1], so
@@ -34,12 +51,13 @@ export function parseScanCreateInput(body: unknown): ScanCreateInput {
   const b = (body ?? {}) as Record<string, unknown>;
   const kind = b.kind === 'face' ? 'face' : b.kind === 'palm' ? 'palm' : null;
   if (!kind) throw new AppError('invalid_request', "kind must be 'palm' or 'face'", 400);
-  if (kind === 'face') return { kind, side: null };
+  const captureMeta = parseCaptureMeta(b.capture_meta);
+  if (kind === 'face') return { kind, side: null, captureMeta };
   const hand = b.hand ?? b.side; // accept either spelling; `hand` is the client's field name
   if (hand !== 'left' && hand !== 'right') {
     throw new AppError('invalid_request', "a palm scan requires hand 'left' or 'right'", 400);
   }
-  return { kind, side: hand };
+  return { kind, side: hand, captureMeta };
 }
 
 // ── scan-create ────────────────────────────────────────────────────────────────────────────────
@@ -68,6 +86,7 @@ export interface ScanCreateDeps {
     side: ScanSide | null;
     status: string;
     storage_path: string;
+    capture_meta: Record<string, unknown>;
   }) => PromiseLike<{ error: unknown }>;
   /** Mint a signed upload URL for the owner path (the client PUTs the crop to it). */
   createSignedUpload: (path: string) => PromiseLike<{ data: { signedUrl: string; token: string } | null; error: unknown }>;
@@ -91,6 +110,7 @@ export async function createScan(deps: ScanCreateDeps): Promise<CreatedScan> {
     side: deps.input.side,
     status: 'uploaded', // pre-ingest state; scan-ingest advances it to 'queued' once the crop lands
     storage_path: storagePath,
+    capture_meta: deps.input.captureMeta ?? {}, // column default is '{}' — keep the shape uniform
   });
   if (insErr) throw new AppError('scan_create_failed', `scan insert failed: ${String((insErr as { message?: string })?.message ?? insErr)}`, 500);
 

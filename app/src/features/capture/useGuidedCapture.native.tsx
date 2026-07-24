@@ -3,11 +3,12 @@ import { AppState, StyleSheet, useWindowDimensions } from 'react-native';
 import { useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { Camera, useCameraDevice, usePhotoOutput } from 'react-native-vision-camera';
-import { useHandLandmarkerOutput, type HandFrameResult } from 'palm-landmarks';
+import { useHandLandmarkerOutput, type CaptureQuality, type HandFrameResult } from 'palm-landmarks';
 import { captureError, track } from '@/lib/analytics';
 import { type Hand, type ScanKind } from '@/lib/scan';
 import { type CaptureState } from './capture';
-import { CAPTURE_TOLERANCES, type CaptureGate, type GuidedCapture } from './guidedCapture';
+import { tryCanonicalizePalm } from './canonicalize';
+import { CAPTURE_TOLERANCES, REVIEW_AUTO_ADVANCE_MS, type CaptureGate, type GuidedCapture } from './guidedCapture';
 import { useScanUpload } from './useScanUpload';
 
 const T = CAPTURE_TOLERANCES;
@@ -34,10 +35,10 @@ function deriveTarget(res: HandFrameResult): CaptureState {
  * native CameraOutput drive the guidance state machine — landmark quality signals vote a frame
  * candidate (3 consecutive frames to switch, anti-flicker), `ready` held for 800ms fires
  * auto-capture (photo → review), the manual shutter stays as the fallback from any state.
- * Permission lifecycle, §2.3 haptics vocabulary, funnel analytics, and the upload chain carry
- * over from the Phase-1 engine (`useLiveCapture`), which remains the face screen's engine until
- * P4.T5. Returns the ready-to-render `feed` element so screens never import VisionCamera
- * (web-export safety — see `guidedCapture.ts`).
+ * Permission lifecycle, §2.3 haptics vocabulary, funnel analytics, and the upload chain carried
+ * over from the Phase-1 engine (`useLiveCapture`, deleted at P4.T5 once the face screen moved to
+ * `useGuidedFaceCapture`). Returns the ready-to-render `feed` element so screens never import
+ * VisionCamera (web-export safety — see `guidedCapture.ts`).
  */
 export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }): GuidedCapture {
   const { pickAndUpload, captureAndUpload, uploading, error: uploadError, hasCompleted } = useScanUpload({ kind, hand });
@@ -98,6 +99,30 @@ export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }
   // How the frame under review was acquired — carried into `capture_completed` at upload (A7).
   // (Always 'manual' since the 2026-07-24 no-auto-capture decision; kept for the funnel schema.)
   const lastMethodRef = useRef<'auto' | 'manual'>('manual');
+  // The last frame's raw quality signals + the P4.T3 capture_meta stamp for the frame under review.
+  const lastQualityRef = useRef<CaptureQuality | null>(null);
+  const metaRef = useRef<Record<string, unknown> | undefined>(undefined);
+
+  // ── §2.3 review auto-advance (P4.T3): armed only for high-quality captures ─────────────────
+  const [autoAdvancing, setAutoAdvancing] = useState(false);
+  const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmRef = useRef<() => void>(() => {});
+  const cancelAutoAdvance = useCallback(() => {
+    if (autoTimerRef.current) {
+      clearTimeout(autoTimerRef.current);
+      autoTimerRef.current = null;
+    }
+    setAutoAdvancing(false);
+  }, []);
+  const armAutoAdvance = useCallback(() => {
+    setAutoAdvancing(true);
+    autoTimerRef.current = setTimeout(() => {
+      autoTimerRef.current = null;
+      setAutoAdvancing(false);
+      confirmRef.current();
+    }, REVIEW_AUTO_ADVANCE_MS);
+  }, []);
+  useEffect(() => cancelAutoAdvance, [cancelAutoAdvance]); // never fire past unmount
 
   const device = useCameraDevice('back');
   const photoOutput = usePhotoOutput({ quality: 0.9 });
@@ -118,6 +143,9 @@ export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }
     async (method: 'auto' | 'manual') => {
       if (busyRef.current || frozenRef.current) return;
       if (__DEV__) console.log(`[P4] capture (${method})`);
+      // Whether the shutter was pressed inside tolerances — the §2.3 "quality score is high"
+      // signal that arms the review auto-advance (borderline captures block for a manual look).
+      const fromReady = stateRef.current === 'ready';
       busyRef.current = true;
       frozenRef.current = true;
       stateRef.current = 'captured';
@@ -128,10 +156,35 @@ export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }
       try {
         const file = await photoOutput.capturePhotoToFile({}, {});
         lastMethodRef.current = method;
-        setCapturedUri(`file://${file.filePath}`);
+        const rawUri = `file://${file.filePath}`;
+        // P4.T3: warp the still into the pinned cv1 extraction frame. Falls back to the raw
+        // photo (cv:'none') if the still shows no detectable hand — the pipeline still works,
+        // it just loses the determinism/consistency benefits for this one scan.
+        const canonical = kind === 'palm' ? await tryCanonicalizePalm(rawUri) : null;
+        if (__DEV__) console.log(`[P4] canonicalize: ${canonical ? 'cv1' : 'raw fallback'}`);
+        const q = lastQualityRef.current;
+        metaRef.current = {
+          cv: canonical ? 'cv1' : 'none',
+          source: 'camera',
+          method,
+          from_ready: fromReady,
+          ...(q
+            ? {
+                quality: {
+                  bbox: Number(q.bboxFraction.toFixed(3)),
+                  tilt_deg: Number(q.tiltDeg.toFixed(1)),
+                  flatness: Number(q.flatness.toFixed(3)),
+                  exposure: Number(q.exposure.toFixed(2)),
+                },
+              }
+            : {}),
+        };
+        setCapturedUri(canonical?.uri ?? rawUri);
         setLandmarks(undefined);
         stateRef.current = 'review';
         setState('review');
+        // §2.3: high-quality captures auto-advance after 2s; Retake (or confirm) cancels.
+        if (canonical && fromReady) armAutoAdvance();
       } catch (e) {
         captureError(e, { where: `${kind}Capture.autoShutter` });
         frozenRef.current = false;
@@ -142,13 +195,14 @@ export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }
         busyRef.current = false;
       }
     },
-    [kind, photoOutput],
+    [kind, photoOutput, armAutoAdvance],
   );
 
   // The per-frame guidance driver: ~15fps on the JS thread, from the landmarker's onHands.
   const handleFrame = useCallback(
     (res: HandFrameResult) => {
       if (frozenRef.current) return;
+      lastQualityRef.current = res.quality; // the P4.T3 capture_meta stamp reads the shutter-time frame
 
       // Map normalized upright-frame landmarks onto the cover-fitted, centered preview
       // (screen-space px for the CaptureView skeleton overlay).
@@ -200,20 +254,29 @@ export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }
     ) : undefined;
 
   const onRetake = useCallback(() => {
+    cancelAutoAdvance();
+    metaRef.current = undefined;
     setCapturedUri(null);
     setCameraError(null);
     frozenRef.current = false;
     voteRef.current = { candidate: 'searching', count: 0 };
     stateRef.current = 'searching';
     setState('searching');
-  }, []);
+  }, [cancelAutoAdvance]);
 
   const onConfirm = useCallback(() => {
+    cancelAutoAdvance();
     // A captured frame uploads directly; without one (shouldn't happen in review) fall back to
     // the library pick so confirm still reaches /analyzing with a real scanId (audit A5).
-    if (capturedUri) void captureAndUpload(capturedUri, lastMethodRef.current);
+    if (capturedUri) void captureAndUpload(capturedUri, lastMethodRef.current, metaRef.current);
     else void pickAndUpload();
-  }, [capturedUri, captureAndUpload, pickAndUpload]);
+  }, [capturedUri, captureAndUpload, pickAndUpload, cancelAutoAdvance]);
+
+  // The auto-advance timer confirms through a ref so the armed timeout always runs the LATEST
+  // confirm (capturedUri lands after the timer is armed).
+  useEffect(() => {
+    confirmRef.current = onConfirm;
+  }, [onConfirm]);
 
   const toggleTorch = useCallback(() => setTorchOn((t) => !t), []);
 
@@ -249,6 +312,7 @@ export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }
     onShutter: () => void capture('manual'),
     onRetake,
     onConfirm,
+    autoAdvancing,
     uploading,
     displayError: uploadError ?? cameraError,
     retryPermission: ask,

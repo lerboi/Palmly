@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { CaptureView } from '@/features/capture/CaptureView';
 import { CameraDeniedView } from '@/features/capture/CameraDeniedView';
+import { REVIEW_AUTO_ADVANCE_MS } from '@/features/capture/guidedCapture';
 import { useGuidedCapture } from '@/features/capture/useGuidedCapture';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme';
@@ -32,6 +33,7 @@ export default function PalmCapture() {
     onShutter,
     onRetake,
     onConfirm,
+    autoAdvancing,
     uploading,
     displayError,
     retryPermission,
@@ -72,6 +74,7 @@ export default function PalmCapture() {
         landmarks={capturedUri ? undefined : landmarks}
         torch={gate === 'live' && !capturedUri ? { on: torchOn, onToggle: toggleTorch } : undefined}
         confirmLoading={uploading}
+        autoAdvance={autoAdvancing ? { durationMs: REVIEW_AUTO_ADVANCE_MS } : null}
         onSwitchHand={() => setHandSide((h) => (h === 'right' ? 'left' : 'right'))}
         onShutter={onShutter}
         onHelp={() => router.push('/capture-help')}

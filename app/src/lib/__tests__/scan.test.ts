@@ -42,6 +42,31 @@ describe('createAndUploadScan', () => {
     expect(bodies['scan-ingest']).toEqual({ scan_id: 's1' });
   });
 
+  it('threads capture_meta (the P4.T3 cv/quality stamp) into the scan-create body', async () => {
+    let sentBody: Record<string, unknown> | undefined;
+    await createAndUploadScan(
+      {
+        kind: 'palm',
+        hand: 'right',
+        imageUri: 'file:///canonical-1.jpg',
+        captureMeta: { cv: 'cv1', source: 'camera', method: 'manual' },
+      },
+      okDeps({
+        invoke: (fn, body) => {
+          if (fn === 'scan-create') sentBody = body;
+          return Promise.resolve(
+            fn === 'scan-create' ? { data: { scan_id: 's3', upload_url: 'u' }, error: null } : { data: {}, error: null },
+          );
+        },
+      }),
+    );
+    expect(sentBody).toEqual({
+      kind: 'palm',
+      hand: 'right',
+      capture_meta: { cv: 'cv1', source: 'camera', method: 'manual' },
+    });
+  });
+
   it('omits hand for a face scan', async () => {
     let sentBody: Record<string, unknown> | undefined;
     await createAndUploadScan(

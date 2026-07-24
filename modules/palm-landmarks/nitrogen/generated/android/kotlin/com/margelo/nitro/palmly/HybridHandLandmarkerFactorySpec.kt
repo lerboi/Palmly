@@ -11,6 +11,7 @@ import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.camera.HybridCameraOutputSpec
+import com.margelo.nitro.core.Promise
 import com.margelo.nitro.core.HybridObject
 
 /**
@@ -36,6 +37,14 @@ abstract class HybridHandLandmarkerFactorySpec: HybridObject() {
   @DoNotStrip
   @Keep
   abstract fun createHandLandmarkerOutput(options: HandLandmarkerOutputOptions): com.margelo.nitro.camera.HybridCameraOutputSpec
+  
+  @DoNotStrip
+  @Keep
+  abstract fun canonicalizePalm(filePath: String): Promise<CanonicalPalm>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun canonicalizeRegion(filePath: String, centerX: Double, centerY: Double, sizeFraction: Double): Promise<String>
 
   // Default implementation of `HybridObject.toString()`
   override fun toString(): String {

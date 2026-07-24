@@ -56,6 +56,8 @@ namespace margelo::nitro::palmly {
     // Methods
     std::shared_ptr<HybridHandLandmarkerSpec> createHandLandmarker(const std::optional<HandLandmarkerOptions>& options) override;
     std::shared_ptr<margelo::nitro::camera::HybridCameraOutputSpec> createHandLandmarkerOutput(const HandLandmarkerOutputOptions& options) override;
+    std::shared_ptr<Promise<CanonicalPalm>> canonicalizePalm(const std::string& filePath) override;
+    std::shared_ptr<Promise<std::string>> canonicalizeRegion(const std::string& filePath, double centerX, double centerY, double sizeFraction) override;
 
   private:
     jni::global_ref<JHybridHandLandmarkerFactorySpec::JavaPart> _javaPart;

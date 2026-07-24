@@ -3,6 +3,7 @@ import { router, type Href } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadPickedScan, type Hand, type ScanKind } from '@/lib/scan';
 import { captureError, track } from '@/lib/analytics';
+import { tryCanonicalizePalm } from './canonicalize';
 
 /**
  * The single device-free door into the live pipeline (audit A5). Opens the photo library, then drives
@@ -31,14 +32,14 @@ export function useScanUpload({ kind, hand }: { kind: ScanKind; hand?: Hand }) {
   // The shared tail both acquisition paths run: scan-create → PUT → scan-ingest → /analyzing. A
   // failed leg surfaces `error` and leaves the caller where it was (never a hang / id-less push).
   const uploadUri = useCallback(
-    async (imageUri: string, method: 'auto' | 'manual' = 'manual') => {
+    async (imageUri: string, method: 'auto' | 'manual' = 'manual', captureMeta?: Record<string, unknown>) => {
       if (uploadingRef.current) return;
       uploadingRef.current = true;
       setUploading(true);
       const startedAt = Date.now();
       try {
         track('capture_started', { kind, hand });
-        const { scanId } = await uploadPickedScan({ kind, hand, imageUri });
+        const { scanId } = await uploadPickedScan({ kind, hand, imageUri, captureMeta });
         track('upload_ok', { scan_id: scanId, kind });
         // Capture-funnel completion (A7). `auto` = the landmark-guided auto-capture (P4.T2);
         // `manual` = a shutter tap or library pick.
@@ -62,16 +63,25 @@ export function useScanUpload({ kind, hand }: { kind: ScanKind; hand?: Hand }) {
     setError(null);
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 });
     if (result.canceled || !result.assets?.[0]) return; // user backed out — no-op, no navigation
-    await uploadUri(result.assets[0].uri);
+    // P4.T3: library picks run the same canonical crop/warp as camera captures (the extraction
+    // input contract is per-image, not per-source). No hand found → raw upload, cv:'none' — the
+    // worker's `not_a_hand` stays the honest gate.
+    const picked = result.assets[0].uri;
+    const canonical = kind === 'palm' ? await tryCanonicalizePalm(picked) : null;
+    await uploadUri(canonical?.uri ?? picked, 'manual', {
+      cv: canonical ? 'cv1' : 'none',
+      source: 'library',
+    });
   };
 
   // The live-camera path: a frame already captured by the camera is fed straight into the same
   // pipeline — no library round-trip. `method` records HOW the frame was acquired (P4.T2
-  // auto-capture vs a manual shutter tap) for the capture funnel.
+  // auto-capture vs a manual shutter tap) for the capture funnel; `captureMeta` is the engine's
+  // cv/quality stamp (P4.T3).
   const captureAndUpload = useCallback(
-    (imageUri: string, method: 'auto' | 'manual' = 'manual') => {
+    (imageUri: string, method: 'auto' | 'manual' = 'manual', captureMeta?: Record<string, unknown>) => {
       setError(null);
-      return uploadUri(imageUri, method);
+      return uploadUri(imageUri, method, captureMeta);
     },
     [uploadUri],
   );

@@ -5,16 +5,32 @@ import { createScan, ingestScan, parseScanCreateInput, scanStoragePath } from '.
 // ── parseScanCreateInput ─────────────────────────────────────────────────────────────────────────
 
 Deno.test('parseScanCreateInput: palm carries the hand answer through to `side`', () => {
-  assertEquals(parseScanCreateInput({ kind: 'palm', hand: 'left' }), { kind: 'palm', side: 'left' });
-  assertEquals(parseScanCreateInput({ kind: 'palm', hand: 'right' }), { kind: 'palm', side: 'right' });
+  assertEquals(parseScanCreateInput({ kind: 'palm', hand: 'left' }), { kind: 'palm', side: 'left', captureMeta: null });
+  assertEquals(parseScanCreateInput({ kind: 'palm', hand: 'right' }), { kind: 'palm', side: 'right', captureMeta: null });
   // `side` is accepted as an alias for `hand`
-  assertEquals(parseScanCreateInput({ kind: 'palm', side: 'left' }), { kind: 'palm', side: 'left' });
+  assertEquals(parseScanCreateInput({ kind: 'palm', side: 'left' }), { kind: 'palm', side: 'left', captureMeta: null });
 });
 
 Deno.test('parseScanCreateInput: face has no side', () => {
-  assertEquals(parseScanCreateInput({ kind: 'face' }), { kind: 'face', side: null });
+  assertEquals(parseScanCreateInput({ kind: 'face' }), { kind: 'face', side: null, captureMeta: null });
   // a stray hand on a face scan is ignored, not an error
-  assertEquals(parseScanCreateInput({ kind: 'face', hand: 'left' }), { kind: 'face', side: null });
+  assertEquals(parseScanCreateInput({ kind: 'face', hand: 'left' }), { kind: 'face', side: null, captureMeta: null });
+});
+
+Deno.test('parseScanCreateInput: capture_meta (P4.T3) passes through when it is a sane object', () => {
+  const meta = { cv: 'cv1', source: 'camera', quality: { bbox: 0.42 } };
+  assertEquals(parseScanCreateInput({ kind: 'palm', hand: 'left', capture_meta: meta }).captureMeta, meta);
+  assertEquals(parseScanCreateInput({ kind: 'face', capture_meta: meta }).captureMeta, meta);
+});
+
+Deno.test('parseScanCreateInput: junk capture_meta is DROPPED, never an error (telemetry must not block a scan)', () => {
+  // non-objects / arrays → null
+  for (const bad of ['cv1', 42, true, ['cv1'], null]) {
+    assertEquals(parseScanCreateInput({ kind: 'palm', hand: 'left', capture_meta: bad }).captureMeta, null);
+  }
+  // oversized (> 2 KB serialized) → null
+  const oversized = { blob: 'x'.repeat(3000) };
+  assertEquals(parseScanCreateInput({ kind: 'palm', hand: 'left', capture_meta: oversized }).captureMeta, null);
 });
 
 Deno.test('parseScanCreateInput: a palm scan REQUIRES a valid hand — no silent default to right', () => {
@@ -40,7 +56,7 @@ Deno.test('createScan: happy path runs quota → insert → sign, returns id + u
   let insertedRow: Record<string, unknown> | null = null;
   const result = await createScan({
     userId: 'u1',
-    input: { kind: 'palm', side: 'left' },
+    input: { kind: 'palm', side: 'left', captureMeta: { cv: 'cv1', source: 'camera' } },
     newId: () => 'scan-fixed',
     checkQuota: () => {
       calls.push('quota');
@@ -63,7 +79,7 @@ Deno.test('createScan: happy path runs quota → insert → sign, returns id + u
     uploadUrl: 'https://x/upload/u1/scan-fixed.jpg?token=tok',
     uploadToken: 'tok',
   });
-  // the row carries the mapped side + owner path + the pre-ingest status
+  // the row carries the mapped side + owner path + the pre-ingest status + the P4.T3 cv stamp
   assertEquals(insertedRow, {
     id: 'scan-fixed',
     user_id: 'u1',
@@ -71,7 +87,24 @@ Deno.test('createScan: happy path runs quota → insert → sign, returns id + u
     side: 'left',
     status: 'uploaded',
     storage_path: 'u1/scan-fixed.jpg',
+    capture_meta: { cv: 'cv1', source: 'camera' },
   });
+});
+
+Deno.test('createScan: absent captureMeta inserts the column default shape ({})', async () => {
+  let insertedRow: Record<string, unknown> | null = null;
+  await createScan({
+    userId: 'u1',
+    input: { kind: 'face', side: null, captureMeta: null },
+    newId: () => 'scan-f',
+    checkQuota: () => Promise.resolve(),
+    insertScan: (row) => {
+      insertedRow = row;
+      return Promise.resolve({ error: null });
+    },
+    createSignedUpload: (path) => Promise.resolve({ data: { signedUrl: `https://x/${path}`, token: 't' }, error: null }),
+  });
+  assertEquals((insertedRow as Record<string, unknown> | null)?.capture_meta, {});
 });
 
 Deno.test('createScan: quota refusal happens BEFORE any row is written', async () => {
@@ -80,7 +113,7 @@ Deno.test('createScan: quota refusal happens BEFORE any row is written', async (
     () =>
       createScan({
         userId: 'u1',
-        input: { kind: 'palm', side: 'right' },
+        input: { kind: 'palm', side: 'right', captureMeta: null },
         newId: () => 'scan-x',
         checkQuota: () => Promise.reject(new AppError('rate_limited', 'too many', 429)),
         insertScan: () => {
@@ -101,7 +134,7 @@ Deno.test('createScan: an insert failure surfaces and does not mint an upload ur
     () =>
       createScan({
         userId: 'u1',
-        input: { kind: 'face', side: null },
+        input: { kind: 'face', side: null, captureMeta: null },
         newId: () => 'scan-x',
         checkQuota: () => Promise.resolve(),
         insertScan: () => Promise.resolve({ error: { message: 'fk violation' } }),

@@ -27,7 +27,18 @@ async function loadSubjectCandidates(db: SupabaseClient, userId: string, subject
 }
 
 const SCHEMA_VERSION = 1;
-const EXTRACTOR_VERSION = 'cv1+gemini-3.5-flash+extract.v1';
+
+/**
+ * `extractor_version` = cv-pipeline + model + prompt tuple (§3.2, §6.6 item 2). The cv component
+ * is the CLIENT's claim from `scans.capture_meta.cv` — 'cv1' when the app ran the pinned
+ * canonical crop/warp (P4.T3), 'cv0' for raw uploads (web picks, no-hand fallbacks, pre-P4.T3
+ * clients) — so readings honestly record which input pipeline produced them.
+ */
+function extractorVersion(captureMeta: unknown): string {
+  const cv = (captureMeta as Record<string, unknown> | null)?.cv;
+  const cvTag = typeof cv === 'string' && /^cv\d{1,3}$/.test(cv) ? cv : 'cv0';
+  return `${cvTag}+gemini-3.5-flash+extract.v1`;
+}
 
 // Frozen extraction prefix — the versioned prompt, bundled via a generated static import so it
 // deploys (a Deno.readTextFile of a path outside the function dir does NOT bundle; Decision Log 2026-07-14).
@@ -97,7 +108,7 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
   // poison / retry-exhausted message → dead-letter before spending another Gemini call on it
   if (exhausted(msg.read_ct)) return applyFailure('exhausted');
 
-  const { data: scan } = await db.from('scans').select('id,user_id,kind,side,storage_path,status').eq('id', scanId).single();
+  const { data: scan } = await db.from('scans').select('id,user_id,kind,side,storage_path,status,capture_meta').eq('id', scanId).single();
   if (!scan) return applyFailure('missing_scan');
 
   // H2: never re-run a scan the pipeline has already moved past. If `archive` below fails after the
@@ -173,7 +184,7 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
     .from('feature_sets')
     .insert({
       scan_id: scanId, user_id: scan.user_id, kind, side: scan.side,
-      features, feature_schema_version: SCHEMA_VERSION, extractor_version: EXTRACTOR_VERSION,
+      features, feature_schema_version: SCHEMA_VERSION, extractor_version: extractorVersion(scan.capture_meta),
       geometry, feature_hash: featHash,
     })
     .select('id')

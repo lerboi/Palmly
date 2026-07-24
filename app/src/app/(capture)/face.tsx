@@ -1,80 +1,74 @@
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
-import { CameraView } from 'expo-camera';
 import { Image } from 'expo-image';
 import { CaptureView } from '@/features/capture/CaptureView';
 import { CameraDeniedView } from '@/features/capture/CameraDeniedView';
-import { useLiveCapture } from '@/features/capture/useLiveCapture';
+import { REVIEW_AUTO_ADVANCE_MS } from '@/features/capture/guidedCapture';
+import { useGuidedFaceCapture } from '@/features/capture/useGuidedFaceCapture';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 
 /**
- * Capture C — face-reading variant (UIUX §2.3/§2.5: "the same B→E loop with face capture"), on the
- * same {@link useLiveCapture} engine as palm: a FRONT-facing preview under the oval guide, real
- * searching→ready, shutter → freeze → review → upload (kind='face'), the same denied recovery.
- * No torch (front camera) and no hand toggle (CaptureView keeps the shutter centred with a spacer).
- * Euler-angle alignment prompts + blink-to-capture remain the landmark phase ([~], Phase 2). Web
- * keeps the device-free stand-in; confirm falls back to the library pick (audit A5 — reached live
- * from the reveal's "read your face" offer, never an id-less /analyzing push).
+ * Capture C — face-reading variant (UIUX §2.3/§2.5, P4.T5: "the same B→E loop with face
+ * capture" — oval guide + Euler-angle prompts). The platform-split {@link useGuidedFaceCapture}
+ * engine owns everything: VisionCamera (front) + the ML Kit face-detector CameraOutput drive the
+ * §2.3 state machine (searching/center → distance → yaw-pitch tilt → ready go-signal, 3-frame
+ * anti-flicker vote, NO auto-capture per the 2026-07-24 user decision), shutter → pinned
+ * fixed-region canonical crop → review (auto-advance when high-quality) → upload (kind='face').
+ * No torch (front camera) and no hand toggle (CaptureView keeps the shutter centred). Denied →
+ * the warm recovery view; web → the device-free stand-in (confirm falls back to the library
+ * pick — audit A5).
  */
 export default function FaceCapture() {
   const theme = useTheme();
-  // Destructured (not kept as one object) so the ref stays its own binding — the React Compiler
-  // otherwise treats every member read on the returned object as a render-time ref access.
   const {
     gate,
     state,
+    feed,
     capturedUri,
-    cameraRef,
-    onCameraReady,
-    onMountError,
     onShutter,
     onRetake,
     onConfirm,
+    autoAdvancing,
     uploading,
     displayError,
     retryPermission,
     pickAndUpload,
-  } = useLiveCapture({ kind: 'face' });
+  } = useGuidedFaceCapture();
 
   if (gate === 'blocked') {
-    return <CameraDeniedView onUploadInstead={pickAndUpload} onBack={() => router.back()} />;
+    return <CameraDeniedView onUploadInstead={() => void pickAndUpload()} onBack={() => router.back()} />;
   }
   if (gate === 'ask_again') {
     return (
       <CameraDeniedView
         onRequestAgain={() => void retryPermission()}
-        onUploadInstead={pickAndUpload}
+        onUploadInstead={() => void pickAndUpload()}
         onBack={() => router.back()}
       />
     );
   }
 
-  const feed =
-    gate === 'live' ? (
-      <>
-        <CameraView
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          facing="front"
-          autofocus="on"
-          onCameraReady={onCameraReady}
-          onMountError={onMountError}
-        />
-        {capturedUri ? (
-          <Image source={{ uri: capturedUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-        ) : null}
-      </>
-    ) : undefined;
+  // Live feed + frozen review frame; the preview stays MOUNTED under the frozen frame so Retake
+  // resumes instantly instead of re-initializing the camera session (same as palm).
+  const fullFeed = feed ? (
+    <>
+      {feed}
+      {capturedUri ? (
+        <Image source={{ uri: capturedUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+      ) : null}
+    </>
+  ) : undefined;
 
   return (
     <View style={{ flex: 1 }}>
       <CaptureView
         mode="face"
         state={state}
-        feed={feed}
+        feed={fullFeed}
         confirmLoading={uploading}
-        onShutter={() => void onShutter()}
+        autoAdvance={autoAdvancing ? { durationMs: REVIEW_AUTO_ADVANCE_MS } : null}
+        onShutter={onShutter}
         onHelp={() => router.push('/capture-help')}
         onConfirm={onConfirm}
         onRetake={onRetake}

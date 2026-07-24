@@ -21,6 +21,8 @@ namespace margelo::nitro::palmly { struct HandLandmarkerOptions; }
 namespace margelo::nitro::camera { class HybridCameraOutputSpec; }
 // Forward declaration of `HandLandmarkerOutputOptions` to properly resolve imports.
 namespace margelo::nitro::palmly { struct HandLandmarkerOutputOptions; }
+// Forward declaration of `CanonicalPalm` to properly resolve imports.
+namespace margelo::nitro::palmly { struct CanonicalPalm; }
 
 #include <memory>
 #include "HybridHandLandmarkerSpec.hpp"
@@ -28,6 +30,9 @@ namespace margelo::nitro::palmly { struct HandLandmarkerOutputOptions; }
 #include <optional>
 #include <VisionCamera/HybridCameraOutputSpec.hpp>
 #include "HandLandmarkerOutputOptions.hpp"
+#include "CanonicalPalm.hpp"
+#include <NitroModules/Promise.hpp>
+#include <string>
 
 namespace margelo::nitro::palmly {
 
@@ -62,6 +67,8 @@ namespace margelo::nitro::palmly {
       // Methods
       virtual std::shared_ptr<HybridHandLandmarkerSpec> createHandLandmarker(const std::optional<HandLandmarkerOptions>& options) = 0;
       virtual std::shared_ptr<margelo::nitro::camera::HybridCameraOutputSpec> createHandLandmarkerOutput(const HandLandmarkerOutputOptions& options) = 0;
+      virtual std::shared_ptr<Promise<CanonicalPalm>> canonicalizePalm(const std::string& filePath) = 0;
+      virtual std::shared_ptr<Promise<std::string>> canonicalizeRegion(const std::string& filePath, double centerX, double centerY, double sizeFraction) = 0;
 
     protected:
       // Hybrid Setup

@@ -11,6 +11,10 @@
 namespace margelo::nitro::palmly { class HybridHandLandmarkerSpec; }
 // Forward declaration of `HybridCameraOutputSpec` to properly resolve imports.
 namespace margelo::nitro::camera { class HybridCameraOutputSpec; }
+// Forward declaration of `CanonicalPalm` to properly resolve imports.
+namespace margelo::nitro::palmly { struct CanonicalPalm; }
+// Forward declaration of `HandPoint` to properly resolve imports.
+namespace margelo::nitro::palmly { struct HandPoint; }
 // Forward declaration of `HandLandmarkerOptions` to properly resolve imports.
 namespace margelo::nitro::palmly { struct HandLandmarkerOptions; }
 // Forward declaration of `HandDelegate` to properly resolve imports.
@@ -21,8 +25,6 @@ namespace margelo::nitro::palmly { struct HandLandmarkerOutputOptions; }
 namespace margelo::nitro::palmly { struct HandFrameResult; }
 // Forward declaration of `HandDetection` to properly resolve imports.
 namespace margelo::nitro::palmly { struct HandDetection; }
-// Forward declaration of `HandPoint` to properly resolve imports.
-namespace margelo::nitro::palmly { struct HandPoint; }
 // Forward declaration of `CaptureQuality` to properly resolve imports.
 namespace margelo::nitro::palmly { struct CaptureQuality; }
 
@@ -31,6 +33,14 @@ namespace margelo::nitro::palmly { struct CaptureQuality; }
 #include "JHybridHandLandmarkerSpec.hpp"
 #include <VisionCamera/HybridCameraOutputSpec.hpp>
 #include <VisionCamera/JHybridCameraOutputSpec.hpp>
+#include "CanonicalPalm.hpp"
+#include <NitroModules/Promise.hpp>
+#include <NitroModules/JPromise.hpp>
+#include "JCanonicalPalm.hpp"
+#include <string>
+#include "HandPoint.hpp"
+#include <vector>
+#include "JHandPoint.hpp"
 #include "HandLandmarkerOptions.hpp"
 #include <optional>
 #include "JHandLandmarkerOptions.hpp"
@@ -44,11 +54,7 @@ namespace margelo::nitro::palmly { struct CaptureQuality; }
 #include <NitroModules/JNICallable.hpp>
 #include "JHandFrameResult.hpp"
 #include "HandDetection.hpp"
-#include <vector>
 #include "JHandDetection.hpp"
-#include "HandPoint.hpp"
-#include "JHandPoint.hpp"
-#include <string>
 #include "CaptureQuality.hpp"
 #include "JCaptureQuality.hpp"
 #include "JFunc_void_std__string.hpp"
@@ -95,6 +101,38 @@ namespace margelo::nitro::palmly {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<margelo::nitro::camera::JHybridCameraOutputSpec::JavaPart>(jni::alias_ref<JHandLandmarkerOutputOptions> /* options */)>("createHandLandmarkerOutput");
     auto __result = method(_javaPart, JHandLandmarkerOutputOptions::fromCpp(options));
     return __result->getJHybridCameraOutputSpec();
+  }
+  std::shared_ptr<Promise<CanonicalPalm>> JHybridHandLandmarkerFactorySpec::canonicalizePalm(const std::string& filePath) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* filePath */)>("canonicalizePalm");
+    auto __result = method(_javaPart, jni::make_jstring(filePath));
+    return [&]() {
+      auto __promise = Promise<CanonicalPalm>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<JCanonicalPalm>(__boxedResult);
+        __promise->resolve(__result->toCpp());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  std::shared_ptr<Promise<std::string>> JHybridHandLandmarkerFactorySpec::canonicalizeRegion(const std::string& filePath, double centerX, double centerY, double sizeFraction) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* filePath */, double /* centerX */, double /* centerY */, double /* sizeFraction */)>("canonicalizeRegion");
+    auto __result = method(_javaPart, jni::make_jstring(filePath), centerX, centerY, sizeFraction);
+    return [&]() {
+      auto __promise = Promise<std::string>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
+        auto __result = jni::static_ref_cast<jni::JString>(__boxedResult);
+        __promise->resolve(__result->toStdString());
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
   }
 
 } // namespace margelo::nitro::palmly

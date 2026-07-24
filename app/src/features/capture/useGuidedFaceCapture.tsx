@@ -1,19 +1,16 @@
 import { useCallback, useState } from 'react';
-import { type Hand, type ScanKind } from '@/lib/scan';
 import { type CaptureState } from './capture';
 import { type GuidedCapture } from './guidedCapture';
 import { useScanUpload } from './useScanUpload';
 
 /**
- * Web/SSG stub of the P4.T2 guided-capture engine (`useGuidedCapture.native.tsx` is the real
- * one — Metro resolves `.native` on device). Exists because react-native-vision-camera
- * initializes Nitro objects at import time and would crash the static web export (the
- * device-free screenshot-verify path). Keeps the Phase-1 stand-in walk: fake shutter → freeze →
- * review; confirm falls back to the library picker so it never routes to /analyzing without a
- * scanId (audit A5).
+ * Web/SSG stub of the P4.T5 guided face-capture engine (`useGuidedFaceCapture.native.tsx` is the
+ * real one). Same reason as the palm split: the camera/nitro imports initialize native objects
+ * at import time and would crash the static web export. Confirm falls back to the library pick
+ * so it never routes to /analyzing without a scanId (audit A5).
  */
-export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }): GuidedCapture {
-  const { pickAndUpload, uploading, error: uploadError, hasCompleted } = useScanUpload({ kind, hand });
+export function useGuidedFaceCapture(): GuidedCapture {
+  const { pickAndUpload, uploading, error: uploadError, hasCompleted } = useScanUpload({ kind: 'face' });
   void hasCompleted;
   const [state, setState] = useState<CaptureState>('ready');
 

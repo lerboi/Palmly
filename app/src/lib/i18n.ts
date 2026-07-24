@@ -25,6 +25,7 @@ export const messages = {
   'capture.ready': 'Perfect — tap to capture',
   'capture.captured': 'Got it',
   'capture.review': 'Looks sharp',
+  'capture.review_auto': 'Looks sharp — using this photo',
 
   // Notification settings (audit §6 — notif-adjacent copy).
   'notif.title': 'Notifications',

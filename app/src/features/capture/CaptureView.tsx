@@ -13,6 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Button, Icon, Text } from '@/components/ui';
 import { HAND_OUTLINE_PATH } from '@/components/palm-diagram/handOutlinePath';
+import { t } from '@/lib/i18n';
 import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { captureInstruction, type CaptureMode, type CaptureState } from './capture';
 
@@ -68,6 +69,9 @@ interface CaptureViewProps {
   torch?: { on: boolean; onToggle: () => void };
   /** Disables Retake + spins "Use photo" while the confirmed frame uploads (no double-submit). */
   confirmLoading?: boolean;
+  /** §2.3 review auto-advance is armed: "Use photo" shows a visible fill over `durationMs` and
+   *  the engine confirms when it completes (Retake or a manual confirm cancels). */
+  autoAdvance?: { durationMs: number } | null;
   onShutter?: () => void;
   onSwitchHand?: () => void;
   onHelp?: () => void;
@@ -84,6 +88,7 @@ export function CaptureView({
   feed,
   torch,
   confirmLoading = false,
+  autoAdvance = null,
   onShutter,
   onSwitchHand,
   onHelp,
@@ -93,6 +98,13 @@ export function CaptureView({
   const theme = useTheme();
   const instruction = captureInstruction(state, mode, handSide);
   const isReview = state === 'review';
+  const autoAdvanceActive = isReview && autoAdvance != null && !confirmLoading;
+
+  // The auto-advance is silent motion — announce it so a screen-reader user isn't surprised by
+  // the screen changing on its own (§2.3 a11y model: every state has a spoken equivalent).
+  useEffect(() => {
+    if (autoAdvanceActive) AccessibilityInfo.announceForAccessibility(t('capture.review_auto'));
+  }, [autoAdvanceActive]);
   // `ready` is the GO SIGNAL (user decision 2026-07-24, amending §2.3's auto-capture): the
   // guide + ring turn success-green and the shutter pulses — the USER takes the photo.
   const isGo = state === 'ready';
@@ -236,9 +248,13 @@ export function CaptureView({
 
         {/* Bottom: the review step (§2.3) swaps in Retake / Use photo; otherwise help · shutter · toggle. */}
         {isReview ? (
-          <View style={{ flexDirection: 'row', gap: theme.spacing.md, paddingHorizontal: theme.spacing.xl, paddingBottom: theme.spacing.lg }}>
-            <Button label="Retake" variant="secondary" onPress={onRetake} disabled={confirmLoading} style={{ flex: 1 }} />
-            <Button label="Use photo" variant="primary" onPress={onConfirm} loading={confirmLoading} style={{ flex: 1 }} />
+          <View style={{ paddingHorizontal: theme.spacing.xl, paddingBottom: theme.spacing.lg, gap: theme.spacing.sm }}>
+            {/* §2.3: high-quality captures auto-advance — a visible, cancellable fill (P4.T3). */}
+            {autoAdvanceActive ? <AutoAdvanceBar durationMs={autoAdvance.durationMs} color={theme.colors.accent} /> : null}
+            <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+              <Button label="Retake" variant="secondary" onPress={onRetake} disabled={confirmLoading} style={{ flex: 1 }} />
+              <Button label="Use photo" variant="primary" onPress={onConfirm} loading={confirmLoading} style={{ flex: 1 }} />
+            </View>
           </View>
         ) : (
           <View
@@ -299,6 +315,35 @@ const controlStyle = {
 function PressScale({ children }: { children: React.ReactNode }) {
   const { scaleStyle } = usePressSpring(0.92);
   return <Animated.View style={scaleStyle}>{children}</Animated.View>;
+}
+
+/**
+ * The §2.3 review auto-advance fill: a thin bar above the review buttons filling over
+ * `durationMs` — the visible "this will continue on its own" signal (the engine owns the actual
+ * timer; this is presentation only). Reduced-motion shows the label without the moving fill.
+ */
+function AutoAdvanceBar({ durationMs, color }: { durationMs: number; color: string }) {
+  const reduceMotion = useReducedMotion();
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    if (reduceMotion || Platform.OS === 'web') {
+      progress.value = 1;
+      return;
+    }
+    progress.value = 0;
+    progress.value = withTiming(1, { duration: durationMs, easing: Easing.linear });
+  }, [durationMs, reduceMotion, progress]);
+  const fillStyle = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` }));
+  return (
+    <View style={{ gap: 6 }}>
+      <Text variant="caption" color={OVERLAY.pill} style={{ textAlign: 'center' }}>
+        {t('capture.review_auto')}
+      </Text>
+      <View style={{ height: 3, borderRadius: 2, backgroundColor: OVERLAY.track, overflow: 'hidden' }}>
+        <Animated.View style={[{ height: 3, borderRadius: 2, backgroundColor: color }, fillStyle]} />
+      </View>
+    </View>
+  );
 }
 
 function ControlButton({

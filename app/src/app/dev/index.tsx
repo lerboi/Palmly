@@ -62,7 +62,10 @@ const GROUPS: { title: string; routes: { href: string; label: string }[] }[] = [
   },
   {
     title: 'dev — P2 native spike (device-only)',
-    routes: [{ href: '/dev/landmarks', label: 'landmarks bench (VisionCamera + MediaPipe)' }],
+    routes: [
+      { href: '/dev/landmarks', label: 'landmarks bench (VisionCamera + MediaPipe)' },
+      { href: '/dev/canonical', label: 'canonical crop bench (P4.T3 determinism)' },
+    ],
   },
   {
     title: 'dev — state previews',

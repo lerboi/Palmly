@@ -16,6 +16,8 @@ namespace margelo::nitro::palmly {
     registerHybrids(this, [](Prototype& prototype) {
       prototype.registerHybridMethod("createHandLandmarker", &HybridHandLandmarkerFactorySpec::createHandLandmarker);
       prototype.registerHybridMethod("createHandLandmarkerOutput", &HybridHandLandmarkerFactorySpec::createHandLandmarkerOutput);
+      prototype.registerHybridMethod("canonicalizePalm", &HybridHandLandmarkerFactorySpec::canonicalizePalm);
+      prototype.registerHybridMethod("canonicalizeRegion", &HybridHandLandmarkerFactorySpec::canonicalizeRegion);
     });
   }
 

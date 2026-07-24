@@ -50,12 +50,15 @@ interface ScanCreateResponse {
  * so it is part of the upload, not an afterthought.
  */
 export async function createAndUploadScan(
-  input: { kind: ScanKind; hand?: Hand; imageUri: string },
+  input: { kind: ScanKind; hand?: Hand; imageUri: string; captureMeta?: Record<string, unknown> },
   deps: UploadDeps,
 ): Promise<{ scanId: string }> {
   const { data, error } = await deps.invoke('scan-create', {
     kind: input.kind,
     ...(input.hand ? { hand: input.hand } : {}),
+    // §3.2 `scans.capture_meta`: cv-pipeline version + landmark quality at shutter — the debug +
+    // consistency-audit trail, and how the server composes an honest `extractor_version` (P4.T3).
+    ...(input.captureMeta ? { capture_meta: input.captureMeta } : {}),
   });
   const created = (data ?? {}) as ScanCreateResponse;
   if (error || !created.scan_id || !created.upload_url) {
@@ -80,7 +83,12 @@ async function readImageAsBlob(uri: string): Promise<{ body: BodyInit; contentTy
 }
 
 /** Production wiring: real Supabase functions + fetch. */
-export async function uploadPickedScan(input: { kind: ScanKind; hand?: Hand; imageUri: string }): Promise<{ scanId: string }> {
+export async function uploadPickedScan(input: {
+  kind: ScanKind;
+  hand?: Hand;
+  imageUri: string;
+  captureMeta?: Record<string, unknown>;
+}): Promise<{ scanId: string }> {
   // scan-create requires a user JWT (verify_jwt) — but if the app booted OFFLINE, the launch-time
   // anonymous sign-in failed and was never retried, so every upload 403'd with a misleading
   // "check your connection" toast even after connectivity returned (found live 2026-07-24).

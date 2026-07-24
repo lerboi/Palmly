@@ -138,8 +138,8 @@ export default function Primer() {
           onPress={() => {
             // The reassurance rows ARE the biometric-consent text (Backend §9) — log the version the
             // user accepted, then proceed. The OS prompt fires on the capture screen at the moment of
-            // intent, and the REAL grant/denial is tracked there (useLiveCapture) — this button no
-            // longer fabricates a `permission_result` before any prompt existed.
+            // intent, and the REAL grant/denial is tracked there (the guided-capture engines) — this
+            // button no longer fabricates a `permission_result` before any prompt existed.
             void recordCameraConsent();
             router.push(`/palm${handSuffix}` as Href);
           }}
