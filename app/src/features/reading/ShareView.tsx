@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, Platform, Pressable, ScrollView, Share, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import Animated, {
   Easing,
   FadeIn,
@@ -97,6 +97,13 @@ export function ShareView({
   const [variant, setVariant] = useState<Variant>(initialVariant);
   const [invite, setInvite] = useState(true);
   const [copied, setCopied] = useState(false);
+  /** Drop the pending mint AND the "Copied" confirmation together (Audit-4 CO-12): the tile kept
+   *  saying "Copied" after a framing change, a name toggle or a tab switch had already invalidated
+   *  the link the user believed was on their clipboard. */
+  const regenerate = () => {
+    mintRef.current = null;
+    setCopied(false);
+  };
   // "preview == posted" (F1.T9): the REAL pre-rendered draft PNG when one exists (solo, owned by the
   // caller); null → fall back to the in-app vector preview (dev fixtures / no card yet).
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -107,7 +114,7 @@ export function ShareView({
   const onFraming = (f: Framing) => {
     setFraming(f);
     framingRef.current = f;
-    mintRef.current = null;
+    regenerate();
   };
   // "Show my name on the card" consent (F1.T9; UIUX §2 "first-name attribution (optional)"). Both a
   // named and a byline-less draft are pre-rendered (worker-narrative), so the toggle just picks which
@@ -119,7 +126,7 @@ export function ShareView({
     const v = !showNameRef.current;
     setShowName(v);
     showNameRef.current = v;
-    mintRef.current = null;
+    regenerate();
   };
   const soloVariant = (on: boolean) => (on ? 'feed_4x5' : 'feed_4x5_anon');
 
@@ -222,8 +229,8 @@ export function ShareView({
       <AppHeader title="Share your reading" onClose={onClose} />
 
       <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
-        <SelectPill label="My reading" role="tab" active={variant === 'solo'} onPress={() => setVariant('solo')} />
-        <SelectPill label="Compatibility" role="tab" active={variant === 'compat'} onPress={() => setVariant('compat')} />
+        <SelectPill label="My reading" role="tab" active={variant === 'solo'} onPress={() => { setVariant('solo'); regenerate(); }} />
+        <SelectPill label="Compatibility" role="tab" active={variant === 'compat'} onPress={() => { setVariant('compat'); regenerate(); }} />
       </View>
 
       {/* Top-anchored slot so switching tabs never re-centres / jumps the card. Intrinsic height,
@@ -286,23 +293,29 @@ export function ShareView({
           set, so each channel is an honest monogram tile + label (never a faked logo). A brand tap
           opens the OS share sheet with per-channel copy; Copy writes the link + flips to confirmed;
           More is the generic sheet. (The QR tile joins in its market slot with the real encoder.) */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: theme.spacing.lg, paddingHorizontal: theme.spacing.xs }}
-        style={{ marginVertical: theme.spacing.md }}
-      >
-        {CHANNELS.map((c) => (
-          <ChannelButton
-            key={c.key}
-            icon={c.icon}
-            mono={c.mono}
-            label={c.action === 'copy' && copied ? 'Copied' : c.label}
-            confirmed={c.action === 'copy' && copied}
-            onPress={c.action === 'copy' ? onCopyLink : () => onShare(c.key)}
-          />
-        ))}
-      </ScrollView>
+      {/* Edge-to-edge (Audit-4 CO-12 / Direction 4.7): the row sat inside the screen's 16pt gutter,
+          so the last tile was CLIPPED at the padding edge and the row read as ending there. Negative
+          margins cancel the gutter, the content keeps it as padding, and a trailing fade over the
+          right edge says "there is more" - the partial tile beneath it does the rest. */}
+      <View style={{ marginHorizontal: -theme.spacing.lg, marginVertical: theme.spacing.md }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: theme.spacing.lg, paddingHorizontal: theme.spacing.lg }}
+        >
+          {CHANNELS.map((c) => (
+            <ChannelButton
+              key={c.key}
+              icon={c.icon}
+              mono={c.mono}
+              label={c.action === 'copy' && copied ? 'Copied' : c.label}
+              confirmed={c.action === 'copy' && copied}
+              onPress={c.action === 'copy' ? onCopyLink : () => onShare(c.key)}
+            />
+          ))}
+        </ScrollView>
+        <TrailingFade />
+      </View>
 
       <Button
         label="Share"
@@ -310,7 +323,7 @@ export function ShareView({
         fullWidth
         icon={<Icon name="share" size={18} color={theme.colors.onAccent} decorative />}
         style={{ marginBottom: theme.spacing.md }}
-        onPress={() => onShare('share')}
+        onPress={() => onShare('more')}
       />
     </Screen>
   );
@@ -514,15 +527,52 @@ function CardSeal() {
 /** "preview == posted" (F1.T9) — the ACTUAL server-rendered draft PNG the friend will receive, so the
  *  in-sheet preview can never drift from the posted card. 4:5 to match the feed card (1080×1350). */
 function RealCardPreview({ uri }: { uri: string }) {
-  const theme = useTheme();
   return (
-    <View style={[{ borderRadius: theme.radii.lg, overflow: 'hidden', alignSelf: 'center', width: '100%', maxWidth: 340 }, theme.shadow.lg]}>
+    <PreviewFrame>
       <Image
         source={{ uri }}
         style={{ width: '100%', aspectRatio: 4 / 5 }}
         resizeMode="cover"
         accessibilityLabel="Your share card — exactly what your friend will see"
       />
+    </PreviewFrame>
+  );
+}
+
+/**
+ * The ONE preview frame (Audit-4 CO-12, Direction §4.7). The server-rendered PNG was capped at
+ * 340pt while the vector previews ran full-bleed, so the same card changed size depending on which
+ * one happened to be available.
+ */
+const PREVIEW_MAX_WIDTH = 340;
+function PreviewFrame({ children }: { children: React.ReactNode }) {
+  const theme = useTheme();
+  return (
+    <View
+      style={[
+        { alignSelf: 'center', width: '100%', maxWidth: PREVIEW_MAX_WIDTH, borderRadius: theme.radii.lg, overflow: 'hidden' },
+        theme.shadow.lg,
+      ]}
+    >
+      {children}
+    </View>
+  );
+}
+
+/** The trailing fade over the channel row's right edge — "the row continues", without a scrollbar. */
+function TrailingFade() {
+  const theme = useTheme();
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 40 }}>
+      <Svg width="100%" height="100%">
+        <Defs>
+          <LinearGradient id="channelFade" x1="0" y1="0" x2="1" y2="0">
+            <Stop offset="0" stopColor={theme.colors.bg} stopOpacity={0} />
+            <Stop offset="1" stopColor={theme.colors.bg} stopOpacity={1} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#channelFade)" />
+      </Svg>
     </View>
   );
 }
@@ -531,23 +581,16 @@ function RealCardPreview({ uri }: { uri: string }) {
 function SoloPreview({ geometry, headline }: { geometry: LineGeometry; headline: string }) {
   const theme = useTheme();
   return (
-    <View
-      style={[
-        {
-          backgroundColor: theme.colors.surfaceRaised,
-          borderRadius: theme.radii.lg,
-          padding: theme.spacing.xl,
-          alignItems: 'center',
-        },
-        theme.shadow.lg,
-      ]}
-    >
-      <PalmDiagram geometry={geometry} size={200} signatureLines={['heart_line', 'fate_line']} animate />
-      <Text variant="editorialTitle" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
-        {headline}
-      </Text>
-      <CardSeal />
-    </View>
+    // Same frame as the server-rendered PNG (CO-12) — the card is one size either way.
+    <PreviewFrame>
+      <View style={{ backgroundColor: theme.colors.surfaceRaised, padding: theme.spacing.xl, alignItems: 'center' }}>
+        <PalmDiagram geometry={geometry} size={200} signatureLines={['heart_line', 'fate_line']} animate />
+        <Text variant="editorialTitle" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
+          {headline}
+        </Text>
+        <CardSeal />
+      </View>
+    </PreviewFrame>
   );
 }
 
@@ -568,17 +611,9 @@ function CompatPreview({
 }) {
   const theme = useTheme();
   return (
-    <View
-      style={[
-        {
-          backgroundColor: theme.colors.surfaceRaised,
-          borderRadius: theme.radii.lg,
-          padding: theme.spacing.xl,
-          alignItems: 'center',
-        },
-        theme.shadow.lg,
-      ]}
-    >
+    // Same frame as the server-rendered PNG (CO-12) — the card is one size either way.
+    <PreviewFrame>
+      <View style={{ backgroundColor: theme.colors.surfaceRaised, padding: theme.spacing.xl, alignItems: 'center' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
         <PalmDiagram geometry={geometry} size={84} highlightedLine="heart_line" animate />
         <RedThread animate />
@@ -622,7 +657,8 @@ function CompatPreview({
       </View>
 
       <CardSeal />
-    </View>
+      </View>
+    </PreviewFrame>
   );
 }
 
