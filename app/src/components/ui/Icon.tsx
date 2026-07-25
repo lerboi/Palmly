@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+import type { ColorValue, StyleProp, ViewStyle } from 'react-native';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 import { useTheme } from '@/theme';
 
@@ -330,8 +330,11 @@ export interface IconProps {
   name: IconName;
   /** Square size in px. Default 24. */
   size?: number;
-  /** Stroke/fill color. Defaults to the primary text color. */
-  color?: string;
+  /**
+   * Stroke/fill color. Defaults to the primary text color. Typed as `ColorValue` (not `string`)
+   * so react-navigation's `tabBarIcon` tint can be handed straight through.
+   */
+  color?: ColorValue;
   /** Stroke width at the 24px frame. Default 2. */
   strokeWidth?: number;
   /**

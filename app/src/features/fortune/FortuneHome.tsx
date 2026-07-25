@@ -116,10 +116,11 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
               index={0}
             />
           ) : null}
-          <RowLink icon="history" label="Your readings" onPress={() => router.push('/history')} index={1} />
-          <RowLink icon="chat" label="Ask about your reading" premiumLocked={!premium} onPress={() => router.push('/chat')} index={2} />
+          {/* Readings and Ask left with the tab bar (SN-2/SN-5, Direction §1 P3) — Today is a page
+              again, not a menu. The free-chat row in particular was a two-hop trap: chip → gate →
+              paywall. The Ask TAB now shows that gate, and its CTA goes straight to the paywall. */}
           {isAnonymous ? (
-            <RowLink icon="sparkle" label="Claim your account" onPress={() => router.push('/account?reason=fortune' as Href)} index={3} />
+            <RowLink icon="sparkle" label="Claim your account" onPress={() => router.push('/account?reason=fortune' as Href)} index={1} />
           ) : null}
         </>
       )}
