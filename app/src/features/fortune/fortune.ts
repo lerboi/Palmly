@@ -114,6 +114,37 @@ export const DIRECTION_BEARING: Record<string, number> = {
   Northwest: 315,
 };
 
+/** What Today should render right now. Resolved in ONE place so the precedence can be tested. */
+export type HomeState = 'loading' | 'error' | 'firstRun' | 'ready';
+
+/**
+ * Decide Today's state (Audit-4 SH-1). The old expression was `firstRun || !fortune`, which
+ * collapsed three different situations into the first-run hero:
+ *   - still loading      → "Read my palm" flashed at every returning user, every open;
+ *   - the fetch failed   → "Read my palm" showed FOREVER, routing a 12-reading user into capture;
+ *   - genuinely new      → correct, but indistinguishable from the two above.
+ *
+ * Precedence: loading and error are about the REQUEST and win first; `firstRun` is about the USER
+ * and must be known independently (has any reading ever completed?), never inferred from a missing
+ * fortune.
+ *
+ * A missing fortune row on an otherwise-ready screen resolves to `error` — the retry card. That is
+ * still the honest answer ("today's reading isn't loading"), and crucially it is NOT the first-run
+ * hero, which would tell a user with a dozen readings that they have never had one.
+ */
+export function homeState(input: {
+  loading?: boolean;
+  error?: boolean;
+  firstRun?: boolean;
+  fortune?: Fortune | null;
+}): HomeState {
+  if (input.loading) return 'loading';
+  if (input.error) return 'error';
+  if (input.firstRun) return 'firstRun';
+  if (!input.fortune) return 'error';
+  return 'ready';
+}
+
 export const PREVIEW_FORTUNE: Fortune = {
   overall: 'A steady, favourable day — move with intention and doors open quietly.',
   career: 'Progress through patience; a senior notices your reliability.',

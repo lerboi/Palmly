@@ -4,6 +4,7 @@ import { BirthDateSheet } from '@/features/fortune/BirthDateSheet';
 import type { Fortune } from '@/features/fortune/fortune';
 import { loadFortuneContext, loadTodayFortune, saveBirthDate, type FortuneContext } from '@/lib/fortuneData';
 import { useEntitlement } from '@/lib/entitlements';
+import { hasFirstReadingComplete } from '@/lib/session';
 import { track } from '@/lib/analytics';
 
 /**
@@ -16,6 +17,13 @@ import { track } from '@/lib/analytics';
 export default function FortuneScreen() {
   const { premium } = useEntitlement();
   const [fortune, setFortune] = useState<Fortune | null>(null);
+  // The request's own state, tracked explicitly (SH-1). A missing fortune used to stand in for
+  // "loading" AND "failed" AND "new user", so all three rendered the first-run hero.
+  const [failed, setFailed] = useState(false);
+  const [reloads, setReloads] = useState(0);
+  // Is this user genuinely new? Answered by the session's first-reading flag, NOT by the absence
+  // of a fortune row — that is the whole of SH-1.
+  const [firstRun, setFirstRun] = useState<boolean | undefined>(undefined);
   const [ctx, setCtx] = useState<FortuneContext | null>(null); // null → still loading the context
   const [showBirthSheet, setShowBirthSheet] = useState(false);
   const [savingBirth, setSavingBirth] = useState(false);
@@ -34,6 +42,7 @@ export default function FortuneScreen() {
       setCtx(c);
       if (!c.birthDate) setShowBirthSheet(true);
     });
+    hasFirstReadingComplete().then((done) => active && setFirstRun(!done));
     return () => {
       active = false;
     };
@@ -45,12 +54,20 @@ export default function FortuneScreen() {
     if (!ctx) return; // wait for the context before reading
     let active = true;
     loadTodayFortune(bucket)
-      .then((f) => active && setFortune(f))
-      .catch(() => active && setFortune(null));
+      .then((f) => {
+        if (!active) return;
+        setFortune(f);
+        setFailed(false); // cleared on RESOLVE, not synchronously in the effect body (lint rule)
+      })
+      .catch(() => {
+        if (!active) return;
+        setFortune(null);
+        setFailed(true);
+      });
     return () => {
       active = false;
     };
-  }, [ctx, bucket]);
+  }, [ctx, bucket, reloads]);
 
   const onSaveBirth = (birthDate: string) => {
     setSavingBirth(true);
@@ -64,5 +81,17 @@ export default function FortuneScreen() {
   if (showBirthSheet) {
     return <BirthDateSheet onSave={onSaveBirth} onSkip={() => setShowBirthSheet(false)} busy={savingBirth} />;
   }
-  return <FortuneHome fortune={fortune} premium={premium} />;
+  // Loading until BOTH the context and the first-run answer are known — resolving one without the
+  // other is how the flash used to slip through.
+  const loading = !ctx || firstRun === undefined;
+  return (
+    <FortuneHome
+      fortune={fortune}
+      premium={premium}
+      loading={loading}
+      error={failed}
+      firstRun={firstRun}
+      onRetry={() => setReloads((n) => n + 1)}
+    />
+  );
 }

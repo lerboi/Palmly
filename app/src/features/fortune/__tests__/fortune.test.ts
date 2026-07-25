@@ -1,4 +1,4 @@
-import { DIRECTION_BEARING, PREVIEW_FORTUNE, almanacDate, dayPillarCn } from '../fortune';
+import { DIRECTION_BEARING, PREVIEW_FORTUNE, almanacDate, dayPillarCn, homeState } from '../fortune';
 
 describe('fortune (P9.T3)', () => {
   it('computes the sexagenary day pillar (anchor 2000-01-07 = 甲子)', () => {
@@ -12,6 +12,44 @@ describe('fortune (P9.T3)', () => {
     expect(d.gregorian).toBe('July 14');
     expect(d.pillar).toMatch(/日$/);
     expect(d.weekday).toBeTruthy();
+  });
+
+  describe("Today's state precedence (Audit-4 SH-1)", () => {
+    const f = PREVIEW_FORTUNE;
+
+    it('never shows the first-run hero while the request is in flight', () => {
+      // THE bug: `firstRun || !fortune` meant every returning user watched "Read my palm" for two
+      // network round-trips, every single open.
+      expect(homeState({ loading: true, fortune: null })).toBe('loading');
+      expect(homeState({ loading: true, fortune: null, firstRun: false })).toBe('loading');
+      // Loading wins even over a genuinely-new user: the skeleton is the honest frame either way.
+      expect(homeState({ loading: true, firstRun: true, fortune: null })).toBe('loading');
+    });
+
+    it('never shows the first-run hero when the request failed', () => {
+      // The worse half: a failed fetch showed "Read my palm" FOREVER, routing a user with a dozen
+      // readings back into capture.
+      expect(homeState({ error: true, fortune: null })).toBe('error');
+      expect(homeState({ error: true, fortune: null, firstRun: false })).toBe('error');
+    });
+
+    it('shows the first-run hero only for a user who genuinely has no reading', () => {
+      expect(homeState({ firstRun: true, fortune: null })).toBe('firstRun');
+      expect(homeState({ firstRun: true, fortune: f })).toBe('firstRun');
+    });
+
+    it('surfaces a missing fortune row as the retry card, never as first-run', () => {
+      expect(homeState({ firstRun: false, fortune: null })).toBe('error');
+      expect(homeState({ fortune: null })).toBe('error');
+    });
+
+    it('is ready when a returning user has a fortune', () => {
+      expect(homeState({ firstRun: false, fortune: f })).toBe('ready');
+    });
+
+    it('resolves loading and error to different states — they are not interchangeable', () => {
+      expect(homeState({ loading: true, fortune: null })).not.toBe(homeState({ error: true, fortune: null }));
+    });
   });
 
   it('maps all eight compass points to a clockwise bearing, and nothing else (CO-8)', () => {

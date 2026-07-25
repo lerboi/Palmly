@@ -4,7 +4,7 @@ import { useRouter, type Href } from 'expo-router';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
-import { Button, Card, HeaderIconButton, Icon, Screen, Text } from '@/components/ui';
+import { Button, Card, HeaderIconButton, Icon, Screen, Skeleton, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { useAccountIdentity } from '@/lib/account';
@@ -13,7 +13,7 @@ import { elapsedLabel } from '@/lib/compatCopy';
 import { dismissFortuneOptIn, fortuneOptInDismissed, getPushPermission, requestPushPermission } from '@/lib/notifications';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { FortuneCard } from './FortuneCard';
-import { type Fortune, almanacDate } from './fortune';
+import { type Fortune, almanacDate, homeState } from './fortune';
 
 export interface FortuneHomeProps {
   /** Today's fortune. Absent while it loads / before the day's row is generated → the first-run state. */
@@ -23,8 +23,17 @@ export interface FortuneHomeProps {
   streak?: number;
   /** Pending compatibility partner (the red-thread row), if any. */
   partnerName?: string | null;
-  /** No reading yet — show the calm first-run state instead of the fortune. */
+  /**
+   * No reading has EVER completed — show the calm first-run hero. Must be resolved independently
+   * (from the session's first-reading flag), never inferred from a missing fortune (SH-1).
+   */
   firstRun?: boolean;
+  /** The fortune request is still in flight — render the skeleton, never the first-run hero. */
+  loading?: boolean;
+  /** The fortune request failed — render the retry card, never the first-run hero. */
+  error?: boolean;
+  /** Retry the failed fortune fetch. */
+  onRetry?: () => void;
   now?: number;
 }
 
@@ -34,14 +43,15 @@ export interface FortuneHomeProps {
  * fortune hero card (free/premium), a pending-compatibility red-thread row, and entries to the
  * readings shelf and chat. English-first, no CJK. A first-run user sees a traced-palm hero.
  */
-export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRun, now }: FortuneHomeProps) {
+export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRun, loading, error, onRetry, now }: FortuneHomeProps) {
   const theme = useTheme();
   const router = useRouter();
   const { isAnonymous } = useAccountIdentity();
   const [ts] = useState(() => now ?? Date.now());
   const date = almanacDate(new Date(ts));
-  // No fortune to show (loading, or the day's row isn't generated) → the calm first-run state.
-  const showFirstRun = firstRun || !fortune;
+  // One resolver, unit-tested (SH-1). `loading`/`error` are about the REQUEST and win first;
+  // `firstRun` is about the USER. A missing fortune row on a ready screen is NOT first-run.
+  const state = homeState({ loading, error, firstRun, fortune });
 
   // Live pending-compat red-thread (audit F1.7): the last invite the user SENT, read back from the
   // local store so the row re-shares the EXACT same link — never mints a second. `partnerName` (a
@@ -99,17 +109,25 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
         </View>
       </View>
 
-      {showFirstRun ? (
+      {state === 'loading' ? (
+        <FortuneSkeleton />
+      ) : state === 'error' ? (
+        <FortuneError onRetry={onRetry} />
+      ) : state === 'firstRun' ? (
         <FirstRunState onScan={() => router.push('/primer')} />
       ) : (
         <>
           {streak > 0 ? <StreakStrip streak={streak} /> : null}
-          <FortuneCard
-            fortune={fortune}
-            premium={premium}
-            onUnlock={() => router.push('/paywall?trigger=fortune_full' as Href)}
-            onAsk={(q) => router.push(`/chat?q=${encodeURIComponent(q)}` as Href)}
-          />
+          {/* `homeState` only returns 'ready' with a fortune in hand, so this guard is unreachable —
+              it is here to prove that to the type system rather than to assert it with a `!`. */}
+          {fortune ? (
+            <FortuneCard
+              fortune={fortune}
+              premium={premium}
+              onUnlock={() => router.push('/paywall?trigger=fortune_full' as Href)}
+              onAsk={(q) => router.push(`/chat?q=${encodeURIComponent(q)}` as Href)}
+            />
+          ) : null}
           {showOptIn ? <NotifyOptInCard onEnable={onEnablePush} onDismiss={onDismissPush} /> : null}
           {showThread ? (
             <RedThreadRow
@@ -144,6 +162,36 @@ function FirstRunState({ onScan }: { onScan: () => void }) {
         Read your palm once to unlock a fortune tuned to you, every day.
       </Text>
       <Button label="Read my palm" variant="primary" fullWidth style={{ marginTop: theme.spacing.xl }} onPress={onScan} />
+    </Card>
+  );
+}
+
+/** Loading — the shape of what's coming, so the page never lies about being empty (SH-1). */
+function FortuneSkeleton() {
+  const theme = useTheme();
+  return (
+    <>
+      <Skeleton height={44} radius="pill" style={{ marginBottom: theme.spacing.md }} />
+      <Card elevation="md" style={{ marginBottom: theme.spacing.md, gap: theme.spacing.md }}>
+        <Skeleton width={140} height={14} />
+        <Skeleton height={22} />
+        <Skeleton width="70%" height={22} />
+        <Skeleton width={180} height={44} radius="md" style={{ marginTop: theme.spacing.sm }} />
+      </Card>
+    </>
+  );
+}
+
+/** Failure — an honest retry, NOT the first-run hero that used to show here forever (SH-1). */
+function FortuneError({ onRetry }: { onRetry?: () => void }) {
+  const theme = useTheme();
+  return (
+    <Card style={{ gap: theme.spacing.md }}>
+      <Text variant="heading">Today&apos;s reading isn&apos;t loading</Text>
+      <Text variant="body" tone="secondary">
+        Your readings are safe — this was a hiccup on our side.
+      </Text>
+      {onRetry ? <Button label="Try again" variant="secondary" size="md" onPress={onRetry} /> : null}
     </Card>
   );
 }
