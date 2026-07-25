@@ -20,9 +20,12 @@ export interface LoadedReading {
   kind: 'palm' | 'face';
   reading: Reading;
   geometry: LineGeometry;
-  /** When the source photo was deleted (scans.image_deleted_at), else uploaded (created_at) —
-   *  powers the reveal's timestamped "Photo deleted · 2:41 PM ✓" trust badge (audit F1.1). */
+  /** When the source photo was ACTUALLY deleted (scans.image_deleted_at) — null until it is.
+   *  Never falls back to the upload time: claiming "deleted" while the crop sits in the bucket
+   *  is the trust-break this product exists to avoid (found live 2026-07-25). */
   photoDeletedAt: string | null;
+  /** The user's keep-my-scan opt-in (D2) — the badge says "saved", not "deleted". */
+  photoKept: boolean;
 }
 
 /** Pull `features.line_geometry` out of an embedded feature_sets row (object or one-element array). */
@@ -33,22 +36,24 @@ function geometryFrom(featureSets: unknown): LineGeometry {
   return lg && typeof lg === 'object' ? (lg as LineGeometry) : {};
 }
 
-/** Pull the source scan's deletion/created timestamp out of the nested `scans` embed. */
-function photoTimeFrom(featureSets: unknown): string | null {
+/** Pull the source scan's real deletion state out of the nested `scans` embed. */
+function photoStateFrom(featureSets: unknown): { deletedAt: string | null; kept: boolean } {
   const one = Array.isArray(featureSets) ? featureSets[0] : featureSets;
   const scans = (one as { scans?: unknown } | undefined)?.scans;
   const scan = Array.isArray(scans) ? scans[0] : scans;
-  const s = scan as { image_deleted_at?: string | null; created_at?: string | null } | undefined;
-  return s?.image_deleted_at ?? s?.created_at ?? null;
+  const s = scan as { image_deleted_at?: string | null; keep_image?: boolean | null } | undefined;
+  return { deletedAt: s?.image_deleted_at ?? null, kept: s?.keep_image === true };
 }
 
 function toLoaded(row: Record<string, unknown>): LoadedReading {
+  const photo = photoStateFrom(row.feature_sets);
   return {
     id: row.id as string,
     kind: row.kind as 'palm' | 'face',
     reading: row.narrative as Reading,
     geometry: geometryFrom(row.feature_sets),
-    photoDeletedAt: photoTimeFrom(row.feature_sets),
+    photoDeletedAt: photo.deletedAt,
+    photoKept: photo.kept,
   };
 }
 
@@ -66,7 +71,7 @@ export async function loadReading(params: { readingId?: string; scanId?: string 
   if (params.readingId) {
     const { data, error } = await supabase
       .from('readings')
-      .select('id, kind, narrative, feature_sets!inner(features, scans(image_deleted_at, created_at))')
+      .select('id, kind, narrative, feature_sets!inner(features, scans(image_deleted_at, keep_image))')
       .eq('id', params.readingId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -78,7 +83,7 @@ export async function loadReading(params: { readingId?: string; scanId?: string 
 
   const direct = await supabase
     .from('readings')
-    .select('id, kind, narrative, feature_sets!inner(features, scan_id, scans(image_deleted_at, created_at))')
+    .select('id, kind, narrative, feature_sets!inner(features, scan_id, scans(image_deleted_at, keep_image))')
     .eq('feature_sets.scan_id', params.scanId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -91,7 +96,7 @@ export async function loadReading(params: { readingId?: string; scanId?: string 
   if (!scan) return null;
   let byKind = supabase
     .from('readings')
-    .select('id, kind, narrative, feature_sets!inner(features, side, scans(image_deleted_at, created_at))')
+    .select('id, kind, narrative, feature_sets!inner(features, side, scans(image_deleted_at, keep_image))')
     .eq('kind', scan.kind as string);
   if (scan.side) byKind = byKind.eq('feature_sets.side', scan.side as string);
   const { data: canonical, error: canonErr } = await byKind

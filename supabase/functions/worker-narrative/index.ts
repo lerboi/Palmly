@@ -17,6 +17,7 @@ import {
   type GeminiResponse,
 } from '../_shared/narrative.ts';
 import { writeTelemetry } from '../_shared/telemetry.ts';
+import { deleteScanImage } from '../_shared/scan-image.ts';
 import { decideFailure, exhausted } from '../_shared/retry.ts';
 import { AppError, jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 import { createContext, requireMode } from '../_shared/context.ts';
@@ -110,7 +111,10 @@ async function processMessage(db: SupabaseClient, msg: NarrativeMessage, geminiC
 
   /** Finish a job whose reading already exists — the work is done, only the bookkeeping is owed. */
   const settleExisting = async (why: string) => {
-    if (scanId) await setStatus(db, scanId, 'complete');
+    if (scanId) {
+      await setStatus(db, scanId, 'complete');
+      await deleteScanImage(db, scanId); // "deleted after reading" (D2) — idempotent, best-effort
+    }
     await writeTelemetry(db, {
       ...telem, status: 'ok', model_latency_ms: Date.now() - started,
       detail: { redelivery_short_circuit: why, depth_level: depthLevel },
@@ -178,7 +182,13 @@ async function processMessage(db: SupabaseClient, msg: NarrativeMessage, geminiC
   // and decoupled (an HTTP invoke of card-render, so resvg stays out of this worker).
   await preRenderCard(fs.id, reading.id);
 
-  if (scanId) await setStatus(db, scanId, 'complete');
+  if (scanId) {
+    await setStatus(db, scanId, 'complete');
+    // The pipeline never reads the crop again (depth 2+ regenerates from the stored feature_set)
+    // — delete it NOW so the reveal's "Photo deleted ✓" badge is literally true (D2; found live
+    // 2026-07-25). keep_image opt-in respected; cron sweeps any failure.
+    await deleteScanImage(db, scanId);
+  }
   await writeTelemetry(db, {
     worker: 'worker-narrative', queue: 'narrative_jobs', msg_id: msg.msg_id, status: 'ok',
     queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started,

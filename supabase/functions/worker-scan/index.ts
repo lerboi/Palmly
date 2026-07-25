@@ -8,6 +8,7 @@ import { EXTRACTION_MODEL, extractFeatures, type GeminiCall, type GeminiResponse
 import { deriveGeometry, featureHash, parseHandSignature, type Geometry } from '../_shared/features.ts';
 import { fieldMajority, matchSubject, matchSubjectByHand, sameFeatures, type SubjectCandidate } from '../_shared/consistency.ts';
 import { writeTelemetry } from '../_shared/telemetry.ts';
+import { deleteScanImage } from '../_shared/scan-image.ts';
 import { alreadyProcessed, decideFailure, exhausted } from '../_shared/retry.ts';
 import { AppError, jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 import { createContext, requireMode } from '../_shared/context.ts';
@@ -142,6 +143,9 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
     }
     await db.from('subject_profiles').update({ scan_count: subject.scanCount + 1, last_matched_at: new Date().toISOString() }).eq('id', subject.subjectId);
     await setStatus(db, scanId, 'matched');
+    // A matched scan's crop is fully redundant (hand-matched crops were never even downloaded) —
+    // delete immediately so the trust badge stays true (D2; keep_image respected).
+    await deleteScanImage(db, scanId);
     await writeTelemetry(db, { worker: 'worker-scan', queue: 'scan_jobs', msg_id: msg.msg_id, status: 'ok', queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started, detail: { reused: subject.canonicalFeatureSetId, via, ...(backfillHand ? { hand_backfilled: true } : {}) } });
     await archive(db, msg.msg_id);
     return { scanId, outcome: 'matched', canonical: subject.canonicalFeatureSetId };

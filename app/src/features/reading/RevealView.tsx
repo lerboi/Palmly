@@ -37,8 +37,12 @@ export interface RevealViewProps {
   kind?: ReadingKind;
   /** The reading's id — threaded into the share sheet so the invite carries the real reading (F0.4). */
   readingId?: string;
-  /** When the source photo was deleted/uploaded — powers the timestamped privacy badge (F1.1). */
+  /** When the source photo was ACTUALLY deleted — null while it still exists (the badge then
+   *  promises the 24h window instead of claiming a deletion that hasn't happened; live find
+   *  2026-07-25). */
   photoDeletedAt?: string | null;
+  /** The keep-my-scan opt-in (D2): the badge says "saved", never "deleted". */
+  photoKept?: boolean;
   /** This reveal came from a repeat scan that resolved `matched` (F1.10) — surface the consistency
    *  micro-survey ("does this match your last reading?"). */
   matched?: boolean;
@@ -46,10 +50,12 @@ export interface RevealViewProps {
   onRetry?: () => void;
 }
 
-/** "Photo deleted · 2:41 PM" — a deterministic time format (pure; `new Date(<string>)` is not the
- *  purity-banned argless `new Date()`/`Date.now()`). Falls back to the bare label when absent. */
-function deletedLabel(ts?: string | null): string {
-  if (!ts) return 'Photo deleted';
+/** The privacy badge, honestly (F1.1 + live find 2026-07-25): a timestamped "deleted" ONLY when
+ *  deletion actually happened; "saved" for the keep-my-scan opt-in; the 24h promise otherwise.
+ *  Deterministic time format (pure; `new Date(<string>)` is not the purity-banned argless form). */
+function deletedLabel(ts?: string | null, kept = false): string {
+  if (kept) return 'Photo saved to your account — delete anytime';
+  if (!ts) return 'Photo deletes within 24 hours';
   const t = new Date(ts);
   if (Number.isNaN(t.getTime())) return 'Photo deleted';
   let h = t.getHours();
@@ -73,7 +79,7 @@ const PENDING_LINES = [
  * hook, a branded **seal** share affordance, and a single trust footer. English-first, no decorative
  * CJK. A living pending state + an honest error state.
  */
-export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', readingId, photoDeletedAt, matched = false, onBack, onRetry }: RevealViewProps) {
+export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', readingId, photoDeletedAt, photoKept = false, matched = false, onBack, onRetry }: RevealViewProps) {
   const theme = useTheme();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -181,7 +187,7 @@ export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', 
 
         {/* The second-hand offer is palm-only (both hands are a palmistry idea). */}
         {kind === 'palm' ? <SecondHandOfferCard onPress={() => router.push('/primer?hand=left' as Href)} /> : null}
-        <TrustFooter onMethodology={() => router.push('/methodology')} photoDeletedAt={photoDeletedAt} kind={kind} />
+        <TrustFooter onMethodology={() => router.push('/methodology')} photoDeletedAt={photoDeletedAt} photoKept={photoKept} kind={kind} />
         {/* Cross-sell the OTHER reading: a palm reveal offers the face (gated on F1.6 until built), a
             face reveal offers the palm (always available). */}
         {kind === 'face' ? (
@@ -397,7 +403,7 @@ function LockedCard({ section, onUnlock }: { section: ReadingSection; onUnlock: 
   );
 }
 
-function TrustFooter({ onMethodology, photoDeletedAt, kind }: { onMethodology: () => void; photoDeletedAt?: string | null; kind: ReadingKind }) {
+function TrustFooter({ onMethodology, photoDeletedAt, photoKept = false, kind }: { onMethodology: () => void; photoDeletedAt?: string | null; photoKept?: boolean; kind: ReadingKind }) {
   const theme = useTheme();
   return (
     <View style={{ alignItems: 'center', gap: theme.spacing.sm, marginVertical: theme.spacing.lg }}>
@@ -406,7 +412,7 @@ function TrustFooter({ onMethodology, photoDeletedAt, kind }: { onMethodology: (
           ? 'Same face, same reading. Rescan anytime — your features don’t change.'
           : 'Same palm, same reading. Rescan anytime — your lines don’t lie.'}
       </Text>
-      <PrivacyBadge label={deletedLabel(photoDeletedAt)} />
+      <PrivacyBadge label={deletedLabel(photoDeletedAt, photoKept)} />
       <Pressable onPress={onMethodology} accessibilityRole="link">
         <Text variant="small" color={theme.colors.accent}>
           How Palmly reads →

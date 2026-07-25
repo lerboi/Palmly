@@ -26,6 +26,7 @@ export default function Reveal() {
   const [loadedId, setLoadedId] = useState<string | undefined>(undefined);
   const [kind, setKind] = useState<ReadingKind>('palm');
   const [photoDeletedAt, setPhotoDeletedAt] = useState<string | null>(null);
+  const [photoKept, setPhotoKept] = useState(false);
 
   // Reset to the loading state when the target (or a retry) changes — during render, not in an
   // effect (React's adjust-state-on-prop-change pattern), so the pending state shows immediately.
@@ -36,6 +37,7 @@ export default function Reveal() {
     setReading(undefined);
     setLoadedId(undefined);
     setPhotoDeletedAt(null);
+    setPhotoKept(false);
   }
 
   useEffect(() => {
@@ -52,6 +54,7 @@ export default function Reveal() {
         setLoadedId(res.id);
         setKind(res.kind);
         setPhotoDeletedAt(res.photoDeletedAt);
+        setPhotoKept(res.photoKept);
         setState('ready');
         void setFirstReadingComplete(); // returning-user redirect (F0.7): this user now has a reading
         track('reveal_viewed', { reading_id: res.id, kind: res.kind });
@@ -82,6 +85,7 @@ export default function Reveal() {
       kind={kind}
       readingId={loadedId}
       photoDeletedAt={photoDeletedAt}
+      photoKept={photoKept}
       matched={matched === '1'}
       onRetry={() => setReloads((r) => r + 1)}
     />
