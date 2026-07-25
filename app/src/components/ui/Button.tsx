@@ -85,12 +85,15 @@ export function Button({
 
   // Label color, resolved per press state. A pressed `tonal` fill becomes the solid accent, so its
   // label flips to `onAccent`; the solid fills carry their on-color; outlined/ghost keep the accent.
+  // The resting `tonal` label is `accentPressed`, not `accent`: accent-on-accentMuted measured
+  // 4.00:1 and failed AA at every size (Audit-4 CC-6); accentPressed lands at 4.96:1 light /
+  // 7.09:1 dark on the same tint, and reads as the same red.
   const labelColor = (pressed: boolean): string => {
     if (disabled) return colors.textTertiary;
     if (variant === 'primary' || variant === 'danger') return colors.onAccent;
     if (variant === 'premium') return colors.onPremium;
-    if (variant === 'tonal') return pressed ? colors.onAccent : colors.accent;
-    return colors.accent;
+    if (variant === 'tonal') return pressed ? colors.onAccent : colors.accentPressed;
+    return colors.accentPressed; // secondary / ghost labels — same AA reason, on bg or surface
   };
 
   const loaderColor =

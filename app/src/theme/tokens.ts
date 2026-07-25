@@ -42,6 +42,7 @@ export interface SkinColors {
   surfaceRaised: string; // lifted cards, paywall, streak, sheets (pair with shadow)
   surfaceSunken: string; // insets, chat input, track backgrounds
   border: string; // hairline dividers / outlines
+  trackOff: string; // off-state switch track — must stay visible against a card (≥1.5:1)
   textPrimary: string; // headlines, body
   textSecondary: string; // secondary / caption
   textTertiary: string; // disabled / hint
@@ -50,7 +51,8 @@ export interface SkinColors {
   accentMuted: string; // tonal button bg, selected tint
   onAccent: string; // text / icon on accent
   heritageAccent: string; // softened cinnabar — palm-line highlight, red-thread, seal only
-  premium: string; // champagne / amber — the rare premium marker
+  premium: string; // champagne / amber — the rare premium FILL (never small text: 2.59:1 on white)
+  premiumInk: string; // champagne-ink — premium TEXT/marks, tuned to AA on every surface it lands on
   premiumPressed: string; // pressed premium
   onPremium: string; // text on premium
   success: string; // verified / "unchanged" consistency brag
@@ -80,6 +82,7 @@ export const inkCinnabarSkin: Skin = {
     surfaceRaised: palette.paperCard,
     surfaceSunken: '#F0E9D8',
     border: palette.paperEdge,
+    trackOff: '#D2C4A2',
     textPrimary: palette.ink,
     textSecondary: palette.inkWash,
     textTertiary: '#8A8375',
@@ -89,6 +92,7 @@ export const inkCinnabarSkin: Skin = {
     onAccent: palette.paper,
     heritageAccent: palette.cinnabar,
     premium: palette.gold,
+    premiumInk: '#755512',
     premiumPressed: palette.goldPressed,
     onPremium: palette.ink,
     success: palette.jade,
@@ -102,6 +106,7 @@ export const inkCinnabarSkin: Skin = {
     surfaceRaised: palette.inkCard,
     surfaceSunken: '#1A1712',
     border: palette.inkEdge,
+    trackOff: '#4A4437',
     textPrimary: palette.paper,
     textSecondary: palette.inkWashDark,
     textTertiary: '#6E675A',
@@ -111,6 +116,7 @@ export const inkCinnabarSkin: Skin = {
     onAccent: palette.paper,
     heritageAccent: palette.cinnabar,
     premium: palette.gold,
+    premiumInk: '#D6B45F',
     premiumPressed: palette.goldPressed,
     onPremium: palette.ink,
     success: palette.jade,
@@ -138,6 +144,7 @@ export const quietCosmosSkin: Skin = {
     surfaceRaised: '#FFFFFF',
     surfaceSunken: '#F2F0EC',
     border: '#E7E3DC',
+    trackOff: '#CFCCC5',
     textPrimary: '#1A1A1F',
     textSecondary: '#6B6B72',
     textTertiary: '#9A9AA0',
@@ -147,6 +154,7 @@ export const quietCosmosSkin: Skin = {
     onAccent: '#FFFFFF',
     heritageAccent: '#C2554A',
     premium: '#C79A3C',
+    premiumInk: '#875F04',
     premiumPressed: '#AE842F',
     onPremium: '#1A1A1F',
     success: '#3F7A5E',
@@ -160,6 +168,7 @@ export const quietCosmosSkin: Skin = {
     surfaceRaised: '#24262F',
     surfaceSunken: '#191B21',
     border: '#2E313B',
+    trackOff: '#454A57',
     textPrimary: '#F4F4F6',
     textSecondary: '#A9A9B2',
     textTertiary: '#6E6E77',
@@ -169,6 +178,7 @@ export const quietCosmosSkin: Skin = {
     onAccent: '#14151A', // dark text on the light periwinkle accent (AA)
     heritageAccent: '#D98A7E',
     premium: '#D9B25A',
+    premiumInk: '#D9B25A', // dark mode: the champagne already clears AA on every dark surface
     premiumPressed: '#E4C06E',
     onPremium: '#14151A',
     success: '#5AA981',
@@ -206,6 +216,7 @@ export const vermilionSkin: Skin = {
     surfaceRaised: '#FFFFFF',
     surfaceSunken: '#EAE6DE', // deepened with `bg` so insets/tracks still read as recessed
     border: '#E7E3DC',
+    trackOff: '#CFC9BD', // 1.65:1 on a white card — the old `border` track read as a blank rectangle (CC-7)
     textPrimary: '#1A1A1F',
     textSecondary: '#6B6B72',
     textTertiary: '#9A9AA0',
@@ -214,7 +225,8 @@ export const vermilionSkin: Skin = {
     accentMuted: '#FBE7E2',
     onAccent: '#FFFFFF',
     heritageAccent: '#9E3B2E', // deep claret — red-thread motif + corner seal ONLY (§3.2)
-    premium: '#C79A3C',
+    premium: '#C79A3C', // FILL only — 2.59:1 on white, so it may never carry text (CC-4)
+    premiumInk: '#875F04', // champagne-ink for premium TEXT: 5.72:1 on surface, 5.08 on bg, 4.60 on sunken
     premiumPressed: '#AE842F',
     onPremium: '#1A1A1F',
     success: '#3F7A5E',
@@ -228,6 +240,7 @@ export const vermilionSkin: Skin = {
     surfaceRaised: '#24262F',
     surfaceSunken: '#191B21',
     border: '#2E313B',
+    trackOff: '#454A57',
     textPrimary: '#F4F4F6',
     textSecondary: '#A9A9B2',
     textTertiary: '#6E6E77',
@@ -237,6 +250,7 @@ export const vermilionSkin: Skin = {
     onAccent: '#2A0E07', // dark text on the light coral accent (AA)
     heritageAccent: '#E0806F', // light claret for thread/seal on dark
     premium: '#D9B25A',
+    premiumInk: '#D9B25A', // dark mode: the champagne already clears AA on every dark surface (≥7.5:1)
     premiumPressed: '#E4C06E',
     onPremium: '#14151A',
     success: '#5AA981',

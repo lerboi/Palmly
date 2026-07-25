@@ -278,7 +278,7 @@ function RowLink({
         {label}
       </Text>
       {premiumLocked ? (
-        <Text variant="caption" tone="premium">
+        <Text variant="caption" tone="premiumInk">
           Premium
         </Text>
       ) : (

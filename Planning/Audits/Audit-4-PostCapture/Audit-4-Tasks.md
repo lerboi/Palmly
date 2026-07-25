@@ -24,12 +24,12 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 | Field | Value |
 |---|---|
 | Current phase | U0 — foundations |
-| Next task | U0.T2 |
+| Next task | U0.T3 |
 | Blocked on | — |
 | Waiting on human | — |
 | Last run | 2026-07-25 |
-| Last completed task | U0.T1 |
-| Notes for next run | **U0.T2 must resolve a pairing U0.T1 knowingly moved:** deepening `surfaceSunken → #EAE6DE` drops `textSecondary` on `surfaceSunken` from 4.65:1 → **4.25:1** (fails AA <24px). Fix in the CC-6 leg — sunken chip/pill labels go to `textPrimary` (13.93:1) — and pin it in the new AA matrix. Screenshot recipe erratum: this host's headless Chrome renders **dark** by default, and metro caches the inlined env var — light shots need `EXPO_PUBLIC_FORCE_SCHEME=light npx expo export --platform web --clear` (`--clear` only when the flag's value changes). |
+| Last completed task | U0.T2 |
+| Notes for next run | **The AA matrix in `theme/__tests__/tokens.test.ts` is now the contrast contract — extend it, never route around it.** Two rules it encodes that later tasks must follow: sunken chip/pill labels use `textPrimary` (`textSecondary` on `surfaceSunken` is 4.25:1 and is deliberately NOT in the matrix as a text pairing), and accent TEXT is `accentPressed` while `accent` stays fills/lines/selected. **U0.T3 inherits the other half of CC-1/CC-4:** the `colors.accent` **Icon** call sites (~16 in `src/features`) were left untouched by U0.T2 by design — they are U0.T3's ink sweep. Screenshot recipe erratum: this host's headless Chrome renders **dark** by default, and metro caches the inlined env var — light shots need `EXPO_PUBLIC_FORCE_SCHEME=light npx expo export --platform web` plus `--clear` whenever the flag's value changes. |
 
 ---
 
@@ -96,6 +96,9 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 | D1 | 2026-07-25 | **`Card`'s scheme-aware border reads `theme.scheme`, not a new prop.** Direction §2 asks for "light = always bordered, dark = current behavior"; `Theme` already carries `scheme`, so `showBorder = bordered ?? (theme.scheme === 'light' \|\| !lifted)` needs no API surface and leaves an explicit `bordered` winning on both schemes. |
 | D2 | 2026-07-25 | **Kept `surfaceSunken #EAE6DE` as Direction §2 prescribes even though it costs `textSecondary`-on-sunken 4.65:1 → 4.25:1.** The direction supersedes on surface separation, and the very next task (U0.T2, CC-6) owns chip/tonal label color — sunken labels move to `textPrimary` (13.93:1) there. Recorded in STATE so U0.T2 cannot miss it. |
 | D3 | 2026-07-25 | **Light screenshots are baked with `EXPO_PUBLIC_FORCE_SCHEME=light`, not left to the harness default.** The host Chrome reports the OS dark preference, so "no flag" is not "light" here. Explicit on both schemes = reproducible on any host. |
+| D4 | 2026-07-25 | **`premiumInk` light is `#875F04`, not the Direction's `#8A6A1F`.** §2 tuned only against white; premium captions also render on `bg` and on a `surfaceSunken` card (`LegalScreen`), where `#8A6A1F` falls to 4.48/4.05. `#875F04` clears AA on all four surfaces it lands on (5.72 / 5.08 / 4.60 / 4.81) and stays in the same champagne-bronze family. |
+| D5 | 2026-07-25 | **Accent TEXT resolves to `accentPressed`; `accent` stays the fill/line/selected color.** Beyond the task's literal scope, but forced by it: U0.T1's deeper `bg` dropped `accent`-on-`bg` to 4.27:1 (it was 4.57 before), and CC-6's chip failure is the same root. This is the exact `premium`/`premiumInk` split one level over — `accentPressed` clears AA on every surface in both schemes (4.74–5.91 light, 7.04–8.52 dark) and reads as the same red. Applied in `Text`'s tone map, `Button`'s tonal/secondary/ghost labels, and the 7 direct `color={colors.accent}` **Text** sites in `src/features` (Icon sites are U0.T3's sweep). |
+| D6 | 2026-07-25 | **CC-4's score numeral was fixed here, not deferred to U5.T3.** The AA matrix carries a "≥24px premium numeral" row; leaving `ShareView`'s ring on `colors.premium` (2.59:1, under even the 3:1 large-text floor) would have made that row describe an intent the code didn't meet. The arc moved with the numeral so ring and value still match. U5.T3 keeps the pair-screen composition work. |
 
 ## OUT OF SCOPE (do not execute here — report, never build)
 - RevenueCat purchase wiring, offerings, prices (R1.T4 🧑 + R4) — U6.T6 only makes the paywall
@@ -118,7 +121,7 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
   - Verify: standing gates; shoot `/fortune` + `/history` light before/after into
     `docs/checkpoints/audit4/u0/`; cards visibly separate (border present in the PNG); tokens
     test updated for the new hexes.
-- [ ] **U0.T2** 🤖 Contrast remediation + the AA test matrix (CC-4..CC-9, Direction §2): add
+- [x] **U0.T2** 🤖 Contrast remediation + the AA test matrix (CC-4..CC-9, Direction §2): add
   `premiumInk` role (light ≈`#8A6A1F`-region tuned to ≥4.5:1 on `#FFFFFF`; dark `#D9B25A`);
   move chip/tonal label color to `accentPressed` (measure ≥4.5:1 on `accentMuted`, else
   `textPrimary`); visible off-toggle track token; extend `theme/__tests__/tokens.test.ts` with
@@ -412,4 +415,5 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 
 | Date | Task | One-line result |
 |---|---|---|
+| 2026-07-25 | U0.T2 | New `premiumInk` (`#875F04`/`#D9B25A`) + `trackOff` (`#CFC9BD`/`#454A57`) roles across all 3 skins; accent TEXT → `accentPressed` (`Text` tone map, `Button` tonal/secondary/ghost, 7 feature call sites); off-toggle track 1.15→1.65:1; disabled send icon 1.30→2.25:1; score ring numeral+arc 2.59→5.72:1. `tokens.test.ts` gains a 25-pairing AA matrix run over BOTH schemes plus a banned-pairing guard — it immediately caught a live regression U0.T1 had introduced (`accent` on the new `bg` = 4.27:1), which is what drove D5. `grep tone="premium"` → 0. Tests 73 → 77. |
 | 2026-07-25 | U0.T1 | Light `bg #FAF9F7→#F4F1EB`, `surfaceSunken #F2F0EC→#EAE6DE`, `Card` border scheme-aware (light borders at every elevation); card/page separation 1.052→1.127:1 and a real hairline now renders — pixel probe of the u0 before/after shots reads `ffffff → e7e3dc e7e3dc → f4f1eb` where before it read `ffffff → (shadow AA) → faf9f7`; the 4 raw `shadow.sm` sites all already carry hairlines (none shadow-only); tokens test +1 (73). |

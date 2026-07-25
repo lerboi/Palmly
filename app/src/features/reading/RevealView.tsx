@@ -294,12 +294,18 @@ function FeatureIcon({
   size = 44,
 }: {
   icon: IconName;
-  tone?: 'accent' | 'heritage' | 'premium';
+  tone?: 'accent' | 'heritage' | 'premiumInk';
   size?: number;
 }) {
   const theme = useTheme();
+  // The premium tone is the INK, not the fill: the champagne sits at 2.08:1 on the sunken tile
+  // this icon renders on, well under the 3:1 floor a glyph needs (Audit-4 CC-4).
   const color =
-    tone === 'heritage' ? theme.colors.heritageAccent : tone === 'premium' ? theme.colors.premium : theme.colors.accent;
+    tone === 'heritage'
+      ? theme.colors.heritageAccent
+      : tone === 'premiumInk'
+        ? theme.colors.premiumInk
+        : theme.colors.accent;
   const bg = tone === 'accent' ? theme.colors.accentMuted : theme.colors.surfaceSunken;
   return (
     <View
@@ -386,13 +392,13 @@ function LockedCard({ section, onUnlock }: { section: ReadingSection; onUnlock: 
     <Pressable onPress={onUnlock} accessibilityRole="button" accessibilityLabel={`Unlock ${section.title}`}>
       <Card elevation="sm" style={{ marginBottom: theme.spacing.md }}>
         <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-          <FeatureIcon icon="lock" tone="premium" size={44} />
+          <FeatureIcon icon="lock" tone="premiumInk" size={44} />
           <View style={{ flex: 1 }}>
             {/* The title IS the tease: it is code-derived from the deterministic claim skeleton, so
                 it says "you have a Fate Line chapter" without generating — or leaking — a word of
                 the premium prose. There is no `teaser` field by design (M12a / D-25). */}
             <Text variant="bodyMedium">{section.title}</Text>
-            <Text variant="caption" tone="premium" style={{ marginTop: theme.spacing.sm }}>
+            <Text variant="caption" tone="premiumInk" style={{ marginTop: theme.spacing.sm }}>
               Unlock with Premium
             </Text>
           </View>
@@ -414,7 +420,7 @@ function TrustFooter({ onMethodology, photoDeletedAt, photoKept = false, kind }:
       </Text>
       <PrivacyBadge label={deletedLabel(photoDeletedAt, photoKept)} />
       <Pressable onPress={onMethodology} accessibilityRole="link">
-        <Text variant="small" color={theme.colors.accent}>
+        <Text variant="small" color={theme.colors.accentPressed}>
           How Palmly reads →
         </Text>
       </Pressable>

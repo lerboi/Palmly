@@ -25,6 +25,7 @@ const ROLE_KEYS: (keyof SkinColors)[] = [
   'surfaceRaised',
   'surfaceSunken',
   'border',
+  'trackOff',
   'textPrimary',
   'textSecondary',
   'textTertiary',
@@ -34,6 +35,7 @@ const ROLE_KEYS: (keyof SkinColors)[] = [
   'onAccent',
   'heritageAccent',
   'premium',
+  'premiumInk',
   'premiumPressed',
   'onPremium',
   'success',
@@ -103,6 +105,78 @@ describe('design tokens — role-based skin contract (redesign §3)', () => {
     // Dark already separated — it is untouched by this retune.
     expect(activeSkin.dark.bg).toBe('#14151A');
     expect(activeSkin.dark.surfaceSunken).toBe('#191B21');
+  });
+
+  /**
+   * The AA matrix (Audit-4 CC-9 / Design-Direction §2). Every pairing the UI actually renders,
+   * measured in BOTH schemes. Audit-4 found five failing pairings shipped because the old test
+   * guarded exactly one (white-on-accent); this table is the guard that makes that impossible.
+   * Adding a role means adding its used pairings here.
+   */
+  const AA_MATRIX: { fg: keyof SkinColors; bg: keyof SkinColors; floor: number; where: string }[] = [
+    // ── Text: WCAG AA 4.5:1 (all body/caption sizes the app ships) ──
+    { fg: 'onAccent', bg: 'accent', floor: 4.5, where: 'primary button label' },
+    { fg: 'accentPressed', bg: 'accentMuted', floor: 4.5, where: 'tonal button label, chips, pills' },
+    { fg: 'accentPressed', bg: 'bg', floor: 4.5, where: 'text links on the page' },
+    { fg: 'accentPressed', bg: 'surface', floor: 4.5, where: 'text links inside a card' },
+    { fg: 'premiumInk', bg: 'surface', floor: 4.5, where: 'premium captions on a card' },
+    { fg: 'premiumInk', bg: 'bg', floor: 4.5, where: 'premium captions on the page' },
+    { fg: 'premiumInk', bg: 'surfaceSunken', floor: 4.5, where: 'premium caption on a sunken card' },
+    { fg: 'onPremium', bg: 'premium', floor: 4.5, where: 'seal caption on the champagne fill' },
+    { fg: 'textPrimary', bg: 'surface', floor: 4.5, where: 'body copy' },
+    { fg: 'textPrimary', bg: 'bg', floor: 4.5, where: 'body copy on the page' },
+    { fg: 'textPrimary', bg: 'surfaceSunken', floor: 4.5, where: 'sunken chip/pill labels' },
+    { fg: 'textSecondary', bg: 'bg', floor: 4.5, where: 'metadata on the page (the CC-3 retune risk)' },
+    { fg: 'textSecondary', bg: 'surface', floor: 4.5, where: 'metadata in a card' },
+    { fg: 'textSecondary', bg: 'surfaceRaised', floor: 4.5, where: 'metadata in a lifted card' },
+    { fg: 'success', bg: 'surface', floor: 4.5, where: 'the "unchanged" consistency line' },
+    { fg: 'danger', bg: 'surface', floor: 4.5, where: 'destructive copy' },
+    // ── Non-text marks + large numerals: 3:1 (WCAG 1.4.11 / large-text) ──
+    { fg: 'accent', bg: 'surface', floor: 3, where: 'palm-line highlight, selected borders' },
+    { fg: 'accent', bg: 'bg', floor: 3, where: 'accent fills/marks on the page' },
+    { fg: 'accent', bg: 'accentMuted', floor: 3, where: 'accent glyph on its own tint' },
+    { fg: 'heritageAccent', bg: 'surface', floor: 3, where: 'red-thread motif, corner seal' },
+    { fg: 'premiumInk', bg: 'bg', floor: 3, where: 'the ≥24px premium score numeral' },
+    // ── UI affordances: Direction §2 sets 1.5:1 for a switch track against its card ──
+    { fg: 'trackOff', bg: 'surface', floor: 1.5, where: 'off toggle track' },
+    { fg: 'trackOff', bg: 'surfaceRaised', floor: 1.5, where: 'off toggle track on a lifted card' },
+    // ── Disabled: exempt from WCAG 1.4.3, but must still be VISIBLE (the old value was 1.30:1) ──
+    { fg: 'textTertiary', bg: 'surfaceSunken', floor: 2, where: 'disabled send icon' },
+  ];
+
+  /**
+   * Pairings that must NEVER be used — each is why a sibling role exists. Asserting they still
+   * fail keeps the ban honest: if a future retune makes one pass, the ban (and this row) is stale.
+   */
+  const BANNED: { fg: keyof SkinColors; bg: keyof SkinColors; instead: string }[] = [
+    { fg: 'premium', bg: 'surface', instead: 'premiumInk' },
+    { fg: 'premium', bg: 'bg', instead: 'premiumInk' },
+    { fg: 'textTertiary', bg: 'bg', instead: 'textSecondary (tertiary is hints/disabled only)' },
+  ];
+
+  it.each(['light', 'dark'] as const)('meets the AA matrix in %s (CC-4..CC-9 / Direction §2)', (scheme) => {
+    const c = activeSkin[scheme];
+    const failures = AA_MATRIX.filter(({ fg, bg, floor }) => contrast(c[fg], c[bg]) < floor).map(
+      ({ fg, bg, floor, where }) =>
+        `${fg} on ${bg} = ${contrast(c[fg], c[bg]).toFixed(2)}:1 (needs ${floor}) — ${where}`,
+    );
+    expect(failures).toEqual([]);
+    expect(AA_MATRIX.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it.each(['light', 'dark'] as const)('keeps the banned pairings banned in %s', (scheme) => {
+    const c = activeSkin[scheme];
+    for (const { fg, bg, instead } of BANNED) {
+      // Light is where these fail; dark's champagne/tertiary are legible, so the ban is a
+      // light-scheme guard. Asserting only where the ban bites keeps the message truthful.
+      if (scheme === 'light') {
+        expect({ pairing: `${fg}/${bg}`, ratio: contrast(c[fg], c[bg]) < 4.5, instead }).toEqual({
+          pairing: `${fg}/${bg}`,
+          ratio: true,
+          instead,
+        });
+      }
+    }
   });
 
   it('keeps destructive `danger` visually distinct from the accent (F2.5 / §5.7)', () => {

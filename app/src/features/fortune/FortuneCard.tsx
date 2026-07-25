@@ -45,8 +45,8 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
       {!premium ? (
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.md, alignItems: 'flex-start' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-            <Icon name="lock" size={16} color={theme.colors.premium} decorative />
-            <Text variant="caption" tone="premium">
+            <Icon name="lock" size={16} color={theme.colors.premiumInk} decorative />
+            <Text variant="caption" tone="premiumInk">
               Do · Avoid · lucky direction · hours · love, career &amp; wealth
             </Text>
           </View>

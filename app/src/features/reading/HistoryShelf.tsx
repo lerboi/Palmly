@@ -110,7 +110,7 @@ function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: num
               }}
             >
               <Icon name={isPalm ? 'palm' : 'face'} size={13} color={theme.colors.accent} decorative />
-              <Text variant="caption" color={theme.colors.accent}>
+              <Text variant="caption" color={theme.colors.accentPressed}>
                 {isPalm ? 'Palm' : 'Face'}
               </Text>
             </View>

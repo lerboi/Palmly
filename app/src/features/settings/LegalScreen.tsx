@@ -26,7 +26,7 @@ export function LegalScreen() {
 
       {legalReviewed ? null : (
         <Card style={{ borderColor: theme.colors.premium, backgroundColor: theme.colors.surfaceSunken, marginBottom: theme.spacing.lg }}>
-          <Text variant="caption" tone="premium">
+          <Text variant="caption" tone="premiumInk">
             Template — pending legal review before launch.
           </Text>
         </Card>

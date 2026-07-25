@@ -102,8 +102,8 @@ export function PaywallView({
             <PalmDiagram geometry={geometry} size={heroSize} highlightedLine={lockedLine} animate />
           ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.sm }}>
-            <Icon name="sparkle" size={18} color={theme.colors.premium} decorative />
-            <Text variant="caption" tone="premium" style={{ letterSpacing: 1, textTransform: 'uppercase' }}>
+            <Icon name="sparkle" size={18} color={theme.colors.premiumInk} decorative />
+            <Text variant="caption" tone="premiumInk" style={{ letterSpacing: 1, textTransform: 'uppercase' }}>
               Palmly Premium
             </Text>
           </View>
@@ -178,7 +178,7 @@ export function PaywallView({
         />
         <View style={{ alignItems: 'center', gap: theme.spacing.xs }}>
           <Pressable onPress={onRestore} accessibilityRole="button" hitSlop={12}>
-            <Text variant="caption" color={theme.colors.accent}>
+            <Text variant="caption" color={theme.colors.accentPressed}>
               Restore purchases
             </Text>
           </Pressable>

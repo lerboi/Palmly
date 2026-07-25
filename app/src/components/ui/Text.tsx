@@ -10,6 +10,7 @@ type Tone =
   | 'heritage'
   | 'success'
   | 'premium'
+  | 'premiumInk'
   | 'danger'
   | 'onAccent'
   | 'onPremium'
@@ -29,6 +30,12 @@ export interface TextProps extends RNTextProps {
  * Themed text primitive. `variant` selects a type-scale entry (font + size + line height);
  * `tone` selects a semantic color role (redesign §3/§4). The old "accent never under 18pt"
  * rule is retired: the twilight-indigo accent passes AA at all sizes on both bg and surface.
+ *
+ * ⚠ Two roles are **fills**, and their text counterparts are separate (Audit-4 CC-4/CC-6):
+ * `premium` (2.59:1 on white) → premium text uses `premiumInk`; and `accent`, which the `accent`
+ * tone deliberately resolves to `accentPressed` — the accent itself measures 4.27:1 on the
+ * retuned `bg` and 4.00:1 on `accentMuted`, while `accentPressed` clears AA on every surface in
+ * both schemes and reads as the same red. `accent` stays the fill / selected / palm-line color.
  */
 export function Text({
   variant = 'body',
@@ -48,10 +55,11 @@ export function Text({
     primary: theme.colors.textPrimary,
     secondary: theme.colors.textSecondary,
     tertiary: theme.colors.textTertiary,
-    accent: theme.colors.accent,
+    accent: theme.colors.accentPressed,
     heritage: theme.colors.heritageAccent,
     success: theme.colors.success,
     premium: theme.colors.premium,
+    premiumInk: theme.colors.premiumInk,
     danger: theme.colors.danger,
     onAccent: theme.colors.onAccent,
     onPremium: theme.colors.onPremium,

@@ -236,7 +236,7 @@ function Bubble({ message, index, shouldAnimate }: { message: ChatMessage; index
         {message.citations && message.citations.length > 0 ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.xs, marginLeft: theme.spacing.xs }}>
             <Icon name="palm" size={13} color={theme.colors.accent} decorative />
-            <Text variant="caption" color={theme.colors.accent}>
+            <Text variant="caption" color={theme.colors.accentPressed}>
               {citationLabel(message.citations)}
             </Text>
           </View>
@@ -338,7 +338,7 @@ function Chip({ label, index, shouldAnimate, onInject }: { label: string; index:
           paddingVertical: theme.spacing.sm,
         }}
       >
-        <Text variant="small" color={theme.colors.accent}>
+        <Text variant="small" color={theme.colors.accentPressed}>
           {label}
         </Text>
       </Pressable>
@@ -397,12 +397,19 @@ function InputBar({ value, onChangeText, onSubmit }: { value: string; onChangeTe
             width: controlHeight.md,
             height: controlHeight.md,
             borderRadius: controlHeight.md / 2,
-            backgroundColor: canSend ? theme.colors.accent : theme.colors.border,
+            backgroundColor: canSend ? theme.colors.accent : theme.colors.surfaceSunken,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Icon name="send" size={22} color={theme.colors.onAccent} decorative />
+          {/* Disabled reads as a recessed well with a hint-toned glyph (2.25:1) rather than the old
+              white-on-`border` icon, which sat at 1.30:1 and vanished entirely (Audit-4 CC-7). */}
+          <Icon
+            name="send"
+            size={22}
+            color={canSend ? theme.colors.onAccent : theme.colors.textTertiary}
+            decorative
+          />
         </Pressable>
       </Animated.View>
     </View>

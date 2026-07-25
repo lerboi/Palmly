@@ -432,7 +432,7 @@ function ChannelButton({ icon, mono, label, onPress }: { icon?: IconName; mono?:
           {icon ? (
             <Icon name={icon} size={24} color={theme.colors.accent} decorative />
           ) : (
-            <Text variant="bodyMedium" color={theme.colors.accent} style={{ fontWeight: '700' }}>
+            <Text variant="bodyMedium" color={theme.colors.accentPressed} style={{ fontWeight: '700' }}>
               {mono}
             </Text>
           )}
@@ -468,7 +468,9 @@ function Toggle({ on }: { on: boolean }) {
         height: 28,
         borderRadius: 14,
         padding: 3,
-        backgroundColor: on ? theme.colors.accent : theme.colors.border,
+        // Off uses `trackOff`, not `border`: the hairline token on a white card measured 1.15:1
+        // against a white thumb, so an off toggle read as a blank rectangle (Audit-4 CC-7).
+        backgroundColor: on ? theme.colors.accent : theme.colors.trackOff,
       }}
     >
       <Animated.View
@@ -603,7 +605,7 @@ function CompatPreview({
               borderRadius: theme.radii.pill,
             }}
           >
-            <Text variant="caption" color={theme.colors.accent}>
+            <Text variant="caption" color={theme.colors.accentPressed}>
               {chip}
             </Text>
           </View>
@@ -695,7 +697,7 @@ export function ScoreRing({
             cx={d / 2}
             cy={d / 2}
             r={r}
-            stroke={theme.colors.premium}
+            stroke={theme.colors.premiumInk}
             strokeWidth={sw}
             fill="none"
             strokeLinecap="round"
@@ -704,7 +706,9 @@ export function ScoreRing({
             transform={`rotate(-90 ${d / 2} ${d / 2})`}
           />
         </Svg>
-        <Text variant="numeral" color={theme.colors.premium} style={{ fontSize: Math.round(size * 0.34) }}>
+        {/* The ink, not the fill: the champagne numeral measured 2.59:1 on white — under even the
+            3:1 large-text floor (Audit-4 CC-4). The arc moves with it so ring and value match. */}
+        <Text variant="numeral" color={theme.colors.premiumInk} style={{ fontSize: Math.round(size * 0.34) }}>
           {shown}
         </Text>
       </View>
