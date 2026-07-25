@@ -61,7 +61,11 @@ evidence).
   deploys on merge to `main`. **Gates:** P3.T5 "deployed by CI" + P3.G. *(Manual CLI deploy from the
   agent needs only part 1, which is done.)*
 
-- [ ] **H4c — Confirm/enable Gemini PAID tier (important).** The current `GEMINI_API_KEY` behaves as
+- [x] **H4c — Confirm/enable Gemini PAID tier.** ✅ 2026-07-24 — user attached billing/credits;
+  verified live: a real palm-image `generateContent` → 200, and `cachedContents` now VALIDATES the
+  request instead of `429 FreeTier limit=0`. Real image extraction ran 10+ times live on 2026-07-25
+  (P5 pipeline E2E). Caching/Batch config flips remain P5.T1/P9 work items, no longer tier-blocked.
+  - _original ask:_ The `GEMINI_API_KEY` behaved as
   **free-tier**: explicit context caching returns `429 FreeTier limit=0` and implicit caching never
   hits (so P5.T1's caching verify can't pass). Two consequences: (1) the ~10× cost saving from
   caching (Backend §6.4) is off; (2) **hard production blocker** — Backend §13: the free tier trains
