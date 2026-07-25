@@ -24,26 +24,19 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
     // The hero animates FIRST (Direction §3): Today used to spring its secondary rows in while
     // the fortune card — the page's whole point — just appeared.
     <Card elevation="md" entranceIndex={0} style={{ marginBottom: theme.spacing.md }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
-        <View
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: theme.radii.sm,
-            backgroundColor: theme.colors.surfaceSunken,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Icon name="sparkle" size={18} color={theme.colors.textSecondary} decorative />
-        </View>
-        <Text variant="caption" tone="tertiary" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
-          Today&apos;s fortune
-        </Text>
-      </View>
+      {/* Eyebrow, no icon chip (Direction §4.2). The chip was one more decorative mark on a card
+          that was already running four hues at once. */}
+      <Text
+        variant="caption"
+        tone="secondary"
+        style={{ textTransform: 'uppercase', letterSpacing: 1, marginBottom: theme.spacing.sm }}
+      >
+        Today&apos;s fortune
+      </Text>
 
-      {/* The free essence — the visual anchor. */}
-      <Text variant="bodyLarge">{fortune.overall}</Text>
+      {/* The essence is the card's hero and its share crop — set in the serif, the one editorial
+          moment this surface gets (Direction §4.2). It was plain 17px body before. */}
+      <Text variant="editorialTitle">{fortune.overall}</Text>
 
       {!premium ? (
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.md, alignItems: 'flex-start' }}>
@@ -57,7 +50,7 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
         </View>
       ) : (
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.lg }}>
-          <Animated.View entering={unfold(0)} style={{ flexDirection: 'row', gap: theme.spacing.lg }}>
+          <Animated.View entering={unfold(0)} style={{ gap: theme.spacing.lg }}>
             <DoDont title="Do" items={fortune.dos} tone="success" />
             <DoDont title="Avoid" items={fortune.donts} tone="danger" />
           </Animated.View>
@@ -74,7 +67,7 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
 
           <Animated.View entering={unfold(2)} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
             <Lucky label="Direction" value={fortune.lucky_direction} bearing={DIRECTION_BEARING[fortune.lucky_direction]} />
-            <Lucky label="Colour" value={fortune.lucky_color} />
+            <Lucky label="Color" value={fortune.lucky_color} />
             <Lucky label="Hours" value={fortune.lucky_hours} />
           </Animated.View>
 
@@ -103,13 +96,21 @@ function Divider() {
 
 /** Shared uppercase section eyebrow (Aspect + Lucky both use it). */
 function SectionLabel({ children }: { children: string }) {
+  // `secondary`, not `tertiary`: tertiary is for hints and disabled state, and these are content
+  // (Audit-4 CC-5 — tertiary measured 2.66:1 and was being used for real copy).
   return (
-    <Text variant="caption" tone="tertiary" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
+    <Text variant="caption" tone="secondary" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
       {children}
     </Text>
   );
 }
 
+/**
+ * A Do or Avoid block — full width, not a column (Audit-4 CO-6: two columns squeezed into ~120pt
+ * each and wrapped mid-phrase). The semantic color lives on the MARK only; the heading is ink
+ * (CC-2: the card ran accent + success-green + danger-crimson + premium-gold simultaneously, and
+ * `danger #A93226` sits so close to `accent #D13B27` that "Avoid" read as brand-red).
+ */
 function DoDont({ title, items, tone }: { title: string; items: string[]; tone: 'success' | 'danger' }) {
   const theme = useTheme();
   const color = tone === 'success' ? theme.colors.success : theme.colors.danger;
@@ -118,9 +119,7 @@ function DoDont({ title, items, tone }: { title: string; items: string[]; tone: 
   const marker: IconName = tone === 'success' ? 'check' : 'close';
   return (
     <View style={{ flex: 1, gap: theme.spacing.xs }}>
-      <Text variant="heading" color={color}>
-        {title}
-      </Text>
+      <Text variant="heading">{title}</Text>
       {items.map((it, i) => (
         <View key={`${title}-${i}`} style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
           <Icon name={marker} size={16} color={color} decorative style={{ marginTop: 2 }} />
