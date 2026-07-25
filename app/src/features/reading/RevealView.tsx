@@ -464,10 +464,17 @@ function TrustFooter({ onMethodology, photoDeletedAt, photoKept = false, kind }:
           : 'Same palm, same reading. Rescan anytime — your lines don’t lie.'}
       </Text>
       <PrivacyBadge label={deletedLabel(photoDeletedAt, { kept: photoKept })} />
-      <Pressable onPress={onMethodology} accessibilityRole="link">
+      {/* The affordance is a `chevron`, not a typed "→" (CO-8: the icon set replaces text glyphs —
+          this one survived U0.T5's sweep because the errata scoped that grep away from `→`). */}
+      <Pressable
+        onPress={onMethodology}
+        accessibilityRole="link"
+        style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}
+      >
         <Text variant="small" color={theme.colors.accentPressed}>
-          How Palmly reads →
+          How Palmly reads
         </Text>
+        <Icon name="chevron" size={14} color={theme.colors.accentPressed} decorative />
       </Pressable>
     </View>
   );
