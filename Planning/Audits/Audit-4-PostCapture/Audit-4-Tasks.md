@@ -23,12 +23,12 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 
 | Field | Value |
 |---|---|
-| Current phase | U2 — Today (home) recomposition |
-| Next task | U2.G (phase gate) |
+| Current phase | U3 — the almanac card |
+| Next task | U3.T1 |
 | Blocked on | — |
 | Waiting on human | — |
 | Last run | 2026-07-25 |
-| Last completed task | U2.T7 |
+| Last completed task | U2.G [~] — **U2 COMPLETE** (7 tasks + gate); reflow proof still device-gated |
 | Notes for next run | **Three contracts U0.T1–T3 established — extend them, never route around them.** (1) The AA matrix in `theme/__tests__/tokens.test.ts` is the contrast contract; adding a role means adding its used pairings. Sunken chip/pill labels are `textPrimary` (`textSecondary` on `surfaceSunken` is 4.25:1 and is deliberately absent from the matrix as a text pairing). (2) Accent TEXT is `accentPressed`; `accent` is fills / selected / palm-line only; premium TEXT is `premiumInk`, `premium` is fill only. (3) Decorative glyphs are `textSecondary` on a `surfaceSunken` well — `accentMuted` wells now mean "selected". Screenshot recipe erratum: this host's headless Chrome renders **dark** by default, and metro caches the inlined env var — light shots need `EXPO_PUBLIC_FORCE_SCHEME=light npx expo export --platform web` plus `--clear` whenever the flag's value changes. |
 
 ---
@@ -294,7 +294,7 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
   → `dos`/`donts` naming.
   - Verify: standing gates + boundary unit tests (UTC+10 morning, UTC−8 evening) green;
     grep `todayUtc` → 0.
-- [ ] **U2.G** 🚦 Today gate: standing gates; shoot `/fortune` light+dark+320 (all states via
+- [~] **U2.G** 🚦 Today gate: standing gates; shoot `/fortune` light+dark+320 (all states via
   dev fixtures) to `docs/checkpoints/audit4/u2-gate/`; accent litmus ≤2; no reflow; update
   STATE.
 
@@ -452,6 +452,7 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 
 | Date | Task | One-line result |
 |---|---|---|
+| 2026-07-25 | **U2.G** 🚦 [~] | **Today gate PASSED on the measurable checks.** 13 shots — ready / loading / error / first-run / real route × light+dark, plus 320pt — to `docs/checkpoints/audit4/u2-gate/`. **Accent litmus by band analysis (D21), every state ≤1 non-interactive occurrence** (limit 2): loading has **no accent at all**; error is 100% its "Try again" button; first-run is 100% the "Read my palm" CTA plus sub-1% palm-line slivers (sanctioned use #3); ready is 96% the tonal CTA label plus the week strip's **today ring** — the single ambient accent §4.1 grants this screen; the real route adds only the active tab item. 320pt renders without overflow in ready and error. `[~]` PENDING: "no reflow" is **not** device-free provable — per D31 the three tail reads all resolve to nothing in a static export, so the measurement cannot distinguish before from after. Structure is right (one `tailReady` gate, one mount, one fade); the proof needs a device/session. Standing gates: typecheck 0, lint 0, 112 tests. |
 | 2026-07-25 | U2.T7 | **Header and fortune finally agree on what day it is (SH-14).** The row was fetched by `toISOString()` — a UTC day — while the header rendered the LOCAL weekday/date/pillar, so for much of the day in UTC±8..12 the user read "Saturday July 25" above Friday's fortune. Both now use the shared `localDateKey()` (the same helper the week strip uses); `grep todayUtc` → **0**. Device locale is threaded through with an `en` fallback (D38), and the local-date switch's backend consequence is recorded (D37). Dead weight removed: the CJK `AlmanacDate.pillar` that was computed on every render and never rendered, and `PREVIEW_FORTUNE`, which now lives in a `/dev`-only `fixtures.ts` — `grep PREVIEW_FORTUNE` outside `/dev` → **0**. `fortune.do`/`.dont` → `dos`/`donts`. **4 boundary tests** pin UTC+10 morning, UTC−8 evening, both ends of the local day, and the roll at local (not UTC) midnight. Tests 109 → 112. |
 | 2026-07-25 | U2.T6 | **Today is a page with one hero, not a card stack.** The `'your match'` fallback is deleted, so the red-thread row requires a REAL partner name and hides itself otherwise (SH-13 — the default literally rendered "Waiting for your match", reading as an unfinished placeholder). The notify opt-in drops from a three-clause card to ONE line ("One quiet notification each morning.") and is hidden on web, where there is no push to opt into (CP-2). The claim row moved to Readings, where "don't lose these" is a real story next to a shelf; the shelf's EMPTY state gained the banner too. `RowLink` + its `IconName` import are now dead and deleted. **Post-hero content on `/dev/fortune-free`: 0 rows** (header + week strip + hero card), against the audit's "stack of five near-identical white cards with six accent-red icons". Gates green, 109 tests. |
 | 2026-07-25 | U2.T5 [~] | **The birth-date blocker becomes a sheet (SH-4).** It was a full-screen form — despite the name — shown BEFORE any value, asking for a hand-typed `YYYY-MM-DD` with no picker and no validation message; Skip persisted nothing so it re-nagged on every open forever; a failed save was silent. Now: `Modal` + scrim + drag handle + slide-up, offered only after the fortune is on screen, with the platform date spinner (D35/D36). Skip is persisted permanently and Settings gains an "Add birth date" row (`?birthDate=1`) as the way back. A failed save keeps the sheet up with a warm inline error. **This also un-blocks `/fortune` for the harness** — the route was unshootable since U1.T4's erratum, and now shoots the real header + hero. 4 new tests pin the ask-rule (never before a fortune, never after a skip, not while resolving, not when already stored). `[~]` PENDING: the native spinner is device-only. Tests 105 → 109. |
