@@ -1,10 +1,10 @@
-import { Platform, View } from 'react-native';
+import { Platform, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Button, Card, Icon, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
-import { DIRECTION_BEARING, type Fortune } from './fortune';
+import { DIRECTION_BEARING, luckyBasis, type Fortune } from './fortune';
 
 /**
  * The daily fortune card (UIUX §2.11, redesign R18 / v2 V17) — a true hero (`elevation="md"` +
@@ -17,6 +17,9 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
+  // Lucky-row columns follow the real screen width (CO-6), not a fixed minWidth that could not shrink.
+  const { width } = useWindowDimensions();
+  const basis = luckyBasis(width);
   const unfold = (i: number) =>
     shouldAnimate ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base) : undefined;
 
@@ -66,9 +69,9 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
           <Divider />
 
           <Animated.View entering={unfold(2)} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
-            <Lucky label="Direction" value={fortune.lucky_direction} bearing={DIRECTION_BEARING[fortune.lucky_direction]} />
-            <Lucky label="Color" value={fortune.lucky_color} />
-            <Lucky label="Hours" value={fortune.lucky_hours} />
+            <Lucky label="Direction" value={fortune.lucky_direction} bearing={DIRECTION_BEARING[fortune.lucky_direction]} basis={basis} />
+            <Lucky label="Color" value={fortune.lucky_color} basis={basis} />
+            <Lucky label="Hours" value={fortune.lucky_hours} basis={basis} />
           </Animated.View>
 
           {/* Fortune → chat bridge (audit §7 P4) — pre-fills the grounded chat with today's almanac. */}
@@ -141,17 +144,24 @@ function Aspect({ label, text }: { label: string; text: string }) {
   );
 }
 
-function Lucky({ label, value, bearing }: { label: string; value: string; bearing?: number }) {
+/**
+ * One Lucky cell. `flexBasis` + `minWidth: 0` is the fix for CO-6: the cell used to carry
+ * `minWidth: 84` and nothing else, so it could only ever GROW to fit its content — three of them
+ * overflowed a 320pt device. Now the basis sets the share and the text wraps inside it.
+ */
+function Lucky({ label, value, bearing, basis }: { label: string; value: string; bearing?: number; basis: `${number}%` }) {
   const theme = useTheme();
   return (
-    <View style={{ gap: 2, minWidth: 84 }}>
+    <View style={{ gap: 2, flexGrow: 1, flexBasis: basis, minWidth: 0 }}>
       <SectionLabel>{label}</SectionLabel>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
         {/* Unmapped bearing → no icon at all, rather than the old `' ' + value` leading space. */}
         {bearing === undefined ? null : (
           <Icon name="compass" size={16} color={theme.colors.textSecondary} rotate={bearing} decorative />
         )}
-        <Text variant="bodyMedium">{value}</Text>
+        <Text variant="bodyMedium" style={{ flexShrink: 1 }}>
+          {value}
+        </Text>
       </View>
     </View>
   );

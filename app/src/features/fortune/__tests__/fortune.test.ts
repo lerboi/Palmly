@@ -1,4 +1,4 @@
-import { DIRECTION_BEARING, almanacDate, dayPillarCn, homeState, shouldAskBirthDate, type Fortune } from '../fortune';
+import { DIRECTION_BEARING, almanacDate, dayPillarCn, homeState, luckyBasis, luckyColumns, shouldAskBirthDate, type Fortune } from '../fortune';
 
 describe('fortune (P9.T3)', () => {
   it('computes the sexagenary day pillar (anchor 2000-01-07 = 甲子)', () => {
@@ -64,6 +64,26 @@ describe('fortune (P9.T3)', () => {
 
     it('resolves loading and error to different states — they are not interchangeable', () => {
       expect(homeState({ loading: true, fortune: null })).not.toBe(homeState({ error: true, fortune: null }));
+    });
+  });
+
+  describe('the Lucky row grid (Audit-4 CO-6)', () => {
+    it('collapses to 2+1 below 360pt, where three columns stop being readable', () => {
+      expect(luckyColumns(320)).toBe(2); // the device the audit measured the overflow on
+      expect(luckyColumns(359)).toBe(2);
+    });
+
+    it('uses thirds once there is room', () => {
+      expect(luckyColumns(360)).toBe(3);
+      expect(luckyColumns(390)).toBe(3);
+      expect(luckyColumns(430)).toBe(3);
+    });
+
+    it('leaves gap room in the basis, so three cells never sum to 100%', () => {
+      // The original bug was cells that could only GROW (minWidth, no basis). A basis of exactly
+      // 33% + gaps would overflow again, so thirds are 28%.
+      expect(Number(luckyBasis(390).replace('%', '')) * 3).toBeLessThan(100);
+      expect(Number(luckyBasis(320).replace('%', '')) * 2).toBeLessThan(100);
     });
   });
 

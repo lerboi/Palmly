@@ -160,6 +160,25 @@ export function homeState(input: {
  * a birth date, and never again once they have declined. `undefined` inputs mean "not yet known",
  * which must not show the sheet — asking during a load is the same rudeness as asking too early.
  */
+/**
+ * How many columns the Lucky row gets (Audit-4 CO-6).
+ *
+ * It shipped as three cells with `minWidth: 84` and no `flexBasis`, so the cells could not shrink:
+ * their content ("Southeast" with an icon, "Jade green", "7–9am · 3–5pm") pushed each one wider
+ * than its floor, and 3 × that + gaps overflowed a 320pt device's 256pt content box.
+ *
+ * Thirds when there is room; 2-then-1 below 360pt, which is where three columns stop being
+ * readable rather than merely tight.
+ */
+export function luckyColumns(screenWidth: number): 2 | 3 {
+  return screenWidth < 360 ? 2 : 3;
+}
+
+/** The `flexBasis` percentage for one Lucky cell, leaving room for the inter-cell gaps. */
+export function luckyBasis(screenWidth: number): `${number}%` {
+  return luckyColumns(screenWidth) === 3 ? '28%' : '44%';
+}
+
 export function shouldAskBirthDate(input: {
   fortuneReady: boolean;
   birthDate?: string | null;
