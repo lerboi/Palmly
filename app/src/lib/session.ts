@@ -29,6 +29,28 @@ export async function hasFirstReadingComplete(): Promise<boolean> {
  * client-side (no schema change); a future task can sync it. Stores an ISO timestamp passed by the
  * caller (the render layer can't call the purity-banned `Date.now()`).
  */
+const BIRTH_DATE_SKIPPED_KEY = 'palmly.birth_date_skipped.v1';
+
+/**
+ * Remember that the user declined the birth-date ask (Audit-4 SH-4). "Skip" used to persist
+ * nothing, so the sheet re-nagged on EVERY open, forever. Settings keeps a way back in.
+ */
+export async function setBirthDateSkipped(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(BIRTH_DATE_SKIPPED_KEY, '1');
+  } catch {
+    /* a failed write only means we ask again — never a crash */
+  }
+}
+
+export async function wasBirthDateSkipped(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(BIRTH_DATE_SKIPPED_KEY)) === '1';
+  } catch {
+    return false;
+  }
+}
+
 const PAYWALL_DECLINED_KEY = 'palmly.paywall_declined_at.v1';
 
 export async function setPaywallDeclined(at: string): Promise<void> {

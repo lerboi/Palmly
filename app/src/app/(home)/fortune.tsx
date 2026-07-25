@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
 import { FortuneHome } from '@/features/fortune/FortuneHome';
 import { BirthDateSheet } from '@/features/fortune/BirthDateSheet';
 import type { Fortune } from '@/features/fortune/fortune';
 import { loadFortuneContext, loadTodayFortune, saveBirthDate, type FortuneContext } from '@/lib/fortuneData';
 import { useEntitlement } from '@/lib/entitlements';
-import { hasFirstReadingComplete } from '@/lib/session';
+import { hasFirstReadingComplete, setBirthDateSkipped, wasBirthDateSkipped } from '@/lib/session';
 import { markFortuneOpened } from '@/lib/fortuneOpens';
 import { streakRun } from '@/features/fortune/openHistory';
+import { homeState, shouldAskBirthDate } from '@/features/fortune/fortune';
 import { track } from '@/lib/analytics';
 
 /**
@@ -29,8 +31,12 @@ export default function FortuneScreen() {
   // The days this user opened their fortune — drives the week strip and the REAL streak (SH-9).
   const [openedDates, setOpenedDates] = useState<string[]>([]);
   const [ctx, setCtx] = useState<FortuneContext | null>(null); // null → still loading the context
-  const [showBirthSheet, setShowBirthSheet] = useState(false);
   const [savingBirth, setSavingBirth] = useState(false);
+  const [birthSaveFailed, setBirthSaveFailed] = useState(false);
+  // Skip is PERSISTED now (SH-4) — the sheet used to re-nag on every open, forever.
+  const [birthSkipped, setBirthSkipped] = useState<boolean | undefined>(undefined);
+  // Settings' "Add birth date" row re-opens the sheet even after a permanent skip.
+  const { birthDate: reopenBirth } = useLocalSearchParams<{ birthDate?: string }>();
 
   useEffect(() => {
     // Retention signal (D1/D7/D30). Recording the open and reporting the streak are the same act:
@@ -56,8 +62,8 @@ export default function FortuneScreen() {
     loadFortuneContext().then((c) => {
       if (!active) return;
       setCtx(c);
-      if (!c.birthDate) setShowBirthSheet(true);
     });
+    wasBirthDateSkipped().then((v) => active && setBirthSkipped(v));
     hasFirstReadingComplete().then((done) => active && setFirstRun(!done));
     return () => {
       active = false;
@@ -87,29 +93,49 @@ export default function FortuneScreen() {
 
   const onSaveBirth = (birthDate: string) => {
     setSavingBirth(true);
-    void saveBirthDate(birthDate).then((b) => {
-      setSavingBirth(false);
-      setShowBirthSheet(false);
-      setCtx({ birthDate, bucket: b ?? 'generic' }); // triggers the fortune reload with the new bucket
-    });
+    setBirthSaveFailed(false);
+    void saveBirthDate(birthDate)
+      .then((b) => {
+        setSavingBirth(false);
+        setCtx({ birthDate, bucket: b ?? 'generic' }); // triggers the fortune reload with the new bucket
+      })
+      .catch(() => {
+        // Keep the sheet up with a warm inline error. A silent failure used to just re-ask next
+        // launch, with no sign anything had gone wrong (SH-4).
+        setSavingBirth(false);
+        setBirthSaveFailed(true);
+      });
   };
 
-  if (showBirthSheet) {
-    return <BirthDateSheet onSave={onSaveBirth} onSkip={() => setShowBirthSheet(false)} busy={savingBirth} />;
-  }
+  const onSkipBirth = () => {
+    setBirthSkipped(true);
+    void setBirthDateSkipped();
+  };
+
   // Loading until BOTH the context and the first-run answer are known — resolving one without the
   // other is how the flash used to slip through.
   const loading = !ctx || firstRun === undefined;
+  // The sheet is offered only AFTER the fortune is on screen — value first, never a blocker (SH-4).
+  const askBirth = shouldAskBirthDate({
+    fortuneReady: homeState({ loading, entitlementLoading, error: failed, firstRun, fortune }) === 'ready',
+    birthDate: ctx?.birthDate,
+    skipped: reopenBirth === '1' ? false : birthSkipped,
+  });
   return (
-    <FortuneHome
-      fortune={fortune}
-      premium={premium}
-      loading={loading}
-      entitlementLoading={entitlementLoading}
-      error={failed}
-      firstRun={firstRun}
-      openedDates={openedDates}
-      onRetry={() => setReloads((n) => n + 1)}
-    />
+    <>
+      <FortuneHome
+        fortune={fortune}
+        premium={premium}
+        loading={loading}
+        entitlementLoading={entitlementLoading}
+        error={failed}
+        firstRun={firstRun}
+        openedDates={openedDates}
+        onRetry={() => setReloads((n) => n + 1)}
+      />
+      {askBirth ? (
+        <BirthDateSheet onSave={onSaveBirth} onSkip={onSkipBirth} busy={savingBirth} failed={birthSaveFailed} />
+      ) : null}
+    </>
   );
 }

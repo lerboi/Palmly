@@ -66,6 +66,9 @@ export function SettingsHub({ premium = false }: { premium?: boolean }) {
 
       <SettingGroup title="Preferences">
         <SettingRow first leadingIcon="bell" label="Notifications" onPress={() => router.push('/notifications')} />
+        {/* The way back in after skipping the birth-date sheet (SH-4). Skipping is permanent,
+            so without this row a change of mind would be unreachable. */}
+        <SettingRow leadingIcon="today" label="Add birth date" onPress={() => router.push('/fortune?birthDate=1' as Href)} />
         {/* English-only for the MVP — an informational row (no fake chevron). The zh "traditional
             view" (activeSkin → Ink & Cinnabar + CJK) language picker is a device follow-up. */}
         <SettingRow leadingIcon="globe" label="Language" value="English" />

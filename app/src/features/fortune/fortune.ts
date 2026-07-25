@@ -151,6 +151,27 @@ export function homeState(input: {
   return 'ready';
 }
 
+/**
+ * Should the birth-date sheet be offered right now? (Audit-4 SH-4.)
+ *
+ * The old rule was "no birth date → show it", evaluated before anything rendered, so a brand-new
+ * user met a full-screen form BEFORE seeing a single fortune, and — because Skip persisted nothing
+ * — met it again on every open forever.
+ *
+ * The rule now: only after the fortune is actually on screen (value first), only if we don't have
+ * a birth date, and never again once they have declined. `undefined` inputs mean "not yet known",
+ * which must not show the sheet — asking during a load is the same rudeness as asking too early.
+ */
+export function shouldAskBirthDate(input: {
+  fortuneReady: boolean;
+  birthDate?: string | null;
+  skipped?: boolean;
+}): boolean {
+  if (!input.fortuneReady) return false;
+  if (input.skipped !== false) return false; // undefined = still resolving → don't ask yet
+  return !input.birthDate;
+}
+
 export const PREVIEW_FORTUNE: Fortune = {
   overall: 'A steady, favourable day — move with intention and doors open quietly.',
   career: 'Progress through patience; a senior notices your reliability.',

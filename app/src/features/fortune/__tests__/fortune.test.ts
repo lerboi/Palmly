@@ -1,4 +1,4 @@
-import { DIRECTION_BEARING, PREVIEW_FORTUNE, almanacDate, dayPillarCn, homeState } from '../fortune';
+import { DIRECTION_BEARING, PREVIEW_FORTUNE, almanacDate, dayPillarCn, homeState, shouldAskBirthDate } from '../fortune';
 
 describe('fortune (P9.T3)', () => {
   it('computes the sexagenary day pillar (anchor 2000-01-07 = 甲子)', () => {
@@ -60,6 +60,28 @@ describe('fortune (P9.T3)', () => {
 
     it('resolves loading and error to different states — they are not interchangeable', () => {
       expect(homeState({ loading: true, fortune: null })).not.toBe(homeState({ error: true, fortune: null }));
+    });
+  });
+
+  describe('the birth-date ask (Audit-4 SH-4)', () => {
+    it('never blocks the first fortune — it waits until one is on screen', () => {
+      // THE bug: a full-screen form appeared BEFORE any value, on a brand-new user's first open.
+      expect(shouldAskBirthDate({ fortuneReady: false, birthDate: null, skipped: false })).toBe(false);
+      expect(shouldAskBirthDate({ fortuneReady: true, birthDate: null, skipped: false })).toBe(true);
+    });
+
+    it('never re-asks once the user has skipped', () => {
+      // "Skip" persisted nothing, so the sheet re-nagged on EVERY open, forever.
+      expect(shouldAskBirthDate({ fortuneReady: true, birthDate: null, skipped: true })).toBe(false);
+    });
+
+    it('does not ask while the skip flag is still resolving', () => {
+      // `undefined` means "not yet known" — asking during a load is the same rudeness as too early.
+      expect(shouldAskBirthDate({ fortuneReady: true, birthDate: null, skipped: undefined })).toBe(false);
+    });
+
+    it('does not ask when a birth date is already stored', () => {
+      expect(shouldAskBirthDate({ fortuneReady: true, birthDate: '1994-03-02', skipped: false })).toBe(false);
     });
   });
 
