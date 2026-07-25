@@ -30,7 +30,9 @@ function copyFor(reason: AccountReason, inviterName?: string): { title: string; 
     case 'fortune':
       return {
         title: 'Save your daily fortune',
-        body: 'Create a free account so your fortune, streak, and readings follow you to any device.',
+        // CP-10: the "streak" promise is dropped — the week strip is device-local (D34), so an
+        // account does not carry it anywhere. Promise only what linking actually does.
+        body: 'Create a free account so your fortune and readings follow you to any device.',
       };
     case 'settings':
       return {
@@ -107,7 +109,12 @@ export function AccountSheet({ reason, mandatory = false, inviterName, onClose, 
     borderWidth: theme.strokes.hairline,
     borderColor: theme.colors.border,
     paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
   };
+  // A centred field with `letterSpacing` renders a trailing space after the LAST character, so the
+  // text sits half a letter-space right of centre (Audit-4 CO-15). Pad the left by the same amount.
+  const OTP_TRACKING = 6;
+  const otpStyle = { ...fieldStyle, letterSpacing: OTP_TRACKING, paddingLeft: theme.spacing.md + OTP_TRACKING };
 
   return (
     <Screen>
@@ -150,9 +157,34 @@ export function AccountSheet({ reason, mandatory = false, inviterName, onClose, 
 
         {mode === 'choices' ? (
           <View style={{ gap: theme.spacing.sm }}>
-            <Button label="Continue with Apple" variant="primary" fullWidth loading={busy} onPress={() => void onOAuth('apple')} />
-            <Button label="Continue with Google" variant="secondary" fullWidth disabled={busy} onPress={() => void onOAuth('google')} />
-            <Button label="Continue with phone" variant="secondary" fullWidth disabled={busy} onPress={() => { setWarm(null); setMode('phone-entry'); }} />
+            {/* Three DISTINCT buttons (Audit-4 CO-7): they were an unmarked solid + two identical
+                outlines, so the only way to tell Google from phone was to read the label. Each now
+                carries its mark and its own treatment. The store-exact Apple/Google fills and the
+                official brand assets remain an owner task (D15) — these are house marks. */}
+            <Button
+              label="Continue with Apple"
+              variant="primary"
+              fullWidth
+              loading={busy}
+              icon={<Icon name="apple" size={18} color={theme.colors.onAccent} decorative />}
+              onPress={() => void onOAuth('apple')}
+            />
+            <Button
+              label="Continue with Google"
+              variant="secondary"
+              fullWidth
+              disabled={busy}
+              icon={<Icon name="google" size={18} color={theme.colors.accentPressed} decorative />}
+              onPress={() => void onOAuth('google')}
+            />
+            <Button
+              label="Continue with phone"
+              variant="ghost"
+              fullWidth
+              disabled={busy}
+              icon={<Icon name="chat" size={18} color={theme.colors.accentPressed} decorative />}
+              onPress={() => { setWarm(null); setMode('phone-entry'); }}
+            />
           </View>
         ) : mode === 'phone-entry' ? (
           <View style={{ gap: theme.spacing.sm }}>
@@ -180,7 +212,7 @@ export function AccountSheet({ reason, mandatory = false, inviterName, onClose, 
               autoComplete="sms-otp"
               maxLength={6}
               accessibilityLabel="Verification code"
-              style={{ ...fieldStyle, letterSpacing: 6 }}
+              style={otpStyle}
             />
             <Button label="Verify" variant="primary" fullWidth loading={busy} disabled={otp.length < 6} onPress={() => void onVerify()} />
             <Button label="Back" variant="ghost" disabled={busy} onPress={() => { setMode('phone-entry'); setOtp(''); setWarm(null); }} />
