@@ -23,12 +23,12 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 
 | Field | Value |
 |---|---|
-| Current phase | U1 — navigation backbone |
-| Next task | U1.G (phase gate) |
+| Current phase | U2 — Today (home) recomposition |
+| Next task | U2.T1 |
 | Blocked on | — |
 | Waiting on human | — |
 | Last run | 2026-07-25 |
-| Last completed task | U1.T5 |
+| Last completed task | U1.G — **U1 COMPLETE** (5 tasks + gate) |
 | Notes for next run | **Three contracts U0.T1–T3 established — extend them, never route around them.** (1) The AA matrix in `theme/__tests__/tokens.test.ts` is the contrast contract; adding a role means adding its used pairings. Sunken chip/pill labels are `textPrimary` (`textSecondary` on `surfaceSunken` is 4.25:1 and is deliberately absent from the matrix as a text pairing). (2) Accent TEXT is `accentPressed`; `accent` is fills / selected / palm-line only; premium TEXT is `premiumInk`, `premium` is fill only. (3) Decorative glyphs are `textSecondary` on a `surfaceSunken` well — `accentMuted` wells now mean "selected". Screenshot recipe erratum: this host's headless Chrome renders **dark** by default, and metro caches the inlined env var — light shots need `EXPO_PUBLIC_FORCE_SCHEME=light npx expo export --platform web` plus `--clear` whenever the flag's value changes. |
 
 ---
@@ -231,7 +231,7 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
   - Verify: standing gates; web export: with `hasFirstReadingComplete` seeded true the first
     rendered frame is `/fortune` (assert via shoot of `/`); with it false, the launcher renders
     with no timer navigation (manual tap only).
-- [ ] **U1.G** 🚦 Navigation gate: standing gates + Design-Direction §6 check 4 (journey:
+- [x] **U1.G** 🚦 Navigation gate: standing gates + Design-Direction §6 check 4 (journey:
   analyzing→reveal→Done→Today; every pushed screen back; every modal ✕; tabs switch) verified
   in the web export; shots to `docs/checkpoints/audit4/u1-gate/`; update STATE.
 
@@ -440,6 +440,7 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 
 | Date | Task | One-line result |
 |---|---|---|
+| 2026-07-25 | **U1.G** 🚦 | **Navigation gate PASSED — 13/13 checks, all driven by TRUSTED CDP gestures in the web export, not by rendering alone.** Journey: `/dev/reveal-ready` → click Done → `/fortune`. Tabs: Readings→`/history`, Ask→`/chat`, Today→`/fortune`. Tab roots expose no `[aria-label="Back"]` (chat, history); all three modals expose `[aria-label="Close"]` (share, paywall, account); all five pushed screens expose Back (settings, legal, methodology, notifications, privacy); Readings "New reading" → `/primer`. **Out-of-scope legs, stated plainly:** §6 check 4 also names `capture → analyzing`, which this ledger cannot touch (R3 camera track paused by the owner) and which needs a live scan + backend — everything from `reveal` onward is proven. Shots → `docs/checkpoints/audit4/u1-gate/`. Standing gates: typecheck 0, lint 0, 83 tests. |
 | 2026-07-25 | U1.T5 | Launcher honesty (SN-8): the 1500ms auto-advance is **deleted** (`grep setTimeout src/app/index.tsx` → 0) so advancing is only ever an explicit tap, and the route holds a bare themed frame until the redirect resolves (D27) instead of mounting the marketing lockup and starting its logo draw. **Verified two-sided by polling the DOM 70× over 3.5s from navigation, with the returning-user flag seeded into localStorage before boot:** returning → launcher tagline **never** painted, settles `/fortune`; fresh → tagline paints, stays `/`. The timer's removal is code-verified (it was web-gated, so the web run alone couldn't prove it). Gates green, 83 tests. |
 | 2026-07-25 | U1.T4 | Two standing new-scan entries (SN-4): a `camera` `HeaderIconButton` on the Today header (left of settings), and a flat ink "New reading" row above the populated shelf. "Read my palm" previously existed ONLY in the first-run and empty states, so a returning user with readings had no way to start another one. **Both click-verified with trusted CDP gestures → `/primer`**, not just rendered. Shelf entrance indices shifted by one so the new row animates first. Gates green, 83 tests. |
 | 2026-07-25 | U1.T3 [~] | Tab roots stop offering a back arrow (SN-3): `ChatThread`'s `router.back()` fallback removed and `HistoryShelf` given an `onBack?` prop, after `canGoBack()` proved unusable inside a tab navigator (D26 — caught by screenshot, not by reasoning). The account modal gains a ✕ (suppressed in `mandatory` mode, where there is no legitimate dismiss), joining share and paywall from U0.T7 — every true modal now closes rather than "goes back" (SN-9). `(reading)` stack: `reveal` and `pair` fade instead of sliding, since analyzing hands off with `replace` and a slide promises a back-path that doesn't exist (SN-10); the animation gate picked up the standard `Platform.OS !== 'web'` term it was missing. `[~]` PENDING: the native fade FEEL is device-only (web correctly renders settled), and the pushed-History variant has no caller (errata). Gates green, 83 tests. |
