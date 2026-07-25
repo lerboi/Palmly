@@ -22,7 +22,7 @@ import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
 import { FACE_READING_ENABLED } from '@/lib/capabilities';
 import { stamp } from '@/lib/haptics';
 import { setContinueDismissed, wasContinueDismissed } from '@/lib/session';
-import { type Reading, type ReadingSection, FACE_SECTION_ICON, SECTION_LINE, freeSections, lockedSections, traditionFootnote } from './reveal';
+import { type Reading, type ReadingSection, FACE_SECTION_ICON, SECTION_ICON, SECTION_LINE, freeSections, lockedSections, traditionFootnote } from './reveal';
 
 export type RevealState = 'ready' | 'pending' | 'error';
 export type ReadingKind = 'palm' | 'face';
@@ -381,16 +381,17 @@ function SectionCard({ section, geometry, kind, readingId, index, entranceIndex 
     if (readingId) track('reveal_section_viewed', { reading_id: readingId, section: section.key, index });
   }, [readingId, section.key, index]);
   // Palm: a per-section mini palm (audit F1.1) — YOUR lines, with THIS section's line lit in the
-  // accent (≤96px forces the silhouette on + doubles strokes, F0.T14, so the mini reads as a hand).
-  // Face: no line geometry exists, so the marker is a themed feature-icon tile.
+  // accent (≤96px thickens ink AND underlay so the lit line still reads at 64px — CO-5).
+  // A palm section that is NOT about one line (hand shape / mounts / markings) would otherwise
+  // render an identical unlit palm, so it takes a feature icon instead — as does every face
+  // section, since a face reading has no line geometry at all.
   const line = SECTION_LINE[section.key];
+  const icon = kind === 'face' ? (FACE_SECTION_ICON[section.key] ?? 'face') : SECTION_ICON[section.key];
   return (
     <Card elevation="sm" entranceIndex={entranceIndex} style={{ marginBottom: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
         <View style={{ width: 64, alignItems: 'center' }}>
-          {kind === 'face' ? (
-            <FeatureIcon icon={FACE_SECTION_ICON[section.key] ?? 'face'} size={56} />
-          ) : (
+          {line || !icon ? (
             <PalmDiagram
               geometry={geometry}
               size={64}
@@ -399,6 +400,8 @@ function SectionCard({ section, geometry, kind, readingId, index, entranceIndex 
               signatureLines={line ? [line] : []}
               accessibilityLabel={line ? `Your ${section.title.toLowerCase()}` : ''}
             />
+          ) : (
+            <FeatureIcon icon={icon} size={56} />
           )}
         </View>
         <View style={{ flex: 1 }}>
@@ -420,21 +423,23 @@ function SectionCard({ section, geometry, kind, readingId, index, entranceIndex 
 function CompareCard({ onPress, entranceIndex }: { onPress: () => void; entranceIndex?: number }) {
   const theme = useTheme();
   return (
-    // Flat and left-aligned (CO-2/CO-4): this was the page's ONLY centred, only `md`-elevation card,
-    // so it read as an interruption planted mid-reading rather than as part of it.
+    // Flat and left-aligned (CO-2/CO-4, Direction §4.4 #3): this was the page's ONLY centred, only
+    // `md`-elevation card, so it read as an interruption planted mid-reading rather than as part of
+    // it. It now shares the section cards' shape — marker left, text right — so the eye keeps its
+    // line down the page instead of re-centring for one card.
     <Card entranceIndex={entranceIndex} style={{ marginBottom: theme.spacing.md }}>
-      <FeatureIcon icon="thread" tone="heritage" />
-      <Text variant="title" style={{ textAlign: 'center', marginTop: theme.spacing.sm }}>
-        Compare with a friend
-      </Text>
-      <Text
-        variant="body"
-        tone="secondary"
-        style={{ textAlign: 'center', marginTop: theme.spacing.sm, marginBottom: theme.spacing.md }}
-      >
-        Tie a red thread — see how your palms line up.
-      </Text>
-      <Button label="Compare palms" onPress={onPress} fullWidth />
+      <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+        <View style={{ width: 64, alignItems: 'center' }}>
+          <FeatureIcon icon="thread" tone="heritage" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text variant="title">Compare with a friend</Text>
+          <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.sm }}>
+            Tie a red thread — see how your palms line up.
+          </Text>
+        </View>
+      </View>
+      <Button label="Compare palms" onPress={onPress} fullWidth style={{ marginTop: theme.spacing.md }} />
     </Card>
   );
 }
@@ -449,8 +454,10 @@ function LockedCard({ section, onUnlock, entranceIndex }: { section: ReadingSect
           <View style={{ flex: 1 }}>
             {/* The title IS the tease: it is code-derived from the deterministic claim skeleton, so
                 it says "you have a Fate Line chapter" without generating — or leaking — a word of
-                the premium prose. There is no `teaser` field by design (M12a / D-25). */}
-            <Text variant="bodyMedium">{section.title}</Text>
+                the premium prose. There is no `teaser` field by design (M12a / D-25).
+                `heading`, the SAME weight a free section's title gets (CO-4): at `bodyMedium` the
+                premium chapters read as less important than the ones already given away. */}
+            <Text variant="heading">{section.title}</Text>
             <Text variant="caption" tone="premiumInk" style={{ marginTop: theme.spacing.sm }}>
               Unlock with Premium
             </Text>

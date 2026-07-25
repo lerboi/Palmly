@@ -24,7 +24,8 @@ export interface Reading {
   disclaimer?: string;
 }
 
-/** The palm line a narrative section highlights in cinnabar (undefined → show the whole diagram). */
+/** The palm line a narrative section highlights in cinnabar (undefined → the section is not about a
+ *  single line, and shows a feature icon from {@link SECTION_ICON} instead). */
 export const SECTION_LINE: Record<string, string | undefined> = {
   heart: 'heart_line',
   head: 'head_line',
@@ -33,6 +34,21 @@ export const SECTION_LINE: Record<string, string | undefined> = {
   hand_shape: undefined,
   mounts: undefined,
   markings: undefined,
+};
+
+/**
+ * The feature icon a **non-line** palm section shows in place of the mini diagram (Audit-4 CO-5,
+ * Direction §4.4 #2).
+ *
+ * Before this, `SECTION_LINE` returned `undefined` for these three and the card fell through to a
+ * mini palm with nothing highlighted — so hand shape, mounts and markings rendered the *same grey
+ * palm as each other*, three interchangeable thumbs on one page. A section about the mounts should
+ * not look like a section about the markings.
+ */
+export const SECTION_ICON: Record<string, IconName> = {
+  hand_shape: 'palm',
+  mounts: 'elements',
+  markings: 'sparkle',
 };
 
 /**
@@ -84,11 +100,27 @@ const FACE_TRADITION_CONCEPT: Record<string, string> = {
   canthus: 'The under-eye — the tradition’s “silkworm” — is read for vitality and warmth.',
 };
 
-/** The feature-icon each face section shows in its card (the palm path lights a mini line diagram;
- *  a face reading has no line geometry, so it shows a themed icon tile). Falls back to `face`. */
+/**
+ * The feature-icon each face section shows in its card (the palm path lights a mini line diagram;
+ * a face reading has no line geometry, so it shows a themed icon tile). Falls back to `face`.
+ *
+ * All EIGHT server face keys are mapped (Audit-4 CO-5): only `face_shape` and `proportion` had
+ * icons, so eyes, brows, nose, mouth, ears and canthus all collapsed onto the same `face` fallback
+ * — five cards on one screen wearing the same badge. The set has no facial-feature glyphs, so these
+ * are the nearest sanctioned marks (Direction §4.4 #2 names existing icons for exactly this), each
+ * tied to that section's tradition line: the eyes are the feature physiognomy weighs most
+ * (`sparkle`), the nose is the face's "mountain", read for drive (`compass`), the mouth reads for
+ * warmth (`heart`), the under-eye reads for vitality (`life`).
+ */
 export const FACE_SECTION_ICON: Record<string, IconName> = {
-  face_shape: 'elements',
-  proportion: 'sparkle',
+  face_shape: 'face',
+  proportion: 'elements',
+  eyes: 'sparkle',
+  eyebrows: 'path',
+  nose: 'compass',
+  mouth: 'heart',
+  ears: 'globe',
+  canthus: 'life',
 };
 
 /** A "what this means in the tradition" footnote citing a named classical concept (authenticity

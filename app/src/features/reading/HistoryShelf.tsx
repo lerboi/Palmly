@@ -24,8 +24,8 @@ export interface HistoryShelfProps {
 
 /**
  * The readings shelf (UIUX §2.11 / §2.5, redesign R20 / v2 V19) — past palm/face readings as
- * re-openable cards, each with a **legible** line-diagram thumbnail (silhouette off, lines in the
- * accent) and a vermilion **type-chip** so palm vs face read at a glance. The privacy signal shows
+ * re-openable cards, each with a **legible** line-diagram thumbnail (thickened mini ink over the
+ * faint hand silhouette, signature lines in the accent) and a vermilion **type-chip** so palm vs face read at a glance. The privacy signal shows
  * ONCE in the header. The repeat-scan banner is an earned trust brag — green stays the semantic
  * "unchanged" check, the claret red-thread is the ornament (§3.2). English-first, no CJK.
  */
@@ -79,7 +79,7 @@ function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: num
       style={{ marginBottom: theme.spacing.md }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-        {/* Thumbnail — the reading's own lines in the accent, framed in a tile (no muddy silhouette). */}
+        {/* Thumbnail — the reading's own lines in the accent, framed in a tile. */}
         <View
           style={{
             width: 64,
@@ -95,7 +95,6 @@ function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: num
             geometry={reading.geometry}
             size={56}
             animate={false}
-            silhouette={false}
             signatureLines={isPalm ? ['heart_line', 'fate_line'] : ['heart_line', 'head_line']}
             accessibilityLabel=""
           />

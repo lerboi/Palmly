@@ -580,14 +580,13 @@ function CompatPreview({
       ]}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
-        <PalmDiagram geometry={geometry} size={84} highlightedLine="heart_line" animate silhouette={false} />
+        <PalmDiagram geometry={geometry} size={84} highlightedLine="heart_line" animate />
         <RedThread animate />
         <PalmDiagram
           geometry={geometry}
           size={84}
           highlightedLine="heart_line"
           animate
-          silhouette={false}
           style={{ transform: [{ scaleX: -1 }] }}
         />
       </View>

@@ -24,6 +24,57 @@ export const ENGLISH_LINE_LABEL: Record<string, string> = {
   fate_line: 'Fate',
 };
 
+/** At or below this render size a diagram is a **mini** (section thumb, history row, pair, share). */
+export const MINI_MAX_SIZE = 96;
+
+export interface DiagramWeights {
+  /** True when the diagram renders at thumbnail scale. */
+  isMini: boolean;
+  /** Main ink stroke width, in the 0–1000 frame (multiply by `size / 1000`). */
+  ink: number;
+  /** Main ink width for the highlighted line. */
+  inkHighlighted: number;
+  /** Soft wide underlay behind an ordinary line (the engraved/embossed feel). */
+  underlay: number;
+  /** Underlay behind the highlighted line — the accent glow. */
+  underlayHighlighted: number;
+  /** Ordinary underlay's stroke opacity. */
+  underlayOpacity: number;
+  /** The glow's opacity before it blooms, and where it settles. */
+  glowOpacityBase: number;
+  glowOpacityRest: number;
+  /** Opacity of the hand silhouette group behind the lines. */
+  silhouetteOpacity: number;
+}
+
+/**
+ * Stroke weights + opacities for a given render size (Audit-4 CO-5).
+ *
+ * The bug this fixes: minis doubled the **ink** (F0.11, so the creases read at 64px) but left the
+ * underlay at its hero width. That collapsed the halo-to-ink ratio from ~2.9× to ~1.4× — the glow
+ * stopped being a glow and became a slightly fatter copy of the stroke, so the section thumb's
+ * "this is YOUR heart line, lit" moment was invisible at exactly the size it mattered most. Here the
+ * underlay scales with the ink, so the ratio is **size-invariant**, and the mini glow rests brighter
+ * because a 2.5px halo has far fewer pixels to carry the signal than a 12px one.
+ *
+ * Pure (no React/RN), so the ratios are unit-tested rather than eyeballed in a screenshot.
+ */
+export function diagramWeights(size: number): DiagramWeights {
+  const isMini = size <= MINI_MAX_SIZE;
+  const k = isMini ? 2 : 1; // the F0.11 legibility factor — now applied to BOTH layers
+  return {
+    isMini,
+    ink: 4.5 * k,
+    inkHighlighted: 7 * k,
+    underlay: 14 * k,
+    underlayHighlighted: 20 * k,
+    underlayOpacity: 0.08,
+    glowOpacityBase: isMini ? 0.1 : 0.06,
+    glowOpacityRest: isMini ? 0.3 : 0.18,
+    silhouetteOpacity: isMini ? 0.1 : 0.05,
+  };
+}
+
 const r1 = (n: number): number => Math.round(n * 10) / 10;
 const isMajor = (l: string): boolean => (MAJOR_LINES as readonly string[]).includes(l);
 const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);

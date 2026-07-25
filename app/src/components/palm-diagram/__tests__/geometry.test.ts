@@ -1,4 +1,4 @@
-import { buildDiagram, differentiateGeometry, handSilhouette, smoothPath, type LineGeometry } from '../geometry';
+import { buildDiagram, diagramWeights, differentiateGeometry, handSilhouette, smoothPath, MINI_MAX_SIZE, type LineGeometry } from '../geometry';
 
 // Not in reading order on input — buildDiagram must reorder to heart · head · life · fate.
 const geo: LineGeometry = {
@@ -125,6 +125,55 @@ describe('palm diagram geometry (P6.T2)', () => {
       expect(s.label.x).toBeLessThanOrEqual(size);
       expect(s.label.y).toBeGreaterThanOrEqual(gutter - 0.1);
       expect(s.label.y).toBeLessThanOrEqual(size - gutter + 0.1);
+    }
+  });
+});
+
+/**
+ * The mini stroke/underlay ratios (Audit-4 CO-5). Minis doubled the ink but not the underlay, so a
+ * section thumb's highlighted line lost its halo — the glow measured only ~1.4× the stroke it was
+ * supposed to surround, against ~2.9× on the hero. These pin the ratio as SIZE-INVARIANT so the
+ * "your heart line, lit" moment survives at 64px.
+ */
+describe('diagram weights (Audit-4 CO-5)', () => {
+  const HERO = diagramWeights(300);
+  const MINI = diagramWeights(64);
+
+  it('classifies minis by the documented threshold (≤96px)', () => {
+    expect(diagramWeights(MINI_MAX_SIZE).isMini).toBe(true);
+    expect(diagramWeights(MINI_MAX_SIZE + 1).isMini).toBe(false);
+    expect(HERO.isMini).toBe(false);
+  });
+
+  it('keeps the highlighted halo-to-ink ratio identical at hero and mini size', () => {
+    const hero = HERO.underlayHighlighted / HERO.inkHighlighted;
+    const mini = MINI.underlayHighlighted / MINI.inkHighlighted;
+    expect(mini).toBeCloseTo(hero, 5);
+    expect(mini).toBeGreaterThan(2.5); // a halo, not a slightly fatter stroke
+  });
+
+  it('keeps the ordinary halo-to-ink ratio identical at hero and mini size', () => {
+    expect(MINI.underlay / MINI.ink).toBeCloseTo(HERO.underlay / HERO.ink, 5);
+  });
+
+  it('still doubles mini ink for legibility (the F0.11 rule is preserved, not traded away)', () => {
+    expect(MINI.ink).toBeCloseTo(HERO.ink * 2, 5);
+    expect(MINI.inkHighlighted).toBeCloseTo(HERO.inkHighlighted * 2, 5);
+    expect(MINI.underlay).toBeCloseTo(HERO.underlay * 2, 5);
+    expect(MINI.underlayHighlighted).toBeCloseTo(HERO.underlayHighlighted * 2, 5);
+  });
+
+  it('rests the mini glow brighter than the hero glow (fewer pixels to carry the signal)', () => {
+    expect(MINI.glowOpacityRest).toBeGreaterThan(HERO.glowOpacityRest);
+    expect(MINI.glowOpacityBase).toBeGreaterThan(HERO.glowOpacityBase);
+    expect(MINI.silhouetteOpacity).toBeGreaterThan(HERO.silhouetteOpacity);
+  });
+
+  it('always blooms upward — the glow settles brighter than it starts, at every size', () => {
+    for (const w of [HERO, MINI]) {
+      expect(w.glowOpacityRest).toBeGreaterThan(w.glowOpacityBase);
+      expect(w.underlayHighlighted).toBeGreaterThan(w.inkHighlighted);
+      expect(w.inkHighlighted).toBeGreaterThan(w.ink); // the lit line is the heaviest ink
     }
   });
 });

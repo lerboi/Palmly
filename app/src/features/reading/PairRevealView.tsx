@@ -90,7 +90,7 @@ export function PairRevealView({
       <View style={{ alignItems: 'center' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
           <Animated.View entering={shouldAnimate ? SlideInLeft.duration(theme.motion.duration.slow) : undefined}>
-            <PalmDiagram geometry={geometry} size={92} animate silhouette={false} accessibilityLabel="Your palm" />
+            <PalmDiagram geometry={geometry} size={92} animate accessibilityLabel="Your palm" />
           </Animated.View>
           <RedThread animate />
           <Animated.View entering={shouldAnimate ? SlideInRight.duration(theme.motion.duration.slow) : undefined}>
@@ -98,7 +98,6 @@ export function PairRevealView({
               geometry={partner}
               size={92}
               animate
-              silhouette={false}
               accessibilityLabel={`${data.partnerName}'s palm`}
             />
           </Animated.View>

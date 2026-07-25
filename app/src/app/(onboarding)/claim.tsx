@@ -242,7 +242,7 @@ function PairTease() {
         ]}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-          <PalmDiagram geometry={PREVIEW_GEOMETRY} size={52} animate={false} silhouette />
+          <PalmDiagram geometry={PREVIEW_GEOMETRY} size={52} animate={false} />
           <View
             style={{
               width: 44,
@@ -262,7 +262,6 @@ function PairTease() {
             geometry={PREVIEW_GEOMETRY}
             size={52}
             animate={false}
-            silhouette
             style={{ transform: [{ scaleX: -1 }] }}
           />
         </View>

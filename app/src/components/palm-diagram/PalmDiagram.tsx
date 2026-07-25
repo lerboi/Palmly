@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useTheme, useReducedMotion } from '@/theme';
-import { buildDiagram, handSilhouette, ENGLISH_LINE_LABEL, LINE_LABEL, type DiagramStroke, type LineGeometry } from './geometry';
+import { buildDiagram, diagramWeights, handSilhouette, ENGLISH_LINE_LABEL, LINE_LABEL, type DiagramStroke, type LineGeometry } from './geometry';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
@@ -27,8 +27,6 @@ export interface PalmDiagramProps {
   showLabels?: boolean;
   /** Use the traditional CJK labels (心·智·命·运) instead of English. Only with `showLabels`. */
   traditional?: boolean;
-  /** Draw the faint hand silhouette behind the lines. Default true; auto-off on ≤64px thumbnails. */
-  silhouette?: boolean;
   /** Play the staggered draw-on (native only; respects reduce-motion). Default true. */
   animate?: boolean;
   /** Color for the highlighted / signature line(s). Default `accent` (three-reds §3.2). */
@@ -44,6 +42,11 @@ export interface PalmDiagramProps {
  * share asset. Weighted ink over a faint hand silhouette; the signature/highlighted line(s)
  * glow in the accent. A ~1.2s draw-on plays on native (reduce-motion → instant; web → static
  * end-state). Deterministic path math lives in the pure `geometry.ts`.
+ *
+ * **The silhouette is always drawn** (Audit-4 CO-5). There used to be a `silhouette` prop, but
+ * `showSilhouette = isMini || silhouette` meant every `silhouette={false}` caller was ≤96px and
+ * silently got one anyway — five call sites and two comments describing a rendering that never
+ * happened. An option that cannot be exercised is worse than no option: it lies in the source.
  */
 export function PalmDiagram({
   geometry,
@@ -52,7 +55,6 @@ export function PalmDiagram({
   signatureLines,
   showLabels = false,
   traditional = false,
-  silhouette = true,
   animate = true,
   highlightColor,
   accessibilityLabel = 'Your palm line diagram',
@@ -70,12 +72,11 @@ export function PalmDiagram({
   // The single accent for the highlighted / signature line(s) — the brand vermilion by default.
   const hl = highlightColor ?? colors.accent;
   const hlStop2 = highlightColor && highlightColor !== colors.accent ? hl : colors.accentPressed;
-  // Minis (≤96px — pair/compat/history/hand-select) FORCE the silhouette on and thicken the ink so
-  // the hand + creases read, instead of dropping to faint scratch marks (audit F0.11).
-  const isMini = size <= 96;
-  const showSilhouette = isMini || silhouette;
-  const miniK = isMini ? 2 : 1;
-  const sil = showSilhouette ? handSilhouette(geometry) : null;
+  // Minis (≤96px — section thumb/pair/compat/history) thicken BOTH ink and underlay so the hand,
+  // the creases and the lit line all still read at thumbnail scale (F0.11 + CO-5). The math is the
+  // pure `diagramWeights`, so the ratios are unit-tested.
+  const w = diagramWeights(size);
+  const sil = handSilhouette(geometry);
 
   // Bloom: the highlighted line's glow eases in as its stroke lands (after its staggered delay),
   // then settles at rest. Fail-safe / web / reduce-motion → the settled end-state (full glow).
@@ -90,7 +91,9 @@ export function PalmDiagram({
     const delay = (hiIndex >= 0 ? hiIndex * stagger : 0) + drawDur * 0.55;
     bloom.value = withDelay(delay, withTiming(1, { duration: 360, easing: Easing.out(Easing.cubic) }));
   }, [shouldAnimate, bloom, hiIndex, stagger, drawDur]);
-  const glowProps = useAnimatedProps(() => ({ strokeOpacity: 0.06 + 0.12 * bloom.value }));
+  const glowBase = w.glowOpacityBase;
+  const glowSpan = w.glowOpacityRest - w.glowOpacityBase;
+  const glowProps = useAnimatedProps(() => ({ strokeOpacity: glowBase + glowSpan * bloom.value }));
 
   return (
     <Svg
@@ -112,13 +115,11 @@ export function PalmDiagram({
       {/* Geometry-derived hand silhouette — a palm + four fingers + a thumb that always ENCLOSES the
           creases (they can't overshoot). Fill-only subpaths inside one low-opacity group so overlaps
           merge without seams. Minis lift the opacity so the hand still reads at ≤96px. */}
-      {sil ? (
-        <G opacity={isMini ? 0.1 : 0.05} transform={`scale(${size / 1000})`}>
-          {sil.parts.map((d, i) => (
-            <Path key={`sil-${i}`} d={d} fill={colors.textPrimary} />
-          ))}
-        </G>
-      ) : null}
+      <G opacity={w.silhouetteOpacity} transform={`scale(${size / 1000})`}>
+        {sil.parts.map((d, i) => (
+          <Path key={`sil-${i}`} d={d} fill={colors.textPrimary} />
+        ))}
+      </G>
 
       {/* Soft wide underlay → an engraved/embossed feel; the highlighted glow blooms in. */}
       {strokes.map((s) =>
@@ -128,7 +129,7 @@ export function PalmDiagram({
             d={s.d}
             fill="none"
             stroke={hl}
-            strokeWidth={u(20)}
+            strokeWidth={u(w.underlayHighlighted)}
             strokeLinecap="round"
             strokeLinejoin="round"
             animatedProps={glowProps}
@@ -139,8 +140,8 @@ export function PalmDiagram({
             d={s.d}
             fill="none"
             stroke={colors.textPrimary}
-            strokeOpacity={0.08}
-            strokeWidth={u(14)}
+            strokeOpacity={w.underlayOpacity}
+            strokeWidth={u(w.underlay)}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -157,7 +158,7 @@ export function PalmDiagram({
           drawDur={drawDur}
           shouldAnimate={shouldAnimate}
           color={s.highlighted ? 'url(#palmAccent)' : colors.textPrimary}
-          width={u((s.highlighted ? 7 : 4.5) * miniK)}
+          width={u(s.highlighted ? w.inkHighlighted : w.ink)}
         />
       ))}
 
