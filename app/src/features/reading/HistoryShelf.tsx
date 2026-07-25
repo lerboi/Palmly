@@ -41,13 +41,12 @@ export function HistoryShelf({ readings, showUnchanged = false, now, onBack }: H
         title="Your readings"
         // Tab root → nothing passed → no back. A pushed instance passes `onBack` explicitly (SN-3).
         onBack={onBack}
-        right={
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-            <HeaderIconButton name="settings" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
-            <PrivacyBadge />
-          </View>
-        }
+        right={<HeaderIconButton name="settings" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />}
       />
+      {/* The badge sits UNDER the header, not in its trailing slot: the honest default (SH-8) is a
+          full sentence, and a title + gear + sentence on one 390pt row truncated "Your readings"
+          to "Your rea…". Still one signal for the whole shelf — just on its own line. */}
+      <PrivacyBadge style={{ marginBottom: theme.spacing.md }} />
       {showUnchanged ? <UnchangedBanner /> : null}
       {readings.length === 0 ? (
         <>

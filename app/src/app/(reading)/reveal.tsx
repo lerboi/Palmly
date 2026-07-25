@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import { RevealView, type ReadingKind, type RevealState } from '@/features/reading/RevealView';
-import { PREVIEW_GEOMETRY, type Reading } from '@/features/reading/reveal';
-import type { LineGeometry } from '@/components/palm-diagram/geometry';
+import { RevealView } from '@/features/reading/RevealView';
+import { initialRevealLoad, loadedRevealLoad } from '@/features/reading/reveal';
 import { loadHistory, loadReading } from '@/lib/readings';
 import { setFirstReadingComplete } from '@/lib/session';
 import { track } from '@/lib/analytics';
@@ -20,13 +19,10 @@ export default function Reveal() {
   const [reloads, setReloads] = useState(0);
   const key = `${readingId ?? ''}|${scanId ?? ''}|${reloads}`;
 
-  const [state, setState] = useState<RevealState>('pending');
-  const [reading, setReading] = useState<Reading | undefined>(undefined);
-  const [geometry, setGeometry] = useState<LineGeometry>(PREVIEW_GEOMETRY);
-  const [loadedId, setLoadedId] = useState<string | undefined>(undefined);
-  const [kind, setKind] = useState<ReadingKind>('palm');
-  const [photoDeletedAt, setPhotoDeletedAt] = useState<string | null>(null);
-  const [photoKept, setPhotoKept] = useState(false);
+  // ONE object for everything this route learns from a reading (SH-16). Six separate `useState`s
+  // meant the reset block below had to remember all six, and it did not remember `geometry`.
+  const [load, setLoad] = useState(initialRevealLoad);
+  const { state, reading, geometry, loadedId, kind, photoDeletedAt, photoKept } = load;
   // SH-10: don't offer a reading the user already has. Their own shelf is the honest source.
   const [owned, setOwned] = useState<{ hand: boolean; kind: boolean }>({ hand: false, kind: false });
 
@@ -35,11 +31,7 @@ export default function Reveal() {
   const [trackedKey, setTrackedKey] = useState(key);
   if (key !== trackedKey) {
     setTrackedKey(key);
-    setState('pending');
-    setReading(undefined);
-    setLoadedId(undefined);
-    setPhotoDeletedAt(null);
-    setPhotoKept(false);
+    setLoad(initialRevealLoad());
   }
 
   // Own effect, keyed on the resolved `kind`: "do they already have the other kind?" cannot be
@@ -65,21 +57,15 @@ export default function Reveal() {
       .then((res) => {
         if (!active) return;
         if (!res) {
-          setState('error');
+          setLoad((prev) => ({ ...prev, state: 'error' }));
           return;
         }
-        setReading(res.reading);
-        setGeometry(res.geometry);
-        setLoadedId(res.id);
-        setKind(res.kind);
-        setPhotoDeletedAt(res.photoDeletedAt);
-        setPhotoKept(res.photoKept);
-        setState('ready');
+        setLoad(loadedRevealLoad(res));
         void setFirstReadingComplete(); // returning-user redirect (F0.7): this user now has a reading
         track('reveal_viewed', { reading_id: res.id, kind: res.kind });
       })
       .catch(() => {
-        if (active) setState('error');
+        if (active) setLoad((prev) => ({ ...prev, state: 'error' }));
       });
     return () => {
       active = false;

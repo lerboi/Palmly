@@ -1,5 +1,7 @@
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import type { IconName } from '@/components/ui';
+import { CANONICAL_DELETION_BADGE, CANONICAL_PHOTO_KEPT } from '@/lib/trustCopy';
+import type { ReadingKind, RevealState } from './RevealView';
 
 /** A stored reading's narrative (Backend §6.3 / `reading_sections.v1`). */
 export interface ReadingSection {
@@ -131,6 +133,93 @@ export function traditionFootnote(section: ReadingSection, kind: 'palm' | 'face'
   if (named) return named;
   const feature = (section.tags[0] ?? section.key).split('.')[0].replace(/_/g, ' ');
   return `In the tradition, this reads from your ${feature}.`;
+}
+
+// ── The privacy badge's label, honestly (Audit-4 SH-8 + live find 2026-07-25) ─────────────────────
+
+export interface DeletedLabelOptions {
+  /** The keep-my-scan opt-in (D2): the badge says "saved", never "deleted". */
+  kept?: boolean;
+  /** "Today" is relative to this instant — passed in so the function is pure and testable. */
+  now?: Date;
+  /** BCP-47 locale for the time/date format. Defaults to the device locale. */
+  locale?: string;
+}
+
+/**
+ * A timestamped "deleted" ONLY when deletion actually happened; "saved" for the keep-my-scan
+ * opt-in; the 24-hour promise otherwise.
+ *
+ * Two fixes here (SH-8). It hand-rolled a **12-hour AM/PM clock** — `h % 12 || 12` plus a literal
+ * "AM"/"PM" — which is simply wrong copy in the many locales that read a 24-hour clock, and it
+ * printed a bare **time with no date**, so a reading from three weeks ago claimed its photo was
+ * deleted "at 4:15 PM" as though that were this afternoon. `Intl` formats the time in the user's
+ * own convention, and anything not from today carries its date.
+ */
+export function deletedLabel(ts?: string | null, opts: DeletedLabelOptions = {}): string {
+  const { kept = false, now = new Date(), locale } = opts;
+  if (kept) return CANONICAL_PHOTO_KEPT;
+  if (!ts) return CANONICAL_DELETION_BADGE;
+  const t = new Date(ts);
+  if (Number.isNaN(t.getTime())) return 'Photo deleted';
+  const sameDay =
+    t.getFullYear() === now.getFullYear() && t.getMonth() === now.getMonth() && t.getDate() === now.getDate();
+  const parts: Intl.DateTimeFormatOptions = sameDay
+    ? { hour: 'numeric', minute: '2-digit' }
+    : { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+  return `Photo deleted · ${new Intl.DateTimeFormat(locale, parts).format(t)}`;
+}
+
+// ── The reveal route's per-reading state (Audit-4 SH-16) ──────────────────────────────────────────
+
+/**
+ * Everything the reveal route learns from ONE reading. It is a single object on purpose: the route
+ * resets this state when the user opens a different reading, and when the fields lived in six
+ * separate `useState`s the reset block simply *forgot* `geometry` — so reading B's pending state
+ * drew reading A's palm (SH-16). Replacing one object cannot forget a field.
+ */
+export interface RevealLoad {
+  state: RevealState;
+  reading?: Reading;
+  geometry: LineGeometry;
+  /** The id of the reading actually loaded (not the requested one). */
+  loadedId?: string;
+  kind: ReadingKind;
+  photoDeletedAt: string | null;
+  photoKept: boolean;
+}
+
+/** The state every reveal starts from — and returns to the moment a different reading is opened. */
+export function initialRevealLoad(): RevealLoad {
+  return {
+    state: 'pending',
+    reading: undefined,
+    geometry: PREVIEW_GEOMETRY,
+    loadedId: undefined,
+    kind: 'palm',
+    photoDeletedAt: null,
+    photoKept: false,
+  };
+}
+
+/** The state after a reading resolves. */
+export function loadedRevealLoad(res: {
+  id: string;
+  kind: ReadingKind;
+  reading: Reading;
+  geometry: LineGeometry;
+  photoDeletedAt: string | null;
+  photoKept: boolean;
+}): RevealLoad {
+  return {
+    state: 'ready',
+    reading: res.reading,
+    geometry: res.geometry,
+    loadedId: res.id,
+    kind: res.kind,
+    photoDeletedAt: res.photoDeletedAt,
+    photoKept: res.photoKept,
+  };
 }
 
 // ── A representative reading + palm for previews / device-free web-screenshot verification (P6.T3). ──

@@ -22,7 +22,7 @@ import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
 import { FACE_READING_ENABLED } from '@/lib/capabilities';
 import { stamp } from '@/lib/haptics';
 import { setContinueDismissed, wasContinueDismissed } from '@/lib/session';
-import { type Reading, type ReadingSection, FACE_SECTION_ICON, SECTION_ICON, SECTION_LINE, freeSections, lockedSections, traditionFootnote } from './reveal';
+import { type Reading, type ReadingSection, FACE_SECTION_ICON, SECTION_ICON, SECTION_LINE, deletedLabel, freeSections, lockedSections, traditionFootnote } from './reveal';
 
 export type RevealState = 'ready' | 'pending' | 'error';
 export type ReadingKind = 'palm' | 'face';
@@ -58,21 +58,6 @@ export interface RevealViewProps {
   hasOtherHand?: boolean;
   /** The reader already has the OTHER kind of reading (face for a palm reveal, or vice versa). */
   hasOtherKind?: boolean;
-}
-
-/** The privacy badge, honestly (F1.1 + live find 2026-07-25): a timestamped "deleted" ONLY when
- *  deletion actually happened; "saved" for the keep-my-scan opt-in; the 24h promise otherwise.
- *  Deterministic time format (pure; `new Date(<string>)` is not the purity-banned argless form). */
-function deletedLabel(ts?: string | null, kept = false): string {
-  if (kept) return 'Photo saved to your account — delete anytime';
-  if (!ts) return 'Photo deletes within 24 hours';
-  const t = new Date(ts);
-  if (Number.isNaN(t.getTime())) return 'Photo deleted';
-  let h = t.getHours();
-  const m = t.getMinutes().toString().padStart(2, '0');
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  h = h % 12 || 12;
-  return `Photo deleted · ${h}:${m} ${ampm}`;
 }
 
 /** Rotating reassurance for the living "drawing" pending state. */
@@ -478,7 +463,7 @@ function TrustFooter({ onMethodology, photoDeletedAt, photoKept = false, kind }:
           ? 'Same face, same reading. Rescan anytime — your features don’t change.'
           : 'Same palm, same reading. Rescan anytime — your lines don’t lie.'}
       </Text>
-      <PrivacyBadge label={deletedLabel(photoDeletedAt, photoKept)} />
+      <PrivacyBadge label={deletedLabel(photoDeletedAt, { kept: photoKept })} />
       <Pressable onPress={onMethodology} accessibilityRole="link">
         <Text variant="small" color={theme.colors.accentPressed}>
           How Palmly reads →

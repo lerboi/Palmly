@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import { View, type ViewStyle } from 'react-native';
 import { useTheme } from '@/theme';
+import { CANONICAL_DELETION_BADGE } from '@/lib/trustCopy';
 import { HeaderIconButton } from './HeaderIconButton';
 import { Icon } from './Icon';
 import { Text } from './Text';
@@ -78,16 +79,21 @@ export function AppHeader({ title, onBack, onClose, right, showDivider = false, 
 }
 
 export interface PrivacyBadgeProps {
-  /** Override the copy. Default "Photo deleted". */
+  /** Override the copy. Defaults to the canonical 24-hour promise (never a past-tense claim). */
   label?: string;
   style?: ViewStyle;
 }
 
 /**
- * The singular privacy trust signal (redesign §2) — the "your photo is deleted" story shown
- * ONCE per surface (a shield + one line), never repeated as per-row chrome.
+ * The singular privacy trust signal (redesign §2) — the photo story shown ONCE per surface (a
+ * shield + one line), never repeated as per-row chrome.
+ *
+ * The default is the **promise**, not a past-tense claim (Audit-4 SH-8): it used to default to
+ * "Photo deleted", which the pending reveal and the history header rendered over photos that may
+ * still exist. Only a caller holding a real `image_deleted_at` may say "deleted" — see
+ * `deletedLabel` in `features/reading/reveal.ts`.
  */
-export function PrivacyBadge({ label = 'Photo deleted', style }: PrivacyBadgeProps) {
+export function PrivacyBadge({ label = CANONICAL_DELETION_BADGE, style }: PrivacyBadgeProps) {
   const theme = useTheme();
   return (
     <View
