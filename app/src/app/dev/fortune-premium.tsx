@@ -1,5 +1,5 @@
 import { FortuneHome } from '@/features/fortune/FortuneHome';
-import { PREVIEW_FORTUNE } from './fixtures';
+import { PREVIEW_FORTUNE } from '@/features/dev/fixtures';
 
 /**
  * /dev preview — Today with the PREMIUM almanac card unfolded. Added in U3.T1: the premium card

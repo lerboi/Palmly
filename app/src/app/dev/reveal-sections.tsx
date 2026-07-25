@@ -1,6 +1,6 @@
 import { RevealView } from '@/features/reading/RevealView';
 import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
-import { PREVIEW_ALL_SECTIONS_READING } from './fixtures';
+import { PREVIEW_ALL_SECTIONS_READING } from '@/features/dev/fixtures';
 
 /**
  * /dev preview — every PALM section key free at once, so the seven section thumbs can be compared

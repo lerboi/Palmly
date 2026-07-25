@@ -7,6 +7,11 @@ import type { CompatShareData } from '@/lib/compatCopy';
  * `/dev`-only fixtures. These live HERE, not in the production module, so a fixture can never be
  * imported by a shipped screen by accident (Audit-4 micro-bugs: `PREVIEW_*` were exported from
  * production files). Only routes under `src/app/dev/` may import from this file.
+ *
+ * It sits in `features/dev/`, NOT in `src/app/dev/`: expo-router treats **every** file under the
+ * app directory as a route, so a plain module there is reported at startup as
+ * `Route "./dev/fixtures.ts" is missing the required default export` — a warning that is really
+ * saying "this file is in the routes tree and shouldn't be".
  */
 export const PREVIEW_FORTUNE: Fortune = {
   overall: 'A steady, favorable day — move with intention and doors open quietly.',

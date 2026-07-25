@@ -1,6 +1,6 @@
 import { PairRevealView } from '@/features/reading/PairRevealView';
 import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
-import { PREVIEW_PAIR } from './fixtures';
+import { PREVIEW_PAIR } from '@/features/dev/fixtures';
 
 /**
  * /dev preview — the compatibility pair reveal, device-free at last (Audit-4 U5.T3 / D24). The real

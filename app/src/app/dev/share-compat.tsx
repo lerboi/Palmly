@@ -1,6 +1,6 @@
 import { ShareView } from '@/features/reading/ShareView';
 import { ABSTRACT_GEOMETRY, PREVIEW_READING } from '@/features/reading/reveal';
-import { PREVIEW_COMPAT_SHARE } from './fixtures';
+import { PREVIEW_COMPAT_SHARE } from '@/features/dev/fixtures';
 
 /**
  * /dev preview — the Share sheet's compatibility variant (redesign R16). The live sheet defaults

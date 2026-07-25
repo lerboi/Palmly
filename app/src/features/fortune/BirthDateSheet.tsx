@@ -1,11 +1,42 @@
-import { useState } from 'react';
+import { useState, type ComponentType } from 'react';
 import { Modal, Platform, Pressable, TextInput, View } from 'react-native';
 import Animated, { SlideInDown } from 'react-native-reanimated';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { Button, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { localDateKey } from './openHistory';
+
+interface NativePickerProps {
+  value: Date;
+  mode: 'date';
+  display: 'spinner';
+  maximumDate?: Date;
+  onChange: (event: unknown, picked?: Date) => void;
+  accessibilityLabel?: string;
+}
+
+/**
+ * The platform date spinner, loaded **defensively**.
+ *
+ * `@react-native-community/datetimepicker` is a NATIVE module: its module body calls
+ * `TurboModuleRegistry.getEnforcing('RNCDatePicker')`, which throws at import time in any binary
+ * that predates the dependency (an older dev client, Expo Go). A static import therefore took the
+ * whole **Today tab** down with a red screen — the route module never finished evaluating, so
+ * expo-router also reported it as "missing the required default export".
+ *
+ * An optional native dependency must not be able to do that. When the module is absent we fall back
+ * to the same typed `YYYY-MM-DD` field the web build uses (D36), so the birth-date ask still works;
+ * a rebuilt dev client picks the real spinner back up with no code change.
+ */
+const NativeDatePicker: ComponentType<NativePickerProps> | null = (() => {
+  if (Platform.OS === 'web') return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('@react-native-community/datetimepicker').default as ComponentType<NativePickerProps>;
+  } catch {
+    return null; // native module not in this binary — the typed field covers it
+  }
+})();
 
 export interface BirthDateSheetProps {
   /** Save the chosen `YYYY-MM-DD` (the caller persists it + reloads the fortune). */
@@ -36,18 +67,18 @@ export function BirthDateSheet({ onSave, onSkip, busy, failed }: BirthDateSheetP
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  const isWeb = Platform.OS === 'web';
+  // The typed field covers BOTH cases the spinner can't: web, and a binary without the native
+  // module. `canSave` and `submit` follow the field that is actually on screen.
+  const typedMode = Platform.OS === 'web' || NativeDatePicker === null;
 
   const [date, setDate] = useState(() => {
     const d = new Date();
     d.setFullYear(d.getFullYear() - DEFAULT_YEAR_OFFSET);
     return d;
   });
-  // Web has no native spinner, so it gets a typed field — see the ledger note on this fallback.
   const [typed, setTyped] = useState('');
-  const webValid = VALID.test(typed.trim());
-  const canSave = isWeb ? webValid : true;
-  const submit = () => onSave(isWeb ? typed.trim() : localDateKey(date));
+  const canSave = typedMode ? VALID.test(typed.trim()) : true;
+  const submit = () => onSave(typedMode ? typed.trim() : localDateKey(date));
 
   return (
     <Modal transparent animationType={shouldAnimate ? 'fade' : 'none'} onRequestClose={onSkip}>
@@ -88,7 +119,7 @@ export function BirthDateSheet({ onSave, onSkip, busy, failed }: BirthDateSheetP
               Your birth date tunes each day’s fortune to you.
             </Text>
 
-            {isWeb ? (
+            {typedMode || !NativeDatePicker ? (
               <TextInput
                 value={typed}
                 onChangeText={setTyped}
@@ -110,7 +141,7 @@ export function BirthDateSheet({ onSave, onSkip, busy, failed }: BirthDateSheetP
                 }}
               />
             ) : (
-              <DateTimePicker
+              <NativeDatePicker
                 value={date}
                 mode="date"
                 display="spinner"
