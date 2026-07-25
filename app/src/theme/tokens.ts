@@ -192,14 +192,19 @@ export const quietCosmosSkin: Skin = {
  * accent is tuned so white-on-accent meets WCAG AA (4.81:1) for button labels — V22 deepened it a
  * hair from `#D8402C` (which measured 4.48:1, just under AA); the dark accent is a lighter
  * vermilion-coral with a **dark** `onAccent` (dark-on-coral, 7.14:1) so labels stay legible.
+ *
+ * **Surface stack (Audit-4 CC-3 / Design-Direction §2):** the light `bg` is a warm rice-paper
+ * `#F4F1EB` — deep enough that a white card separates from the page on its own (~1.09:1) instead
+ * of relying on a 6%-opacity shadow that Android renders as nothing. `surfaceSunken` moves down
+ * with it so insets/tracks still read recessed. Dark already separated; it is unchanged.
  */
 export const vermilionSkin: Skin = {
   name: 'Vermilion',
   light: {
-    bg: '#FAF9F7',
+    bg: '#F4F1EB', // ★ warm rice-paper — Audit-4 CC-3: #FAF9F7 sat 1.01:1 under white cards (invisible)
     surface: '#FFFFFF',
     surfaceRaised: '#FFFFFF',
-    surfaceSunken: '#F2F0EC',
+    surfaceSunken: '#EAE6DE', // deepened with `bg` so insets/tracks still read as recessed
     border: '#E7E3DC',
     textPrimary: '#1A1A1F',
     textSecondary: '#6B6B72',

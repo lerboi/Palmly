@@ -44,6 +44,21 @@ const ROLE_KEYS: (keyof SkinColors)[] = [
 
 const isColor = (v: string) => /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$|^rgba?\(/.test(v);
 
+/** WCAG relative luminance of an `#rrggbb` hex. */
+function luminance(hex: string): number {
+  const channel = (i: number) => {
+    const c = parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(0) + 0.7152 * channel(1) + 0.0722 * channel(2);
+}
+
+/** WCAG contrast ratio between two opaque `#rrggbb` hexes. */
+function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 describe('design tokens — role-based skin contract (redesign §3)', () => {
   it('defines every semantic role for light + dark in all three skins', () => {
     for (const skin of [inkCinnabarSkin, quietCosmosSkin, vermilionSkin]) {
@@ -73,6 +88,21 @@ describe('design tokens — role-based skin contract (redesign §3)', () => {
     // Indigo is fully retired — the old accent hex is gone from the active skin.
     expect(activeSkin.light.accent).not.toBe('#4B57C4');
     expect(activeSkin.dark.accent).not.toBe('#8B95F0');
+  });
+
+  it('separates light cards from the page without a shadow (Audit-4 CC-3 / Direction §2)', () => {
+    // The retuned warm rice-paper stack: a white card must be visible on the page by itself,
+    // because `shadow.sm` is 6% opacity on iOS and Android elevation 1 (≈ nothing).
+    expect(activeSkin.light.bg).toBe('#F4F1EB');
+    expect(activeSkin.light.surfaceSunken).toBe('#EAE6DE');
+    expect(contrast(activeSkin.light.surface, activeSkin.light.bg)).toBeGreaterThanOrEqual(1.05);
+    // …and the sunken role still reads recessed against the deepened page.
+    expect(contrast(activeSkin.light.bg, activeSkin.light.surfaceSunken)).toBeGreaterThanOrEqual(1.05);
+    // Body copy on the deepened page keeps AA (Direction §2 predicted ≈4.7:1).
+    expect(contrast(activeSkin.light.textSecondary, activeSkin.light.bg)).toBeGreaterThanOrEqual(4.5);
+    // Dark already separated — it is untouched by this retune.
+    expect(activeSkin.dark.bg).toBe('#14151A');
+    expect(activeSkin.dark.surfaceSunken).toBe('#191B21');
   });
 
   it('keeps destructive `danger` visually distinct from the accent (F2.5 / §5.7)', () => {

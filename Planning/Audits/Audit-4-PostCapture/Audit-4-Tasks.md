@@ -1,0 +1,415 @@
+# Audit-4 Fix Ledger — Post-Capture UI/UX Redesign (U0–U8)
+
+**Status:** ACTIVE — this file is the single source of truth for the Audit-4 fix loop.
+**Derived from:** [Audit-4-PostCapture.md](Audit-4-PostCapture.md) (findings `SN/SH/CC/CO/CP`)
+and [Design-Direction.md](Design-Direction.md) (the target — read the cited §§ of BOTH before
+executing a task; the finding holds the evidence, the direction holds the destination).
+**Specs behind the audit:** `Planning/UIUX/UIUX-Redesign-v2.md` (identity),
+`Planning/UIUX/UIUX-specs.md` (behavior), `Planning/mvp_spec.md` §4.5,
+`app/src/theme/tokens.ts`.
+**Prior ledgers (read-only context, never re-execute):** `Planning/Audits/Audit-2-Frontend/`,
+`Planning/Audits/Audit-3-Full/`, `Planning/UIUX/UIUX-Redesign-v2-Tasks.md`,
+`Planning/MVP_Buildplan.md` (owns the R-track; paused mid-R3 by the owner — do not touch
+capture/camera surfaces or backend from this ledger).
+**Created:** 2026-07-25 · Ledger version: 1.0
+
+Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty note required) ·
+`[x]` done+verified · `[!]` blocked (note required) · 🤖 agent · 🧑 human · 🚦 phase gate ·
+∥ parallel-safe
+
+---
+
+## 🔄 STATE — update this block on every run
+
+| Field | Value |
+|---|---|
+| Current phase | U0 — foundations |
+| Next task | U0.T2 |
+| Blocked on | — |
+| Waiting on human | — |
+| Last run | 2026-07-25 |
+| Last completed task | U0.T1 |
+| Notes for next run | **U0.T2 must resolve a pairing U0.T1 knowingly moved:** deepening `surfaceSunken → #EAE6DE` drops `textSecondary` on `surfaceSunken` from 4.65:1 → **4.25:1** (fails AA <24px). Fix in the CC-6 leg — sunken chip/pill labels go to `textPrimary` (13.93:1) — and pin it in the new AA matrix. Screenshot recipe erratum: this host's headless Chrome renders **dark** by default, and metro caches the inlined env var — light shots need `EXPO_PUBLIC_FORCE_SCHEME=light npx expo export --platform web --clear` (`--clear` only when the flag's value changes). |
+
+---
+
+## ⚙️ EXECUTION PROTOCOL (the loop algorithm — follow exactly, every iteration)
+
+1. **Load state** — read this file top to bottom; STATE tells you where the last run stopped.
+2. **Select task** — the first `[ ]` or `[~]` in document order. Never skip, except past a
+   `[!]` to the next `∥`-marked task.
+3. **RESEARCH (mandatory, before any code)** — read the finding(s) and Design-Direction §§ the
+   task cites; read the CURRENT source of every named file (grep the quoted strings to
+   re-anchor cites; wrong cite → AUDIT ERRATA table, proceed against reality); check
+   `app/package.json` before assuming a library.
+4. **PLAN** — 3–6 lines: files, approach, how Verify passes. Spec-silent choices → Decision Log.
+5. **EXECUTE** — smallest coherent change; match surrounding style; theme tokens only;
+   reduce-motion + web gate on every animation; typed `track()` for analytics; `PREVIEW_*`
+   fixtures for `/dev` routes only.
+6. **VERIFY** — run the task's Verify line LITERALLY, plus the standing gates. Only when green:
+   mark `[x]` (or `[~]` with the exact pending device/human leg), append one Build Log line,
+   update STATE, commit scoped to the task + this ledger
+   (`git add <files> && git commit -m "U#.T# <short description>"`).
+7. **On failure** — 3 distinct approaches max, then `[!]` with detail, update STATE, move to the
+   next `∥` task if one exists, else report and stop. A falsely-green ledger is worse than a
+   stalled one.
+8. **Session budget** — near the context limit: finish or `[~]`-note the in-flight task, update
+   STATE, commit, stop cleanly.
+
+### Standing gates (every task)
+- From `app/`: `npm run typecheck` (0), `npm run lint` (0), `npm run test:ci` (baseline 72,
+  grows as U0.T2/U8 add tests — never shrinks).
+- 🚦 gates additionally re-shoot the phase's screenshot set (recipe in Standing rules) and run
+  the acceptance checks named in the gate.
+- No task in this ledger touches `supabase/` — if one seems to need it, mark `[!]` and report.
+
+### Standing rules
+- **Never fake a green.** Device-only legs (haptics feel, native springs, real keyboard, OS
+  share sheet): build fully, verify device-free (web screenshot + tests), mark `[~]` naming the
+  device leg.
+- **Screenshots:** from `app/`: `npx expo export --platform web` then
+  `node scripts/shoot.mjs <outDir> <route:WxH[=name]> …`; root route is `/` never `/index`;
+  dark needs `EXPO_PUBLIC_FORCE_SCHEME=dark`; 320-width shots at `320x568`. Save under
+  `docs/checkpoints/audit4/`. Native dialogs need a TRUSTED `Input.dispatchMouseEvent` (raw
+  CDP), not `Runtime.evaluate .click()`.
+- **Copy discipline:** no CJK in default UI; no health claims; deletion promise wording only
+  from `app/src/lib/trustCopy.ts`; US spelling; typographic `’`.
+- **Color discipline:** the accent litmus (Design-Direction §1 P1) applies to every touched
+  screen — ≤2 non-interactive accent occurrences.
+- **Analytics discipline:** typed `track()` facade; event changes update `docs/ANALYTICS.md` in
+  the same commit.
+- **Dependencies:** only `@react-native-community/datetimepicker` may be added (via
+  `npx expo install`), Decision Log entry required. Anything else → `[!]`.
+- The Supabase MCP is READ-ONLY inspection; irrelevant here except SH-14 verification queries.
+
+### ⚠️ AUDIT ERRATA (append-only — record any Audit-4-PostCapture.md cite that proves wrong)
+
+| Date | Cite | Reality | Impact |
+|---|---|---|---|
+| 2026-07-25 | Standing rule "dark needs `EXPO_PUBLIC_FORCE_SCHEME=dark`" (implies light is the harness default) | This host's headless Chrome inherits the OS dark preference, so an unflagged export shoots **dark**. Light needs `EXPO_PUBLIC_FORCE_SCHEME=light`. Metro also caches the inlined value — changing the flag needs `--clear` or the previous scheme is re-served. | Every light/dark shot in this ledger; U0.T1 shot a full dark set before catching it. |
+| 2026-07-25 | Audit §5 "`surfaceRaised #FFFFFF` on `bg #FAF9F7` = 1.01:1" | WCAG ratio is **1.052:1** (1.01 is a plain lightness delta). The finding's substance is unaffected — 1.05:1 is still invisible without a border, as the U0.T1 before-shot pixel probe confirms (card → shadow AA → page, no border pixel). | None — CC-3 stands; only the quoted number is off. |
+
+### 📋 DECISION LOG (append-only)
+
+| ID | Date | Decision |
+|---|---|---|
+| D1 | 2026-07-25 | **`Card`'s scheme-aware border reads `theme.scheme`, not a new prop.** Direction §2 asks for "light = always bordered, dark = current behavior"; `Theme` already carries `scheme`, so `showBorder = bordered ?? (theme.scheme === 'light' \|\| !lifted)` needs no API surface and leaves an explicit `bordered` winning on both schemes. |
+| D2 | 2026-07-25 | **Kept `surfaceSunken #EAE6DE` as Direction §2 prescribes even though it costs `textSecondary`-on-sunken 4.65:1 → 4.25:1.** The direction supersedes on surface separation, and the very next task (U0.T2, CC-6) owns chip/tonal label color — sunken labels move to `textPrimary` (13.93:1) there. Recorded in STATE so U0.T2 cannot miss it. |
+| D3 | 2026-07-25 | **Light screenshots are baked with `EXPO_PUBLIC_FORCE_SCHEME=light`, not left to the harness default.** The host Chrome reports the OS dark preference, so "no flag" is not "light" here. Explicit on both schemes = reproducible on any host. |
+
+## OUT OF SCOPE (do not execute here — report, never build)
+- RevenueCat purchase wiring, offerings, prices (R1.T4 🧑 + R4) — U6.T6 only makes the paywall
+  honest *without* commerce.
+- Push provider/token plumbing (F1.T10 tail), store accounts, domain/Turnstile (R1 🧑).
+- Camera/capture surfaces (`features/capture/*`, `(capture)/*`) and anything in
+  `Planning/MVP_Buildplan.md`'s R3 track — paused by the owner.
+- Backend/Edge/schema/migrations. Server card-render templates (F1.T9 tail owns card craft).
+- Lunar-calendar library hunt (standing DO-NOT-BUILD default: skip).
+- Real streak *backend* data (retention wiring) — U2.T6 builds the honest client surface only.
+
+---
+
+## U0 — Foundations: color, surface, contrast, system (Design-Direction §1–§3)
+
+- [x] **U0.T1** 🤖 Retune the light surface stack for real separation (CC-3, Direction §2):
+  in `tokens.ts` vermilionSkin.light set `bg #F4F1EB`, `surfaceSunken #EAE6DE`; make `Card`
+  keep its hairline border at every elevation on the light scheme (scheme-aware `showBorder`);
+  audit `shadow.sm` consumers — separation must never be shadow-only. Dark unchanged.
+  - Verify: standing gates; shoot `/fortune` + `/history` light before/after into
+    `docs/checkpoints/audit4/u0/`; cards visibly separate (border present in the PNG); tokens
+    test updated for the new hexes.
+- [ ] **U0.T2** 🤖 Contrast remediation + the AA test matrix (CC-4..CC-9, Direction §2): add
+  `premiumInk` role (light ≈`#8A6A1F`-region tuned to ≥4.5:1 on `#FFFFFF`; dark `#D9B25A`);
+  move chip/tonal label color to `accentPressed` (measure ≥4.5:1 on `accentMuted`, else
+  `textPrimary`); visible off-toggle track token; extend `theme/__tests__/tokens.test.ts` with
+  a computed WCAG matrix over every used pairing (both schemes) per Direction §2 table — the
+  test FAILS on any listed pairing <4.5:1 (<3:1 for ≥24px numerals).
+  - Verify: standing gates with the new tests green; the matrix covers ≥10 pairings; grep shows
+    no remaining `tone="premium"` on 13px text over white (call sites move in U2–U6; this task
+    fixes the primitives: `Text` tone map gains `premiumInk`, `Button` tonal label, share
+    `Toggle` track, chat send disabled state).
+- [ ] **U0.T3** 🤖 Icon-color discipline sweep (CC-1, Direction §1 P1): default
+  decorative/leading icons to ink across post-capture surfaces — FortuneHome rows/streak,
+  FortuneCard chip, share channel tiles + monograms, analyzing step dots + proof chip,
+  sub-score bars/icons, settings tiles. Accent remains ONLY on: primary CTA, selected/active,
+  highlighted palm line, links. `heritageAccent` only thread-motif + seal (fix
+  `ShareView.tsx:248,272` violations).
+  - Verify: standing gates; shoot `/fortune`, `/dev/reveal-ready`, `/share` light — count
+    non-interactive accent occurrences ≤2 per screen (record the counts in the Build Log line).
+- [ ] **U0.T4** 🤖 One motion system (CO-10, Direction §2/§3): add `motion.duration.breath:
+  1500`, `thread: 800`, `ring: 900`; re-point 1400/1500/800/900 call sites; replace
+  RevealView's manual `FadeInDown` stagger with `Card entranceIndex` (hero index 0 — hero
+  animates first everywhere, FortuneCard included); `PairRevealView` stagger uses
+  `motion.stagger.reveal`; fix `useRotating` over-gating (copy rotates under reduce-motion,
+  hard swap).
+  - Verify: standing gates; `grep -RnE "(1400|1500|2800|withTiming\(1, \{ duration: 8?900)"
+    app/src/features` shows only token-derived durations; motion test extended for the new
+    tokens.
+- [ ] **U0.T5** 🤖 Icons replace glyphs (CO-7, CO-8, Direction §2): add `today`, `compass`
+  (rotatable), `logout`, `warning`, `apple`, `google` to `Icon.tsx` (house stroke style, default
+  labels); replace `✓/✕` (FortuneCard), text arrows (`DIRECTION_ARROW` → compass rotation map;
+  delete leading-space path), "Link copied ✓" (icon + fitting label), `AccountSheet` info→warning,
+  settings sign-out back→logout, analyzing failure camera→warning; strip emoji from
+  `lib/shareText.ts`.
+  - Verify: standing gates; `grep -RnE "[✓✕↑↗→↘↓↙←↖✨👇]" app/src --include=*.ts*` → only
+    `/dev` or test fixtures; icon snapshot/dev-theme route renders the six new icons.
+- [ ] **U0.T6** 🤖 Type-scale + magic-number cleanup (CO-11): add `typography.editorialTitle`
+  (serif 24/30/−0.3); replace both ShareView inline overrides + PaywallView `fontSize:11` +
+  `fontWeight:'700'`; migrate deprecated `colors.background` → `bg` (Screen, ChatThread,
+  PaywallView); merge `Segment`/`FramingPill` into one primitive; tokenize the worst raw
+  numbers touched here (radius 44→`pill`, chip paddings→spacing scale).
+  - Verify: standing gates; `grep -RnE "fontSize: ?[0-9]|fontWeight:" app/src/features` → no
+    hits outside tokens/tests; `grep -Rn "colors.background" app/src` → 0.
+- [ ] **U0.T7** 🤖 44pt + press-feedback sweep (CO-9): shared `HeaderIconButton` (44pt box,
+  spring, `tick()`); adopt for FortuneHome gear/camera, HistoryShelf gear + row share, paywall
+  close, share close, AppHeader back (add haptic), paywall text links. `AppHeader` gains
+  `onClose` (✕ mode).
+  - Verify: standing gates; a new unit test asserts `HeaderIconButton` min hit box 44; grep
+    shows no bare `Pressable` around `Icon` in post-capture features (except documented cases).
+- [ ] **U0.G** 🚦 Foundations gate: standing gates + shoot light/dark `/fortune`, `/history`,
+  `/dev/reveal-ready`, `/share`, `/paywall` to `docs/checkpoints/audit4/u0-gate/`; acceptance
+  checks 1–3 of Design-Direction §6 pass on these shots; update STATE.
+
+## U1 — Navigation backbone (SN-*, Direction §1 P3)
+
+- [ ] **U1.T1** 🤖 Bottom tab bar: convert `(home)/_layout.tsx` to expo-router `Tabs` — Today
+  (`/fortune`, `today` icon) · Readings (`/history`, `palm` icon) · Ask (`/chat`, `chat` icon);
+  `surface` bg, top hairline, safe-area, active accent/inactive `textSecondary`, labels
+  `caption`; remove the Readings/Ask `RowLink`s from FortuneHome (SN-2, SN-5); redirects and
+  deep links (`/chat?q=`) keep working.
+  - Verify: standing gates; shoot all three tabs light+dark; tab switch works in the web
+    export; `router.push('/chat?q=x')` from the fortune bridge still lands with the prefill.
+- [ ] **U1.T2** 🤖 Close the loop — reveal Done (SN-1): AppHeader right "Done" on the ready
+  reveal → `router.replace('/fortune')`; share sheet closed after arriving from reveal returns
+  to reveal (unchanged) but reveal Done remains available; pair reveal footer gains secondary
+  "Done" → `/fortune` and its "See my full reading" carries `readingId` (SN-6).
+  - Verify: standing gates; jest route test (or dev-route walkthrough shot) proving
+    reveal→Done lands on Today WITHOUT relaunch; pair CTA opens the real reading in the web
+    export (`/dev/reveal-ready` pattern or fixture id).
+- [ ] **U1.T3** 🤖 Push/modal chrome (SN-3, SN-9, SN-10): History gets `onBack` when pushed
+  (tab root shows none — read `router.canGoBack()`/route params); share/paywall/account
+  headers use `onClose` ✕; `(reading)` stack: `replace` transitions fade (no
+  slide-from-right), animation gate includes web.
+  - Verify: standing gates; shoot `/history` (pushed variant via settings route) showing back;
+    share/paywall shots show ✕ not ←.
+- [ ] **U1.T4** 🤖 New-scan entries (SN-4): Today header camera `HeaderIconButton` → `/primer`;
+  populated Readings gets a top "New reading" flat row → `/primer`.
+  - Verify: standing gates; `/fortune` + `/history` (non-empty dev fixture) shots show the
+    entries; both navigate in web export.
+- [ ] **U1.T5** 🤖 Launcher honesty (SN-8): hold the splash until the redirect resolves
+  (returning users never see the marketing launcher or its logo draw); delete the 1500ms
+  auto-advance race (explicit Get started only); keep `__DEV__` route-map behind `__DEV__` but
+  out of the default tree per MVP ledger note.
+  - Verify: standing gates; web export: with `hasFirstReadingComplete` seeded true the first
+    rendered frame is `/fortune` (assert via shoot of `/`); with it false, the launcher renders
+    with no timer navigation (manual tap only).
+- [ ] **U1.G** 🚦 Navigation gate: standing gates + Design-Direction §6 check 4 (journey:
+  analyzing→reveal→Done→Today; every pushed screen back; every modal ✕; tabs switch) verified
+  in the web export; shots to `docs/checkpoints/audit4/u1-gate/`; update STATE.
+
+## U2 — Today (home) recomposition (Direction §4.1, §4.3)
+
+- [ ] **U2.T1** 🤖 Honest states (SH-1): add `Skeleton` primitive (surfaceSunken, breath,
+  reduce-motion static); `(home)/fortune.tsx` exposes `loading`/`error` to `FortuneHome`;
+  loading = header + week-strip + fortune-skeleton; error = retry card (never first-run);
+  first-run ONLY when `firstRun` is truly known (no reading).
+  - Verify: standing gates + new jest states test (loading ≠ first-run; error shows retry);
+    dev routes `/dev/fortune-*` extended with `loading`/`error` fixtures; shots of both.
+- [ ] **U2.T2** 🤖 Kill the reflow + premium flash (SH-2, SH-3): entitlement/notify/thread/
+  claim resolve behind the skeleton or fade in without shifting layout (reserve or animate
+  height); premium branch renders only after entitlement resolves.
+  - Verify: standing gates; jest asserts no locked-branch render while entitlement pending;
+    web export visual check (no visible jump on `/fortune` load).
+- [ ] **U2.T3** 🤖 Today header (CO-9, CP-5, Direction §4.1): rebuild on shared metrics —
+  display weekday, `bodyLarge/secondary` date, "Wood Rat day" becomes a tappable ink pill with
+  a 2-sentence explainer popover/sheet; right: camera + settings `HeaderIconButton`s.
+  - Verify: standing gates; shot shows the pill; a11y labels on both header buttons; explainer
+    opens in web export.
+- [ ] **U2.T4** 🤖 Week strip — the calendar (SH-9, Direction §4.1): new `WeekStrip` (7
+  columns: weekday initial + dot; today = accent ring; past-opened = ink fill; future =
+  hairline) driven by a local fortune-opened-dates store (write on fortune render; this is
+  client-honest, no backend); streak line only when a real computed run ≥2 exists; delete
+  `StreakStrip` + its dead `d0..d6`/clamp logic; drop the infinite flame pulse.
+  - Verify: standing gates + unit tests for the run computation (0/1/3/8-day cases; month
+    boundary); `/fortune` shot shows the strip; analytics `fortune_opened.streak` reports the
+    computed value (no hardcoded 0).
+- [ ] **U2.T5** 🤖 Birth-date sheet (SH-4, CO-15, Direction §4.3): true bottom sheet (scrim,
+  handle, slide-up; reduce-motion static) shown AFTER the first fortune render; native
+  datetimepicker spinner (`npx expo install @react-native-community/datetimepicker`, Decision
+  Log entry); skip persists (AsyncStorage flag) + Settings row "Add birth date" as the way
+  back; save failure = inline warm error, sheet stays; copy per Direction §5.
+  - Verify: standing gates; jest: skip persisted → sheet never re-shows; failure keeps sheet
+    with error; web fallback renders a usable date input (web has no native spinner — document
+    the fallback in the ledger note).
+- [ ] **U2.T6** 🤖 Rows cleanup (SH-13, CP-2): notify opt-in → one-line inline row (hidden on
+  web); red-thread row requires a real partner name (else hidden); claim-account row moves to
+  Readings (banner, empty state included — CO's history note); FortuneCard gets `entranceIndex`
+  0 (hero first).
+  - Verify: standing gates; `/fortune` shot: post-hero content is ≤ hero+strip+2 rows; grep
+    `'your match'` → 0 production hits.
+- [ ] **U2.T7** 🤖 Date correctness (SH-14): fortune bucket key = LOCAL date (one shared
+  `localDateKey()` util replacing `todayUtc()` for fetch + header; unit-test the UTC±
+  boundaries); pass device locale into `loadTodayFortune`; delete dead CJK `pillar` compute +
+  `PREVIEW_FORTUNE` from the production module (move to `/dev` fixture file); fix `fortune.do`
+  → `dos`/`donts` naming.
+  - Verify: standing gates + boundary unit tests (UTC+10 morning, UTC−8 evening) green;
+    grep `todayUtc` → 0.
+- [ ] **U2.G** 🚦 Today gate: standing gates; shoot `/fortune` light+dark+320 (all states via
+  dev fixtures) to `docs/checkpoints/audit4/u2-gate/`; accent litmus ≤2; no reflow; update
+  STATE.
+
+## U3 — The almanac card (Direction §4.2)
+
+- [ ] **U3.T1** 🤖 Recompose `FortuneCard` (CC-2, CO-6): eyebrow sans icon-chip; essence in the
+  serif moment (`editorialTitle` size range); Do/Avoid → full-width rows with 16px
+  `check`/`close` icons (`success`/`danger` on the ICON only, headings ink); aspects labels
+  `secondary`; four-hue check: card shows accent only on its CTA/link.
+  - Verify: standing gates; shots light+dark+320; accent litmus on the card; no `✓✕` glyphs.
+- [ ] **U3.T2** 🤖 Lucky row responsive (CO-6): compass icon rotated per direction (map with a
+  safe fallback — no leading space), wrap grid `flexBasis` thirds collapsing 2+1 <360pt; hours
+  string fits at 320pt.
+  - Verify: standing gates + a 320×568 shot with no clipped/orphaned Lucky cells; unit test for
+    the direction→rotation map incl. unmapped input.
+- [ ] **U3.T3** 🤖 Free state + bridge (CP-6, CO-14-part): single lock line per Direction §5;
+  CTA "Unlock the full almanac" with the AA-fixed tonal label (U0.T2); "Ask about today"
+  prefill guards empty values and opens chat focused (autoFocus param honored by ChatThread —
+  coordinate with U6.T4 if not yet landed; whichever lands second wires the focus).
+  - Verify: standing gates; free + premium shots; prefill with empty direction produces a
+    well-formed question (unit test).
+- [ ] **U3.G** 🚦 Almanac gate: standing gates + shots (free/premium × light/dark × 375/320) to
+  `docs/checkpoints/audit4/u3-gate/`; update STATE.
+
+## U4 — Reveal (Direction §4.4)
+
+- [ ] **U4.T1** 🤖 Tail order + consolidation (CO-2, SH-10): reorder to sections → Compare
+  (flat row-card restyle) → locked → ONE "Continue" card (other-hand + other-kind rows;
+  dismiss persists; hidden when done) → TrustFooter LAST → disclaimer; survey moves below
+  section 1 with `size="md"` buttons (SH-11, CO-6) + kind-aware copy.
+  - Verify: standing gates; `/dev/reveal-ready` + `/dev/reveal-face` shots show the order;
+    survey buttons fit at 320pt; dismiss persists across remount (jest).
+- [ ] **U4.T2** 🤖 Share affordance + Done (CO-3): replace SealFab with the labeled share pill
+  (surface bg, border, `shadow.md` on a real background, safe-area inset); ReadyStamp stays as
+  the sole stamp; Done in the header (lands in U1.T2 — this task finishes the pill/stamp
+  visuals if U1.T2 already added Done).
+  - Verify: standing gates; reveal shot shows one stamp + the labeled pill within safe area;
+    iOS shadow renders (verify style props — background set), Android `elevation` on a filled
+    view.
+- [ ] **U4.T3** 🤖 Section visuals (CO-5): distinct thumbs — 4 line-sections keep mini palms
+  with a retuned visible highlight (fix mini underlay/bloom math in `PalmDiagram`: silhouette
+  behavior documented honestly, `silhouette` prop respected or removed); hand_shape/mounts/
+  markings + face sections get distinct ink feature icons; LockedCard titles `heading` +
+  `premiumInk` marker; elevation unified (hero block only `md`).
+  - Verify: standing gates + PalmDiagram unit test for mini stroke/underlay ratios; reveal shot:
+    every section thumb visually distinct; locked titles match free title weight.
+- [ ] **U4.T4** 🤖 Reveal honesty (SH-8, SH-16): pending badge → "Photo deletes within 24
+  hours"; `deletedLabel` locale-aware (Intl time, date included when not today); geometry
+  resets on reading-id change; history header badge same honest default (coordinate U6.T5).
+  - Verify: standing gates + unit tests (deletedLabel: today/older/kept/absent; geometry reset
+    on id change); grep default `PrivacyBadge` usages — none claim deletion without data.
+- [ ] **U4.G** 🚦 Reveal gate: standing gates; shots light/dark/320 of ready+pending+error to
+  `docs/checkpoints/audit4/u4-gate/`; accent litmus; update STATE.
+
+## U5 — Analyzing + Pair (Direction §4.5, §4.6)
+
+- [ ] **U5.T1** 🤖 Analyzing geometry & honesty (CO-13, SH-7): pad the ring SVG viewport (glow
+  never clips); center the photo on the ring axis; arc empty at 0%; progress creeps 75→92%
+  during extraction (never parks); abstract-motif honesty (a11y label + non-possessive stage
+  copy; possessive + real geometry when a prior reading exists); step dots ink.
+  - Verify: standing gates + unit test for the creep function; `/dev/analyzing*` shots (0%,
+    mid, overrun) — no clip, photo concentric; copy matches Direction §5.
+- [ ] **U5.T2** 🤖 Analyzing exits + failure (SN-7, CP-4, CO-13): back during scan → confirm
+  sheet; notify flow → holding screen with a way back (not the launcher); failure state:
+  `warning` icon, reason-specific copy (lighting only for lighting), CTAs diverge (camera vs
+  upload); overrun layout scrolls at 320×568.
+  - Verify: standing gates; failure dev route shows both CTAs hitting different destinations;
+    320 shot of overrun scrolls (content not clipped).
+- [ ] **U5.T3** 🤖 Pair mechanics (CO-16, SH-15, CC-4): real geometries when stored (fallback
+  `differentiateGeometry`); score numeral `premiumInk`; SubScoreBar flex labels + tabular
+  values (no fixed 72/28); `DIM_ICON` keyed on stable keys; empty narrative renders nothing;
+  ScoreRing `accessible` with a single label; success haptic once per pairId; auto-present
+  share delayed past choreography end OR replaced by a "Share this" pill (owner-taste — pick,
+  record in Decision Log); waiting state timeout + nudge; 402 pre-checked before render.
+  - Verify: standing gates + unit tests (empty narrative, haptic-once guard, dim-icon
+    fallback); `/dev/share-compat`-style pair shot at 1.3× font scale — bars aligned.
+- [ ] **U5.G** 🚦 standing gates; shots to `docs/checkpoints/audit4/u5-gate/`; update STATE.
+
+## U6 — Share, Chat, History, Paywall, Account (Direction §4.7–§4.11)
+
+- [ ] **U6.T1** 🤖 Share sheet layout (CO-12): scrollable; edge-to-edge channel row with
+  trailing fade + peek (last tile visibly partial); unified 340pt-max preview frame for PNG and
+  vector; `editorialTitle`; toggles visible off-state; copied → icon+fitting label, resets on
+  regenerate; channel analytics values from `CHANNELS` only.
+  - Verify: standing gates; 320×568 + 375 shots — nothing overlapped/below fold; grep
+    `onShare('share')` → 0.
+- [ ] **U6.T2** 🤖 Share compat honesty (SH-7, CO-12): no score-0/"Your match" path — from
+  reveal the compat entry is invite-first (no fabricated card); compat card variant renders
+  only with a real pair (real names/score); partner palm via `differentiateGeometry` until real
+  partner geometry exists (Decision Log the fallback).
+  - Verify: standing gates + jest: `ShareView` with no pair shows invite variant (no score
+    ring); with pair fixture shows real values; grep the default blurb string → `/dev` only.
+- [ ] **U6.T3** 🤖 Chat mechanics (CO-14, SH-6, CC-7/8): auto-scroll (`onContentSizeChange` +
+  ref) for send/receive/typing; Android `KeyboardAvoidingView` behavior (`height` +
+  `keyboardVerticalOffset` or `android:windowSoftInputMode` note); error → inline system row
+  with retry (never assistant bubble); send disabled = sunken+tertiary; composer hairline
+  border unfocused; chips ink; chip-fade height measured; `key` stable; empty/short-thread
+  alignment unified; prefill autoFocus.
+  - Verify: standing gates + jest (error renders system row not assistant message; autoscroll
+    called on append); chat shots light/dark; gate CTA goes straight to paywall.
+- [ ] **U6.T4** 🤖 History shelf (CO-5, SH-5, SH-12, CO-4): pinned header (outside scroll) +
+  back when pushed (U1.T3); error state with retry (never empty-state lie); thumbs — palm mini
+  (silhouette embraced, comments fixed) vs face icon tile (no fake palm geometry; delete
+  `FACE_GEOMETRY`); type chip ink; date `secondary` + safe fallback; share action 44pt with own
+  haptic (row haptic suppressed on inner press); chevron dropped; Unchanged banner kind-aware +
+  standard card; claim banner incl. empty state; `now` refreshes on focus.
+  - Verify: standing gates + jest (error state, kind-aware banner, date fallback); shots
+    empty/populated light+dark.
+- [ ] **U6.T5** 🤖 Paywall honest + polished (SH-7, CC-4/5, CO-9): hero from the user's latest
+  reading geometry (abstract fallback + generic copy when none); inclusion icons ink; unselected
+  plan flat-bordered; parallel plan secondary lines; no invented prices — plan cards labeled
+  without numbers until RevenueCat (keep `PLANS` shape, strings from a single
+  `PLACEHOLDER_OFFERS` marked clearly; CTA disabled note per Direction §4.10); `PremiumSeal`
+  caption-on-fill; disclosure `small/secondary`; close/restore/links 44pt+spring.
+  - Verify: standing gates; paywall shots light/dark; grep `'$35.88'|'SAVE 40%'|'$4.99'` → 0
+    production hits; a11y labels on close/links.
+- [ ] **U6.T6** 🤖 Account sheet (CO-7, CO-15, CP-10): Apple black-fill + mark, Google
+  white-fill + G mark (mono-stroke marks in `Icon.tsx` per U0.T5), phone outlined distinct;
+  `warning` icon errors; input horizontal padding + centered OTP without tracking shift; drop
+  the streak promise line.
+  - Verify: standing gates; account shots (choices/phone/otp); the three provider buttons are
+    visually distinct in the PNG.
+- [ ] **U6.G** 🚦 standing gates; shots to `docs/checkpoints/audit4/u6-gate/`; update STATE.
+
+## U7 — Copy, a11y, dead code (Direction §5)
+
+- [ ] **U7.T1** 🤖 Copy sweep: implement every Direction §5 rewrite; single canonical legal +
+  trust strings in `trustCopy.ts` (all 3 disclaimer variants, both trust-line variants);
+  settings `?section=` for Terms/Privacy; plan pill two labels; `&apos;`→`’` sweep; US
+  spelling ("Colour"→"Color", "favourable"→"favorable" — fixture files included).
+  - Verify: standing gates; grep each old string → 0 production hits; i18n catalog updated for
+    changed keys (`t()` sites) with tests green.
+- [ ] **U7.T2** 🤖 A11y + dead-code pass: fixture diagrams never labeled "Your palm"
+  (context-aware label prop threaded); ScoreRing accessible; week-strip/streak labels; delete
+  `SECTION_GLYPH`, decouple `LINE_LABEL` CJK gating, remove `HandOutline` from post-capture
+  exports if truly unused (verify first), `PREVIEW_*` moved to `/dev`-only modules;
+  `scrollEventThrottle` for the depth tracker raised (≥100ms) with thresholds intact.
+  - Verify: standing gates; grep `PREVIEW_` imports outside `/dev`+tests → 0; TalkBack-relevant
+    labels asserted in jest where practical (`[~]` note for the live TalkBack leg — device).
+- [ ] **U7.G** 🚦 standing gates; update STATE.
+
+## U8 — Final acceptance 🚦
+
+- [ ] **U8.G** 🚦 The Design-Direction §6 acceptance, in full: (1) accent litmus shots ≤2 per
+  screen; (2) surface litmus; (3) contrast suite green; (4) journey walk in web export;
+  (5) fixture grep clean; (6) 320pt sweep clean; (7) full-route screenshot sweep light + dark +
+  320 to `docs/checkpoints/audit4/final/`; all three standing suites green. Then: STATE →
+  COMPLETE, consolidated `[~]` device-leg list written into STATE (expected: live haptics,
+  native springs/keyboard, datetimepicker native spinner, OS share sheet, real-device TalkBack),
+  final Build Log line, commit.
+
+---
+
+## 🧱 Build Log (append one line per completed task)
+
+| Date | Task | One-line result |
+|---|---|---|
+| 2026-07-25 | U0.T1 | Light `bg #FAF9F7→#F4F1EB`, `surfaceSunken #F2F0EC→#EAE6DE`, `Card` border scheme-aware (light borders at every elevation); card/page separation 1.052→1.127:1 and a real hairline now renders — pixel probe of the u0 before/after shots reads `ffffff → e7e3dc e7e3dc → f4f1eb` where before it read `ffffff → (shadow AA) → faf9f7`; the 4 raw `shadow.sm` sites all already carry hairlines (none shadow-only); tokens test +1 (73). |

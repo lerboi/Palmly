@@ -7,14 +7,18 @@ import { tick } from '@/lib/haptics';
 
 export interface CardProps {
   children: ReactNode;
-  /** Hairline border in the theme border color. Default true. */
+  /**
+   * Hairline border in the theme border color. Default is scheme-aware (Audit-4 CC-3): light
+   * always borders (a white card on paper must never be held apart by shadow alone), dark borders
+   * only when flat (its surface roles already separate).
+   */
   bordered?: boolean;
   /** Padding from the spacing scale. Default `lg` (16). */
   padded?: boolean;
   /**
    * Elevation from the shadow scale (redesign §5). Default `none` = flat. Any lift ≥ `sm`
-   * switches the fill to the `surfaceRaised` role so the card also reads lifted on dark, and
-   * drops the hairline border by default (the shadow does the separating).
+   * switches the fill to the `surfaceRaised` role so the card also reads lifted on dark, and on
+   * dark drops the hairline border by default (there the raised role does the separating).
    */
   elevation?: ShadowKey;
   /** Make the card a button: press feedback (spring scale + pressed tint) + a11y role. */
@@ -49,8 +53,10 @@ export function Card({
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
   const lifted = elevation !== 'none';
-  // Elevated cards don't need a border; flat cards default to bordered.
-  const showBorder = bordered ?? !lifted;
+  // Separation is never shadow-only on light (Audit-4 CC-3 / Design-Direction §2 P2): a white card
+  // on paper keeps its hairline at every elevation. On dark the raised surface role does the work,
+  // so lifted cards stay borderless there. Explicit `bordered` still wins on both schemes.
+  const showBorder = bordered ?? (theme.scheme === 'light' || !lifted);
 
   const cardStyle: ViewStyle = {
     backgroundColor: lifted ? theme.colors.surfaceRaised : theme.colors.surface,
