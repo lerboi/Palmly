@@ -170,6 +170,18 @@ export function homeState(input: {
  * Thirds when there is room; 2-then-1 below 360pt, which is where three columns stop being
  * readable rather than merely tight.
  */
+/**
+ * The question the "Ask about today" bridge pre-fills (Audit-4 CO-14 / micro-bugs).
+ *
+ * It was an unguarded template: `Why is ${fortune.lucky_direction} my lucky direction today?`. With
+ * no direction that rendered "Why is  my lucky direction today?" — a doubled space and a sentence
+ * about nothing. Guarded, and with a fallback that is a real question rather than a broken one.
+ */
+export function askPrefill(fortune: Pick<Fortune, 'lucky_direction'>): string {
+  const dir = fortune.lucky_direction?.trim();
+  return dir ? `Why is ${dir} my lucky direction today?` : 'What should I focus on today?';
+}
+
 export function luckyColumns(screenWidth: number): 2 | 3 {
   return screenWidth < 360 ? 2 : 3;
 }

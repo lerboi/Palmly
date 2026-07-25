@@ -4,7 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Button, Card, Icon, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
-import { DIRECTION_BEARING, luckyBasis, type Fortune } from './fortune';
+import { askPrefill, DIRECTION_BEARING, luckyBasis, type Fortune } from './fortune';
 
 /**
  * The daily fortune card (UIUX §2.11, redesign R18 / v2 V17) — a true hero (`elevation="md"` +
@@ -43,13 +43,16 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
 
       {!premium ? (
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.md, alignItems: 'flex-start' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-            <Icon name="lock" size={16} color={theme.colors.premiumInk} decorative />
-            <Text variant="caption" tone="premiumInk">
-              Do · Avoid · lucky direction · hours · love, career &amp; wealth
+          {/* ONE lock line (Audit-4 CP-6 / Direction §5). It was a seven-item interpunct feature
+              list — "Do · Avoid · lucky direction · hours · love, career & wealth" — set in
+              low-contrast gold, which reads as a spec sheet rather than an invitation. */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}>
+            <Icon name="lock" size={16} color={theme.colors.textSecondary} decorative style={{ marginTop: 2 }} />
+            <Text variant="small" tone="secondary" style={{ flex: 1 }}>
+              The full almanac — do &amp; avoid, lucky hours, love, career, wealth — is Premium.
             </Text>
           </View>
-          <Button label="Unlock today's almanac" variant="tonal" size="md" onPress={onUnlock} />
+          <Button label="Unlock the full almanac" variant="tonal" size="md" onPress={onUnlock} />
         </View>
       ) : (
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.lg }}>
@@ -82,7 +85,7 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
                 variant="ghost"
                 size="md"
                 icon={<Icon name="chat" size={16} color={theme.colors.accentPressed} decorative />}
-                onPress={() => onAsk(`Why is ${fortune.lucky_direction} my lucky direction today?`)}
+                onPress={() => onAsk(askPrefill(fortune))}
               />
             </Animated.View>
           ) : null}

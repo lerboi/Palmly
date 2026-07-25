@@ -52,6 +52,9 @@ export function ChatThread({ premium, messages, chips, typing = false, onSend, i
   // Composed question (F1.10). Declared before the early return (rules-of-hooks). A chip taps into it;
   // the fortune bridge seeds it via `initialInput`.
   const [input, setInput] = useState(initialInput ?? '');
+  // Arriving from the fortune bridge with a question already typed: focus the composer so the
+  // keyboard is up and the user can edit or just send (CO-14). Only when a prefill exists.
+  const autoFocus = !!initialInput;
   const submit = () => {
     const t = input.trim();
     if (t && onSend) {
@@ -126,7 +129,7 @@ export function ChatThread({ premium, messages, chips, typing = false, onSend, i
           </View>
 
           {/* input bar */}
-          <InputBar value={input} onChangeText={setInput} onSubmit={submit} />
+          <InputBar value={input} onChangeText={setInput} onSubmit={submit} autoFocus={autoFocus} />
         </View>
       </KeyboardAvoidingView>
     </Screen>
@@ -351,7 +354,7 @@ function Chip({ label, index, shouldAnimate, onInject }: { label: string; index:
 }
 
 /** The input bar — controlled field (F1.10) + a press-spring send button; Enter submits. */
-function InputBar({ value, onChangeText, onSubmit }: { value: string; onChangeText: (t: string) => void; onSubmit: () => void }) {
+function InputBar({ value, onChangeText, onSubmit, autoFocus = false }: { value: string; onChangeText: (t: string) => void; onSubmit: () => void; autoFocus?: boolean }) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const send = usePressSpring(0.9);
@@ -374,6 +377,7 @@ function InputBar({ value, onChangeText, onSubmit }: { value: string; onChangeTe
         onChangeText={onChangeText}
         onSubmitEditing={onSubmit}
         returnKeyType="send"
+        autoFocus={autoFocus}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={{

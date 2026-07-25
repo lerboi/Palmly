@@ -1,4 +1,4 @@
-import { DIRECTION_BEARING, almanacDate, dayPillarCn, homeState, luckyBasis, luckyColumns, shouldAskBirthDate, type Fortune } from '../fortune';
+import { askPrefill, DIRECTION_BEARING, almanacDate, dayPillarCn, homeState, luckyBasis, luckyColumns, shouldAskBirthDate, type Fortune } from '../fortune';
 
 describe('fortune (P9.T3)', () => {
   it('computes the sexagenary day pillar (anchor 2000-01-07 = 甲子)', () => {
@@ -64,6 +64,31 @@ describe('fortune (P9.T3)', () => {
 
     it('resolves loading and error to different states — they are not interchangeable', () => {
       expect(homeState({ loading: true, fortune: null })).not.toBe(homeState({ error: true, fortune: null }));
+    });
+  });
+
+  describe('the chat-bridge prefill (Audit-4 CO-14)', () => {
+    it('asks about the real direction when there is one', () => {
+      expect(askPrefill({ lucky_direction: 'Southeast' })).toBe('Why is Southeast my lucky direction today?');
+    });
+
+    it('never emits the doubled space the unguarded template produced', () => {
+      // `Why is ${''} my lucky direction today?` rendered "Why is  my lucky direction today?"
+      for (const dir of ['', '   ']) {
+        const q = askPrefill({ lucky_direction: dir });
+        expect(q).not.toMatch(/ {2}/);
+        expect(q).not.toContain('Why is  ');
+      }
+    });
+
+    it('falls back to a real question, not a broken sentence', () => {
+      const q = askPrefill({ lucky_direction: '' });
+      expect(q).toBe('What should I focus on today?');
+      expect(q.endsWith('?')).toBe(true);
+    });
+
+    it('trims a padded direction rather than embedding the padding', () => {
+      expect(askPrefill({ lucky_direction: '  North  ' })).toBe('Why is North my lucky direction today?');
     });
   });
 
