@@ -23,12 +23,12 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 
 | Field | Value |
 |---|---|
-| Current phase | U7 — copy, a11y, dead code |
-| Next task | U7.G |
+| Current phase | U8 — final acceptance |
+| Next task | U8.G |
 | Blocked on | — |
 | Waiting on human | — |
 | Last run | 2026-07-25 |
-| Last completed task | U7.T2 (`[~]` — TalkBack + fixture relocation) |
+| Last completed task | U7.G |
 | Notes for next run | **Three contracts U0.T1–T3 established — extend them, never route around them.** (1) The AA matrix in `theme/__tests__/tokens.test.ts` is the contrast contract; adding a role means adding its used pairings. Sunken chip/pill labels are `textPrimary` (`textSecondary` on `surfaceSunken` is 4.25:1 and is deliberately absent from the matrix as a text pairing). (2) Accent TEXT is `accentPressed`; `accent` is fills / selected / palm-line only; premium TEXT is `premiumInk`, `premium` is fill only. (3) Decorative glyphs are `textSecondary` on a `surfaceSunken` well — `accentMuted` wells now mean "selected". Screenshot recipe erratum: this host's headless Chrome renders **dark** by default, and metro caches the inlined env var — light shots need `EXPO_PUBLIC_FORCE_SCHEME=light npx expo export --platform web` plus `--clear` whenever the flag's value changes. **Scrolled shots (U4.T2, reusable at U4.G):** the reveal's share pill only mounts past 240px, so a top-of-page shot can't see it — find the RNW scroller (`div` with the largest `scrollHeight - clientHeight`), set `scrollTop`, wait ~900ms, then capture; programmatic `scrollTop` does fire RNW's `onScroll`. |
 
 ---
@@ -468,7 +468,7 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
   `scrollEventThrottle` for the depth tracker raised (≥100ms) with thresholds intact.
   - Verify: standing gates; grep `PREVIEW_` imports outside `/dev`+tests → 0; TalkBack-relevant
     labels asserted in jest where practical (`[~]` note for the live TalkBack leg — device).
-- [ ] **U7.G** 🚦 standing gates; update STATE.
+- [x] **U7.G** 🚦 standing gates; update STATE.
 
 ## U8 — Final acceptance 🚦
 
@@ -486,6 +486,7 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 
 | Date | Task | One-line result |
 |---|---|---|
+| 2026-07-26 | **U7.G** 🚦 | **Copy / a11y / dead-code gate PASSED** on the standing gates it asks for: typecheck 0, lint 0, 157 tests across 16 suites. Both U7 tasks carry named `[~]` legs rather than silent ones — U7.T1's i18n catalog (no `t()` key changed, but the catalog was not audited) and U7.T2's live TalkBack pass plus the `PREVIEW_*` declaration relocation. Everything else in the phase is landed and grep-verified: `&apos;` → 0, `SECTION_GLYPH` → 0, production `PREVIEW_*` imports → 0, old survey/spelling strings → 0. |
 | 2026-07-26 | U7.T2 [~] | **Dead weight out, and one fixture name stops lying.** `SECTION_GLYPH` — seven CJK markers "retained as data" for a traditional view the redesign removed — is **deleted**; nothing rendered it and only its own test kept it alive (grep → 0). `PREVIEW_GEOMETRY` became **`ABSTRACT_GEOMETRY`** across 29 files (D72): four production routes fall back to it on purpose, so it was never a preview — and with the name corrected, **production imports of any `PREVIEW_*` symbol are 0**, which is what the verify actually wanted to prove. The reveal's scroll-depth tracker dropped from a **60fps** callback to `scrollEventThrottle={100}`; it fires four thresholds once each, so nothing is lost and the JS thread stops working on every frame of a scroll. `HandOutline` was checked before deleting, per the task's own "verify first" — it is used by the primer, hand-select and welcome, so it stays. `[~]` PENDING: the **live TalkBack pass** is device-only (standing leg), and relocating `PREVIEW_READING`/`PREVIEW_HISTORY`/`PREVIEW_THREAD` *definitions* into `/dev` is not done — they are imported only by `/dev` routes and tests today, which is why the import grep is clean, but the declarations still sit in production modules. Gates green, 157 tests (the deleted glyph test accounts for the −1). |
 | 2026-07-26 | U7.T1 [~] | **The copy sweep: apostrophes, spelling, the survey line, and one home for the disclaimer.** Nine `&apos;` entities across six files became real typographic `’` — they render as a straight ASCII quote, which is the one punctuation error a reader notices in an app that sells warmth; **`grep &apos; src/**/*.tsx` → 0**. The consistency survey took its §5 rewrite: "Does this reading match what you remember?" / "Thanks — that helps us keep your readings consistent." → **"Same as you remember?" / "Noted — thank you."** — the old line explained our QA process to the reader. `favourable` → `favorable` in the rendered fixture (grep → 0; "Colour" was already fixed at D40). The disclaimer existed in **five** places across reveal, pair, methodology and fixtures — a legal line in five places will eventually disagree with itself — and is now `DISCLAIMER_SHORT` / `DISCLAIMER_FULL` in `trustCopy.ts`. UK spellings that survive are in **code comments only**, not user-facing copy. `[~]` PENDING: the **i18n catalog** leg is untouched — no `t()` site's key changed in this sweep (the strings edited are all literal JSX), so there was nothing to migrate, but the task's "i18n catalog updated for changed keys" cannot be called done for a catalog I did not audit. Gates green, 158 tests. |
 | 2026-07-26 | **U6.G** 🚦 | **Share / chat / history / paywall / account gate PASSED.** 13 shots to `docs/checkpoints/audit4/u6-gate/`, light + dark + a 320. **Accent litmus, every band named:** share is 85.5% its "Share" CTA plus the *selected* tab pill, the ON invite toggle and the selected framing pill — all sanctioned "selected/active" — plus the claret `#a03c2f` thread (heritage); the **paywall's biggest band is now the selected PLAN card, not a CTA**, because U6.T5's CTA is disabled — the rest is the Restore link, the brand mark and the hero's lit fate line; account is 87% "Continue with Apple" + 7.5% the outlined Google + the two ghost labels + the Logomark's heart-line whisper; the populated shelf carries **656 accent pixels in total**, both of them thumbnail heart-lines, and the empty shelf is 99.3% its one CTA. **Non-interactive vermilion: 0 on every screen** except chat, which is exactly 2 — the two accent-filled USER bubbles, at the ≤2 limit and a deliberate convention rather than decoration. Standing gates: typecheck 0, lint 0, 158 tests. |
