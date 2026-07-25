@@ -58,8 +58,8 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
       ) : (
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.lg }}>
           <Animated.View entering={unfold(0)} style={{ flexDirection: 'row', gap: theme.spacing.lg }}>
-            <DoDont title="Do" items={fortune.do} tone="success" />
-            <DoDont title="Avoid" items={fortune.dont} tone="danger" />
+            <DoDont title="Do" items={fortune.dos} tone="success" />
+            <DoDont title="Avoid" items={fortune.donts} tone="danger" />
           </Animated.View>
 
           <Divider />

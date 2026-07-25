@@ -1,4 +1,4 @@
-import { DIRECTION_BEARING, PREVIEW_FORTUNE, almanacDate, dayPillarCn, homeState, shouldAskBirthDate } from '../fortune';
+import { DIRECTION_BEARING, almanacDate, dayPillarCn, homeState, shouldAskBirthDate, type Fortune } from '../fortune';
 
 describe('fortune (P9.T3)', () => {
   it('computes the sexagenary day pillar (anchor 2000-01-07 = 甲子)', () => {
@@ -10,12 +10,16 @@ describe('fortune (P9.T3)', () => {
     // Pin the locale so the format is deterministic in CI; production defaults to the device locale.
     const d = almanacDate(new Date(2026, 6, 14), 'en-US');
     expect(d.gregorian).toBe('July 14');
-    expect(d.pillar).toMatch(/日$/);
     expect(d.weekday).toBeTruthy();
   });
 
   describe("Today's state precedence (Audit-4 SH-1)", () => {
-    const f = PREVIEW_FORTUNE;
+    const f: Fortune = {
+      overall: 'A steady day.',
+      career: 'c', love: 'l', wealth: 'w',
+      dos: ['a'], donts: ['b'],
+      lucky_direction: 'Southeast', lucky_color: 'Jade green', lucky_hours: '9-11am',
+    };
 
     it('never shows the first-run hero while the request is in flight', () => {
       // THE bug: `firstRun || !fortune` meant every returning user watched "Read my palm" for two
@@ -104,10 +108,4 @@ describe('fortune (P9.T3)', () => {
     expect(DIRECTION_BEARING['']).toBeUndefined();
   });
 
-  it('preview fortune has the full almanac shape (do/dont/lucky)', () => {
-    expect(PREVIEW_FORTUNE.do.length).toBeGreaterThan(0);
-    expect(PREVIEW_FORTUNE.dont.length).toBeGreaterThan(0);
-    expect(PREVIEW_FORTUNE.lucky_direction).toBeTruthy();
-    expect(PREVIEW_FORTUNE.overall.length).toBeGreaterThan(0);
-  });
 });

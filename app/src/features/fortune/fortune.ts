@@ -7,8 +7,8 @@ export interface Fortune {
   career: string;
   love: string;
   wealth: string;
-  do: string[];
-  dont: string[];
+  dos: string[];
+  donts: string[];
   lucky_direction: string;
   lucky_color: string;
   lucky_hours: string;
@@ -85,14 +85,12 @@ export function dayPillarEn(date: Date): string {
 export interface AlmanacDate {
   weekday: string; // "Monday"
   gregorian: string; // "July 14"
-  pillar: string; // ganzhi day pillar, e.g. "甲子日" (zh traditional view only; not rendered)
   pillarEn: string; // English whisper, e.g. "Wood Rat" (rendered as the day-pillar whisper)
 }
 export function almanacDate(date: Date, locale: string | undefined = deviceLocale()): AlmanacDate {
   return {
     weekday: date.toLocaleDateString(locale, { weekday: 'long' }),
     gregorian: date.toLocaleDateString(locale, { month: 'long', day: 'numeric' }),
-    pillar: `${dayPillarCn(date)}日`,
     pillarEn: dayPillarEn(date),
   };
 }
@@ -172,14 +170,3 @@ export function shouldAskBirthDate(input: {
   return !input.birthDate;
 }
 
-export const PREVIEW_FORTUNE: Fortune = {
-  overall: 'A steady, favourable day — move with intention and doors open quietly.',
-  career: 'Progress through patience; a senior notices your reliability.',
-  love: 'Warmth returned in kind. Say the honest thing.',
-  wealth: 'Hold, don’t chase — a small saving beats a big gamble.',
-  do: ['Sign what’s ready', 'Reach out first', 'Tidy one loose end'],
-  dont: ['Lend impulsively', 'Argue over trifles', 'Skip your rest'],
-  lucky_direction: 'Southeast',
-  lucky_color: 'Jade green',
-  lucky_hours: '7–9am · 3–5pm',
-};

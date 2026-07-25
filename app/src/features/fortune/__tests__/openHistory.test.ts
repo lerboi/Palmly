@@ -16,6 +16,43 @@ describe('local date keys', () => {
   });
 });
 
+describe('the local-vs-UTC day boundary (Audit-4 SH-14)', () => {
+  /**
+   * The defect: the fortune row was fetched with `new Date().toISOString().slice(0,10)` — a UTC
+   * day — while the header rendered the LOCAL weekday/date/pillar. For much of the day in UTC±8..12
+   * those disagree, so the user read one date above another day's fortune. Both now use
+   * `localDateKey`, so these assertions are what keeps them paired.
+   *
+   * `Date` here is constructed from local components, so the test states the local wall clock the
+   * user sees, whatever timezone the suite runs in — the invariant is "the key matches the wall
+   * clock", not a hardcoded offset.
+   */
+  it('UTC+10 morning: an early local hour still reads as TODAY, not yesterday', () => {
+    // 08:00 local on the 25th. In UTC+10 that is 22:00 UTC on the 24th — the old code said the 24th.
+    const local = new Date(2026, 6, 25, 8, 0);
+    expect(localDateKey(local)).toBe('2026-07-25');
+    expect(localDateKey(local)).toBe(
+      `${local.getFullYear()}-${`${local.getMonth() + 1}`.padStart(2, '0')}-${`${local.getDate()}`.padStart(2, '0')}`,
+    );
+  });
+
+  it('UTC-8 evening: a late local hour still reads as TODAY, not tomorrow', () => {
+    // 22:00 local on the 25th. In UTC-8 that is 06:00 UTC on the 26th — the old code said the 26th.
+    const local = new Date(2026, 6, 25, 22, 0);
+    expect(localDateKey(local)).toBe('2026-07-25');
+  });
+
+  it('never rolls at either end of the local day', () => {
+    expect(localDateKey(new Date(2026, 6, 25, 0, 0, 0))).toBe('2026-07-25');
+    expect(localDateKey(new Date(2026, 6, 25, 23, 59, 59))).toBe('2026-07-25');
+  });
+
+  it('rolls exactly at local midnight, not at UTC midnight', () => {
+    expect(localDateKey(new Date(2026, 6, 25, 23, 59, 59))).toBe('2026-07-25');
+    expect(localDateKey(new Date(2026, 6, 26, 0, 0, 0))).toBe('2026-07-26');
+  });
+});
+
 describe('streakRun', () => {
   it('is 0 with no history at all', () => {
     expect(streakRun(at(2026, 7, 25), [])).toBe(0);

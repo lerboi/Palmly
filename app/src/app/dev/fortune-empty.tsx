@@ -1,5 +1,5 @@
 import { FortuneHome } from '@/features/fortune/FortuneHome';
-import { PREVIEW_FORTUNE } from '@/features/fortune/fortune';
+import { PREVIEW_FORTUNE } from './fixtures';
 
 /** /dev preview — the first-run (no reading yet) Fortune home (redesign R18). Not shipped. */
 export default function FortuneEmptyPreview() {

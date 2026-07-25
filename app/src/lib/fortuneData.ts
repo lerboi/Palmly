@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 import { elementProfile, pillarBucket, type Fortune } from '@/features/fortune/fortune';
+import { localDateKey } from '@/features/fortune/openHistory';
+import { deviceLocale } from './locale';
 
 /**
  * Daily-fortune read (audit F0.3, Backend §3.2). The nightly `fortune-generate` upserts one
@@ -10,21 +12,35 @@ import { elementProfile, pillarBucket, type Fortune } from '@/features/fortune/f
  * fabricated content.
  */
 
-/** Today's UTC date (YYYY-MM-DD) — the fortune_templates partition key the backend generates against. */
-function todayUtc(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+/**
+ * Today's fortune, keyed on the caller's **LOCAL** date (Audit-4 SH-14).
+ *
+ * It used to fetch by `new Date().toISOString().slice(0,10)` — a UTC day — while the header
+ * rendered the LOCAL weekday, date and pillar. For much of the day in UTC±8..12 those are different
+ * days, so the user read "Saturday July 25" above Friday's fortune. One shared `localDateKey()`
+ * (the same helper the week strip uses) now drives both.
+ *
+ * Locale: the body was hardcoded `'en'` while the header localized off the device. The device
+ * language is tried first and falls back to `en`, since `fortune_templates` only has rows for the
+ * locales the generator has run for — a missing translation must not become a missing fortune.
+ */
+export async function loadTodayFortune(bucket = 'generic', locale?: string): Promise<Fortune | null> {
+  const wanted = locale ?? deviceLocale()?.split('-')[0] ?? 'en';
+  const date = localDateKey(new Date());
 
-export async function loadTodayFortune(bucket = 'generic', locale = 'en'): Promise<Fortune | null> {
-  const { data, error } = await supabase
-    .from('fortune_templates')
-    .select('content')
-    .eq('fortune_date', todayUtc())
-    .eq('pillar_bucket', bucket)
-    .eq('locale', locale)
-    .maybeSingle();
-  if (error || !data) return null;
-  return (data as { content: Fortune }).content;
+  const read = async (loc: string) => {
+    const { data, error } = await supabase
+      .from('fortune_templates')
+      .select('content')
+      .eq('fortune_date', date)
+      .eq('pillar_bucket', bucket)
+      .eq('locale', loc)
+      .maybeSingle();
+    return error || !data ? null : (data as { content: Fortune }).content;
+  };
+
+  const hit = await read(wanted);
+  return hit ?? (wanted === 'en' ? null : await read('en'));
 }
 
 /**
