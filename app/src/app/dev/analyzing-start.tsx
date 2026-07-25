@@ -7,5 +7,6 @@ import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
  * Not shipped in production builds.
  */
 export default function AnalyzingStartPreview() {
-  return <AnalyzingView geometry={PREVIEW_GEOMETRY} status="extracting" elapsedMs={0} />;
+  // `onBack`/`onHome` are wired to no-ops so the SN-7 leave-confirm sheet is reachable device-free.
+  return <AnalyzingView geometry={PREVIEW_GEOMETRY} status="extracting" elapsedMs={0} onBack={() => {}} onHome={() => {}} />;
 }

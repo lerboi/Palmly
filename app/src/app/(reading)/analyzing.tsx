@@ -28,9 +28,11 @@ import { track } from '@/lib/analytics';
  * abstract state renders.
  */
 export default function Analyzing() {
-  const { scanId, capturedUri, kind: kindParam } = useLocalSearchParams<{ scanId?: string; capturedUri?: string; kind?: string }>();
+  const { scanId, capturedUri, kind: kindParam, hand: handParam } = useLocalSearchParams<{ scanId?: string; capturedUri?: string; kind?: string; hand?: string }>();
   const id = scanId ?? null;
   const kind: 'palm' | 'face' = kindParam === 'face' ? 'face' : 'palm';
+  // Carry the hand back to the primer on a retry, so a left-hand scan retries as a left-hand scan.
+  const hand = handParam === 'left' || handParam === 'right' ? handParam : undefined;
   const { status, failureReason, error } = useScanStatus(id);
 
   // Mount timer → elapsedMs (a pure accumulating tick), driving the staged messages, the 45s soften
@@ -81,10 +83,10 @@ export default function Analyzing() {
 
   const onNotifyMe = () => {
     track('analyzing_notify_me', id ? { scan_id: id } : {});
-    // The 75s overrun is a sanctioned push moment (F1.T10): ask, then free the user home so a push can
-    // bring them back to the reveal. The OS prompt + token are device-only; on web this no-ops.
+    // The 75s overrun is a sanctioned push moment (F1.T10): ask, and let the view show its holding
+    // state. This used to `replace('/')` — the marketing LAUNCHER, with no route back to the scan or
+    // to anything else (SN-7). The OS prompt + token are device-only; on web this no-ops.
     void requestPushPermission('analyzing_overrun');
-    router.replace('/' as Href);
   };
 
   return (
@@ -98,8 +100,8 @@ export default function Analyzing() {
       connectionError={error}
       onNotifyMe={onNotifyMe}
       onBack={() => router.back()}
-      onRetry={() => router.replace('/primer' as Href)}
-      onUploadInstead={() => router.replace('/primer' as Href)}
+      onHome={() => router.replace('/fortune' as Href)}
+      onRetry={() => router.replace((hand ? `/primer?hand=${hand}` : '/primer') as Href)}
     />
   );
 }

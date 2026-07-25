@@ -13,6 +13,8 @@ export default function AnalyzingOverrunPreview() {
       status="extracting"
       elapsedMs={80_000}
       connectionError="offline"
+      onBack={() => {}}
+      onHome={() => {}}
     />
   );
 }

@@ -111,12 +111,29 @@ export const OVERRUN_SOFT = 'Taking a little longer — your lines are worth it.
 export const NOTIFY_COPY = 'We’ll notify you the moment it’s ready.';
 export const NOTIFY_CTA = 'Notify me when it’s ready';
 export const FAILURE_TITLE = 'We couldn’t see your lines clearly';
-export const FAILURE_DEFAULT = 'Let’s try again with a bit more light.';
+/**
+ * The unmapped-failure line (Audit-4 CP-4, Direction §5). It used to read "Let's try again with a
+ * bit more light." for EVERY failure the pipeline couldn't classify — including its own server
+ * faults — so a Gemini timeout told the user their room was too dark. Lighting advice now appears
+ * only where a lighting reason does, and the pipeline emits none, so it appears nowhere.
+ */
+export const FAILURE_DEFAULT = 'That one didn’t take — let’s try again.';
+
+// ── Leaving a scan in flight (Audit-4 SN-7) ──────────────────────────────────────────────────────
+export const LEAVE_TITLE = 'Your reading is still brewing';
+export const LEAVE_BODY = 'Leave now and this scan stops — you’ll need to start a new one.';
+export const LEAVE_CONFIRM = 'Leave anyway';
+export const LEAVE_CANCEL = 'Keep waiting';
+/** The holding state after "Notify me" — a real screen with a way out, never the marketing launcher. */
+export const HOLDING_TITLE = 'We’ll ping you when it’s ready';
+export const HOLDING_BODY = 'Your reading keeps working in the background. It will be waiting in Readings.';
+export const HOLDING_CTA = 'Back to Today';
 /**
  * Warm, specific hint keyed on the pipeline's **real** failure_reason vocabulary
  * (`supabase/functions/_shared/extraction.ts`): `not_a_hand`, `not_a_face`,
  * `gemini_finish_<reason>` (prefix), `invalid_json`, `schema_invalid`. Anything the pipeline can't
- * emit falls back to the warm lighting line — we never invent reasons like "blur"/"dark".
+ * emit falls back to the warm generic — we never invent reasons like "blur"/"dark", and we never
+ * blame the reader's lighting for our own server fault (CP-4).
  */
 export function failureHint(reason: string | null | undefined): string {
   if (!reason) return FAILURE_DEFAULT;
