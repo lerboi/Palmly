@@ -51,6 +51,28 @@ export async function wasBirthDateSkipped(): Promise<boolean> {
   }
 }
 
+const CONTINUE_DISMISSED_KEY = 'palmly.reveal_continue_dismissed.v1';
+
+/**
+ * Remember that the reader dismissed the reveal's "Continue" offers (Audit-4 SH-10). "Add your
+ * other hand" used to show on EVERY palm reveal forever — no dismissal, no already-added check.
+ */
+export async function setContinueDismissed(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(CONTINUE_DISMISSED_KEY, '1');
+  } catch {
+    /* a failed write only means we offer again */
+  }
+}
+
+export async function wasContinueDismissed(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(CONTINUE_DISMISSED_KEY)) === '1';
+  } catch {
+    return false;
+  }
+}
+
 const PAYWALL_DECLINED_KEY = 'palmly.paywall_declined_at.v1';
 
 export async function setPaywallDeclined(at: string): Promise<void> {

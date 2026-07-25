@@ -3,7 +3,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { RevealView, type ReadingKind, type RevealState } from '@/features/reading/RevealView';
 import { PREVIEW_GEOMETRY, type Reading } from '@/features/reading/reveal';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
-import { loadReading } from '@/lib/readings';
+import { loadHistory, loadReading } from '@/lib/readings';
 import { setFirstReadingComplete } from '@/lib/session';
 import { track } from '@/lib/analytics';
 
@@ -27,6 +27,8 @@ export default function Reveal() {
   const [kind, setKind] = useState<ReadingKind>('palm');
   const [photoDeletedAt, setPhotoDeletedAt] = useState<string | null>(null);
   const [photoKept, setPhotoKept] = useState(false);
+  // SH-10: don't offer a reading the user already has. Their own shelf is the honest source.
+  const [owned, setOwned] = useState<{ hand: boolean; kind: boolean }>({ hand: false, kind: false });
 
   // Reset to the loading state when the target (or a retry) changes — during render, not in an
   // effect (React's adjust-state-on-prop-change pattern), so the pending state shows immediately.
@@ -39,6 +41,23 @@ export default function Reveal() {
     setPhotoDeletedAt(null);
     setPhotoKept(false);
   }
+
+  // Own effect, keyed on the resolved `kind`: "do they already have the other kind?" cannot be
+  // answered until we know which kind THIS reading is (SH-10).
+  useEffect(() => {
+    let active = true;
+    loadHistory().then((rows) => {
+      if (!active) return;
+      setOwned({
+        // A second palm reading implies the other hand; the shelf does not record side per row.
+        hand: rows.filter((r) => r.kind === 'palm').length > 1,
+        kind: rows.some((r) => r.kind === (kind === 'face' ? 'palm' : 'face')),
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, [kind]);
 
   useEffect(() => {
     let active = true;
@@ -87,6 +106,8 @@ export default function Reveal() {
       photoDeletedAt={photoDeletedAt}
       photoKept={photoKept}
       matched={matched === '1'}
+      hasOtherHand={owned.hand}
+      hasOtherKind={owned.kind}
       onRetry={() => setReloads((r) => r + 1)}
     />
   );

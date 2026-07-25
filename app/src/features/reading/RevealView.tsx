@@ -13,13 +13,14 @@ import Animated, {
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
-import { AppHeader, Button, Card, HeaderTextButton, Icon, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
+import { AppHeader, Button, Card, HeaderIconButton, HeaderTextButton, Icon, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useEntrance, usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
 import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
 import { FACE_READING_ENABLED } from '@/lib/capabilities';
 import { stamp } from '@/lib/haptics';
+import { setContinueDismissed, wasContinueDismissed } from '@/lib/session';
 import { type Reading, type ReadingSection, FACE_SECTION_ICON, SECTION_LINE, freeSections, lockedSections, traditionFootnote } from './reveal';
 
 export type RevealState = 'ready' | 'pending' | 'error';
@@ -52,6 +53,10 @@ export interface RevealViewProps {
    * finished reveal doesn't linger in the back stack behind the home screen.
    */
   onDone?: () => void;
+  /** The reader already has a left-hand palm reading — don't offer it again (SH-10). */
+  hasOtherHand?: boolean;
+  /** The reader already has the OTHER kind of reading (face for a palm reveal, or vice versa). */
+  hasOtherKind?: boolean;
 }
 
 /** The privacy badge, honestly (F1.1 + live find 2026-07-25): a timestamped "deleted" ONLY when
@@ -83,7 +88,7 @@ const PENDING_LINES = [
  * hook, a branded **seal** share affordance, and a single trust footer. English-first, no decorative
  * CJK. A living pending state + an honest error state.
  */
-export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', readingId, photoDeletedAt, photoKept = false, matched = false, onBack, onRetry, onDone }: RevealViewProps) {
+export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', readingId, photoDeletedAt, photoKept = false, matched = false, onBack, onRetry, onDone, hasOtherHand = false, hasOtherKind = false }: RevealViewProps) {
   const theme = useTheme();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -93,6 +98,26 @@ export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', 
   // only consumer was the cold-start redirect, so the ONLY way to reach home was to kill the app
   // and relaunch. `replace` (not push) so Today becomes the root, with no finished reveal behind it.
   const done = onDone ?? (() => router.replace('/fortune'));
+
+  // SH-10: these offers used to reappear on every reveal forever — no dismissal, no already-added
+  // check. Dismissal persists, and each row hides once that reading exists. `undefined` while the
+  // flag resolves means offer nothing yet.
+  const [continueDismissed, setDismissed] = useState<boolean | undefined>(undefined);
+  useEffect(() => {
+    let active = true;
+    wasContinueDismissed().then((v) => active && setDismissed(v));
+    return () => {
+      active = false;
+    };
+  }, []);
+  const dismissContinue = () => {
+    setDismissed(true);
+    void setContinueDismissed();
+  };
+  const otherKindAvailable = kind === 'face' || FACE_READING_ENABLED;
+  const showContinue =
+    continueDismissed === false &&
+    ((kind === 'palm' && !hasOtherHand) || (otherKindAvailable && !hasOtherKind));
   const shareHref = `/share${readingId ? `?readingId=${readingId}` : ''}` as Href;
   const shareCompatHref =
     `/share?${readingId ? `readingId=${readingId}&` : ''}initialVariant=compat` as Href;
@@ -168,15 +193,15 @@ export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', 
           ) : null}
         </View>
 
-        {/* Repeat-scan consistency micro-survey (F1.10) — only when this reveal came from a `matched` resolve. */}
-        {matched && readingId ? (
-          <ConsistencySurvey readingId={readingId} entranceIndex={n++} />
-        ) : null}
-
         {/* ── Free section cards; the compatibility hook lives inside the reading (P2) ── */}
         {free.map((section, i) => (
           <View key={section.key}>
             <SectionCard section={section} geometry={geometry} kind={kind} readingId={readingId} index={i} entranceIndex={n++} />
+            {/* The survey sits BELOW the first section (SH-11): it used to ask "does this match what
+                you remember?" above the reading, before there was anything to remember against. */}
+            {matched && readingId && i === 0 ? (
+              <ConsistencySurvey readingId={readingId} kind={kind} entranceIndex={n++} />
+            ) : null}
             {/* The compat hook is palm-based (a face reading has no palm to compare) — palm only. */}
             {kind === 'palm' && i === 1 ? (
               <CompareCard onPress={() => router.push(shareCompatHref)} entranceIndex={n++} />
@@ -196,16 +221,20 @@ export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', 
           </View>
         ) : null}
 
-        {/* The second-hand offer is palm-only (both hands are a palmistry idea). */}
-        {kind === 'palm' ? <SecondHandOfferCard onPress={() => router.push('/primer?hand=left' as Href)} /> : null}
-        <TrustFooter onMethodology={() => router.push('/methodology')} photoDeletedAt={photoDeletedAt} photoKept={photoKept} kind={kind} />
-        {/* Cross-sell the OTHER reading: a palm reveal offers the face (gated on F1.6 until built), a
-            face reveal offers the palm (always available). */}
-        {kind === 'face' ? (
-          <PalmOfferCard onPress={() => router.push('/primer' as Href)} />
-        ) : FACE_READING_ENABLED ? (
-          <FaceOfferCard onPress={() => router.push('/face')} />
+        {/* ONE consolidated offer, then the trust story LAST (CO-2). The footer used to sit
+            BETWEEN the second-hand card and the other-kind card — the trust promise buried
+            between two ads. */}
+        {showContinue ? (
+          <ContinueCard
+            kind={kind}
+            hasOtherHand={hasOtherHand}
+            hasOtherKind={hasOtherKind}
+            onOtherHand={() => router.push('/primer?hand=left' as Href)}
+            onOtherKind={() => router.push((kind === 'face' ? '/primer' : '/face') as Href)}
+            onDismiss={dismissContinue}
+          />
         ) : null}
+        <TrustFooter onMethodology={() => router.push('/methodology')} photoDeletedAt={photoDeletedAt} photoKept={photoKept} kind={kind} />
 
         {reading.disclaimer ? (
           <Text variant="caption" tone="tertiary" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
@@ -387,7 +416,9 @@ function SectionCard({ section, geometry, kind, readingId, index, entranceIndex 
 function CompareCard({ onPress, entranceIndex }: { onPress: () => void; entranceIndex?: number }) {
   const theme = useTheme();
   return (
-    <Card elevation="md" entranceIndex={entranceIndex} style={{ marginBottom: theme.spacing.md, alignItems: 'center' }}>
+    // Flat and left-aligned (CO-2/CO-4): this was the page's ONLY centred, only `md`-elevation card,
+    // so it read as an interruption planted mid-reading rather than as part of it.
+    <Card entranceIndex={entranceIndex} style={{ marginBottom: theme.spacing.md }}>
       <FeatureIcon icon="thread" tone="heritage" />
       <Text variant="title" style={{ textAlign: 'center', marginTop: theme.spacing.sm }}>
         Compare with a friend
@@ -446,42 +477,7 @@ function TrustFooter({ onMethodology, photoDeletedAt, photoKept = false, kind }:
   );
 }
 
-/** After the first reading, offer the other hand — traditional readers weigh both (audit F1.1). */
-function SecondHandOfferCard({ onPress }: { onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <Card elevation="sm" style={{ marginBottom: theme.spacing.md }}>
-      <View style={{ flexDirection: 'row', gap: theme.spacing.md, alignItems: 'center' }}>
-        <FeatureIcon icon="palm" />
-        <Text variant="heading" style={{ flex: 1 }}>
-          Add your other hand
-        </Text>
-      </View>
-      <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.sm, marginBottom: theme.spacing.md }}>
-        Traditional readers weigh both hands — one innate, one cultivated. Add your left for a fuller reading.
-      </Text>
-      <Button label="Add my left hand" variant="secondary" onPress={onPress} />
-    </Card>
-  );
-}
 
-function FaceOfferCard({ onPress }: { onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <Card elevation="sm" style={{ marginBottom: theme.spacing.xl }}>
-      <View style={{ flexDirection: 'row', gap: theme.spacing.md, alignItems: 'center' }}>
-        <FeatureIcon icon="face" />
-        <Text variant="heading" style={{ flex: 1 }}>
-          Your face tells the other half
-        </Text>
-      </View>
-      <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.sm, marginBottom: theme.spacing.md }}>
-        Run the same reading on your face — proportions, features, and what they reveal.
-      </Text>
-      <Button label="Read my face" variant="secondary" onPress={onPress} />
-    </Card>
-  );
-}
 
 /** The face reveal's hero (audit F1.6). A physiognomy reading has no line geometry to self-draw, so
  *  the palm's traced-hand hero becomes a themed face motif — an honest signal (no fabricated
@@ -504,29 +500,80 @@ function FaceHero() {
   );
 }
 
-/** The face reveal's cross-sell — the mirror of {@link FaceOfferCard}: offer the palm reading (always
- *  available) so the loop runs both ways. */
-function PalmOfferCard({ onPress }: { onPress: () => void }) {
+
+/**
+ * ONE "Continue" card (Audit-4 CO-2, SH-10). Replaces the second-hand offer AND the other-kind
+ * offer, which used to sandwich the trust footer between them — the promise about the reader's
+ * photo buried between two ads.
+ *
+ * Each row shows only if that reading does not already exist, the card is dismissible, and the
+ * dismissal persists: "Add your other hand" previously appeared on every palm reveal, forever.
+ */
+function ContinueCard({
+  kind,
+  hasOtherHand,
+  hasOtherKind,
+  onOtherHand,
+  onOtherKind,
+  onDismiss,
+}: {
+  kind: ReadingKind;
+  hasOtherHand: boolean;
+  hasOtherKind: boolean;
+  onOtherHand: () => void;
+  onOtherKind: () => void;
+  onDismiss: () => void;
+}) {
+  const theme = useTheme();
+  const showHand = kind === 'palm' && !hasOtherHand;
+  const showKind = (kind === 'face' || FACE_READING_ENABLED) && !hasOtherKind;
+  return (
+    <Card style={{ marginBottom: theme.spacing.xl, gap: theme.spacing.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Text variant="heading" style={{ flex: 1 }}>
+          Keep going
+        </Text>
+        <HeaderIconButton name="close" size={18} accessibilityLabel="Not now" onPress={onDismiss} />
+      </View>
+      {showHand ? (
+        <ContinueRow icon="palm" title="Add your left hand" body="One hand is innate, the other cultivated." onPress={onOtherHand} />
+      ) : null}
+      {showKind ? (
+        <ContinueRow
+          icon="face"
+          title={kind === 'face' ? 'Read your palm' : 'Read your face'}
+          body={kind === 'face' ? 'Your lines tell the other half.' : 'Your face tells the other half.'}
+          onPress={onOtherKind}
+        />
+      ) : null}
+    </Card>
+  );
+}
+
+/** One offer inside the Continue card — a flat row, not another card (P2: one hero per screen). */
+function ContinueRow({ icon, title, body, onPress }: { icon: IconName; title: string; body: string; onPress: () => void }) {
   const theme = useTheme();
   return (
-    <Card elevation="sm" style={{ marginBottom: theme.spacing.xl }}>
-      <View style={{ flexDirection: 'row', gap: theme.spacing.md, alignItems: 'center' }}>
-        <FeatureIcon icon="palm" />
-        <Text variant="heading" style={{ flex: 1 }}>
-          Your palm tells the other half
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingVertical: theme.spacing.sm }}
+    >
+      <FeatureIcon icon={icon} size={40} />
+      <View style={{ flex: 1 }}>
+        <Text variant="bodyMedium">{title}</Text>
+        <Text variant="caption" tone="secondary">
+          {body}
         </Text>
       </View>
-      <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.sm, marginBottom: theme.spacing.md }}>
-        Read the lines of your hand — heart, head, life and fate — for the reading your face can’t give.
-      </Text>
-      <Button label="Read my palm" variant="secondary" onPress={onPress} />
-    </Card>
+    </Pressable>
   );
 }
 
 /** Repeat-scan consistency micro-survey (audit F1.10, Backend §6.6.4) — a one-tap 3-option prompt
  *  shown when a scan resolved `matched`; fires `consistency_survey` and thanks the user. */
-function ConsistencySurvey({ readingId, entranceIndex }: { readingId: string; entranceIndex?: number }) {
+function ConsistencySurvey({ readingId, kind, entranceIndex }: { readingId: string; kind: ReadingKind; entranceIndex?: number }) {
   const theme = useTheme();
   const [answered, setAnswered] = useState(false);
   const answer = (response: 'consistent' | 'inconsistent' | 'unsure') => {
@@ -538,17 +585,20 @@ function ConsistencySurvey({ readingId, entranceIndex }: { readingId: string; en
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
         <FeatureIcon icon="check" size={40} />
         <View style={{ flex: 1 }}>
-          <Text variant="heading">You&apos;ve scanned this before</Text>
+          <Text variant="heading">{kind === 'face' ? 'You’ve scanned this face before' : 'You’ve scanned this palm before'}</Text>
           <Text variant="caption" tone="secondary">
             {answered ? 'Thanks — that helps us keep your readings consistent.' : 'Does this reading match what you remember?'}
           </Text>
         </View>
       </View>
+      {/* `md` AND wrapping (CO-6). Three `lg` buttons needed ~337pt in a ~311pt box at 375pt; even
+          at `md` they measured 287pt of content into a 254pt card box at 320pt, so the row wraps
+          rather than running off the card — the same treatment the Lucky row got in U3.T2. */}
       {answered ? null : (
-        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-          <Button label="Spot on" variant="secondary" onPress={() => answer('consistent')} />
-          <Button label="A bit off" variant="ghost" onPress={() => answer('inconsistent')} />
-          <Button label="Not sure" variant="ghost" onPress={() => answer('unsure')} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+          <Button label="Spot on" variant="secondary" size="md" onPress={() => answer('consistent')} />
+          <Button label="A bit off" variant="ghost" size="md" onPress={() => answer('inconsistent')} />
+          <Button label="Not sure" variant="ghost" size="md" onPress={() => answer('unsure')} />
         </View>
       )}
     </Card>
