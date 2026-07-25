@@ -214,7 +214,11 @@ export function ShareView({
   };
 
   return (
-    <Screen>
+    // The sheet SCROLLS (Audit-4 CO-12 / Direction §4.7). It used to be a fixed-height Screen whose
+    // preview sat in a `flex: 1` slot — but the compat preview's intrinsic height is about twice
+    // what flex could give it on a 844pt device, and Yoga doesn't clip, so the card painted over the
+    // toggles, the framing picker and the channel row beneath it.
+    <Screen scroll>
       <AppHeader title="Share your reading" onBack={onClose} />
 
       <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
@@ -222,8 +226,9 @@ export function ShareView({
         <Segment label="Compatibility" active={variant === 'compat'} onPress={() => setVariant('compat')} />
       </View>
 
-      {/* Top-anchored slot so switching tabs never re-centres / jumps the card. */}
-      <View style={{ flex: 1, justifyContent: 'flex-start' }}>
+      {/* Top-anchored slot so switching tabs never re-centres / jumps the card. Intrinsic height,
+          not `flex: 1`: inside a scroll view the preview must size to its content. */}
+      <View>
         {variant === 'solo' ? (
           <Animated.View key="solo" entering={shouldAnimate ? FadeIn.duration(theme.motion.duration.base) : undefined}>
             {previewUrl ? <RealCardPreview uri={previewUrl} /> : <SoloPreview geometry={geometry} headline={headline} />}
