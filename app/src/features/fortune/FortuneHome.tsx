@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
@@ -99,6 +99,8 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
   // All three async tail reads have answered — the notify row, the red thread, and the claim row
   // now appear together instead of arriving one at a time (SH-3).
   const tailReady = pendingResolved && optInResolved && !identityLoading;
+  // CP-5: "· Wood Rat day" was unexplained jargon with no way to learn what it meant.
+  const [pillarOpen, setPillarOpen] = useState(false);
 
   const onDismissPush = () => {
     setShowOptIn(false);
@@ -114,9 +116,7 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
             <Text variant="bodyLarge" tone="secondary">
               {date.gregorian}
             </Text>
-            <Text variant="caption" tone="tertiary">
-              · {date.pillarEn} day
-            </Text>
+            <DayPillarPill label={`${date.pillarEn} day`} open={pillarOpen} onToggle={() => setPillarOpen((v) => !v)} />
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -124,6 +124,8 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
           <HeaderIconButton name="settings" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
         </View>
       </View>
+
+      {pillarOpen ? <DayPillarExplainer pillar={date.pillarEn} /> : null}
 
       {state === 'loading' ? (
         <FortuneSkeleton />
@@ -186,6 +188,51 @@ function FirstRunState({ onScan }: { onScan: () => void }) {
         Read your palm once to unlock a fortune tuned to you, every day.
       </Text>
       <Button label="Read my palm" variant="primary" fullWidth style={{ marginTop: theme.spacing.xl }} onPress={onScan} />
+    </Card>
+  );
+}
+
+/**
+ * The day-pillar, as something you can ask about (CP-5). It read "· Wood Rat day" in low-contrast
+ * tertiary with no affordance — jargon presented as decoration. Now it is an ink pill on a sunken
+ * well (a chip, so `textPrimary` per the U0.T2 contrast contract), and tapping it explains itself.
+ */
+function DayPillarPill({ label, open, onToggle }: { label: string; open: boolean; onToggle: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onToggle}
+      accessibilityRole="button"
+      accessibilityState={{ expanded: open }}
+      accessibilityLabel={`${label} — what does this mean?`}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.xs,
+        backgroundColor: theme.colors.surfaceSunken,
+        borderRadius: theme.radii.pill,
+        paddingHorizontal: theme.spacing.sm,
+        paddingVertical: 2,
+      }}
+    >
+      <Text variant="caption" color={theme.colors.textPrimary}>
+        {label}
+      </Text>
+      <Icon name="help" size={13} color={theme.colors.textSecondary} decorative />
+    </Pressable>
+  );
+}
+
+/** Two sentences, no jargon and no CJK — what the pillar is, and why the fortune cares. */
+function DayPillarExplainer({ pillar }: { pillar: string }) {
+  const theme = useTheme();
+  return (
+    <Card style={{ marginBottom: theme.spacing.md, gap: theme.spacing.xs }}>
+      <Text variant="bodyMedium">Today is a {pillar} day</Text>
+      <Text variant="body" tone="secondary">
+        The old almanacs give every day one of five elements and one of twelve animals. That pairing
+        is the tone today is read in — your fortune is written against it.
+      </Text>
     </Card>
   );
 }
