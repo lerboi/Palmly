@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { toPairData, type CompatShareData } from './compatCopy';
 import { supabase } from './supabase';
 
 export type CompatRequestResult = { ok: true; status: string } | { ok: false; gated: boolean };
@@ -61,14 +62,17 @@ export async function loadPartnerName(pairId: string): Promise<string> {
  * "not loaded / not ready" — the caller shows a neutral placeholder, never a fabricated score/name
  * (the old `score={82}` / `partnerName="Mei"` that real users were prompted to send).
  */
-export async function loadCompatShare(pairId: string): Promise<{ score: number; partnerName: string } | null> {
+export async function loadCompatShare(pairId: string): Promise<CompatShareData | null> {
   const [{ data }, partnerName] = await Promise.all([
-    supabase.from('compatibility_results').select('score, status').eq('pair_id', pairId).maybeSingle(),
+    supabase.from('compatibility_results').select('score, status, narrative, sub_scores').eq('pair_id', pairId).maybeSingle(),
     loadPartnerName(pairId),
   ]);
   const row = data as { score?: number | null; status?: string } | null;
   if (!row || row.status !== 'complete' || typeof row.score !== 'number') return null;
-  return { score: row.score, partnerName };
+  // The blurb and the chips are the pair's OWN narrative + dimensions (Audit-4 SH-7). They used to
+  // be hardcoded defaults inside the share sheet, so a real user's card carried invented prose.
+  const pair = toPairData(data as never, partnerName);
+  return { score: row.score, partnerName, blurb: pair.headline, chips: pair.subScores.map((d) => d.label) };
 }
 
 export { toPairData } from './compatCopy';

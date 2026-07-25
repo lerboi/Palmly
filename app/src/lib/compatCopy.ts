@@ -57,3 +57,24 @@ export function toPairData(result: CompatResultRow, partnerName: string): PairDa
     stretch: sections[1]?.body ?? '',
   };
 }
+
+/**
+ * Everything the compat share CARD needs. There is deliberately no default: a card without a real
+ * pair is a fabricated result (Audit-4 SH-7), and the sheet renders its invite-first state instead.
+ */
+export interface CompatShareData {
+  score: number;
+  partnerName: string;
+  blurb: string;
+  chips: string[];
+}
+
+/**
+ * Is there a real pair to render a card for? A score of 0 with a placeholder name is exactly what
+ * the sheet used to show when opened from a reveal, so both are treated as "no pair".
+ */
+export function hasRealPair(pair: Partial<CompatShareData> | null | undefined): boolean {
+  if (!pair) return false;
+  const named = typeof pair.partnerName === 'string' && pair.partnerName.trim().length > 0 && pair.partnerName !== 'Your match';
+  return named && typeof pair.score === 'number' && pair.score > 0;
+}

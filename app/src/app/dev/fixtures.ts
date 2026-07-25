@@ -1,6 +1,7 @@
 import type { Fortune } from '@/features/fortune/fortune';
 import type { Reading } from '@/features/reading/reveal';
 import type { PairData } from '@/features/reading/PairRevealView';
+import type { CompatShareData } from '@/lib/compatCopy';
 
 /**
  * `/dev`-only fixtures. These live HERE, not in the production module, so a fixture can never be
@@ -72,3 +73,13 @@ export const PREVIEW_PAIR: PairData = {
 
 /** The same pair with a HALF-GENERATED narrative — the CO-16 case that printed a bare heading. */
 export const PREVIEW_PAIR_PARTIAL: PairData = { ...PREVIEW_PAIR, click: PREVIEW_PAIR.click, stretch: '' };
+
+/** The compat SHARE card's fixture (Audit-4 SH-7). The blurb and chips used to be hardcoded
+ *  DEFAULTS inside `ShareView`, so a real user's card carried this invented prose; they live here
+ *  now, where only `/dev` can reach them. */
+export const PREVIEW_COMPAT_SHARE: CompatShareData = {
+  score: 82,
+  partnerName: 'Mei',
+  blurb: 'A rare, easy resonance — you steady each other.',
+  chips: ['Emotion', 'Mind', 'Energy', 'Destiny'],
+};

@@ -8,7 +8,7 @@ import {
   resetCelebrations,
   waitingLevel,
 } from '../pair';
-import { toPairData } from '@/lib/compatCopy';
+import { hasRealPair, toPairData } from '@/lib/compatCopy';
 
 /**
  * The pair reveal's mechanics (Audit-4 CO-16, SH-15). Each of these pins a defect that shipped
@@ -84,5 +84,26 @@ describe('pair success haptic (CO-16)', () => {
   it('treats a missing pairId as one pair, not as a free pass', () => {
     expect(claimCelebration(undefined)).toBe(true);
     expect(claimCelebration(undefined)).toBe(false);
+  });
+});
+
+/**
+ * The compat SHARE card may only exist for a real pair (Audit-4 SH-7). Opening the compat tab from
+ * a reveal used to render a finished-looking card reading **0 out of 100** for "Your match", with
+ * an invented blurb — a fabricated result the user was then invited to send to a friend.
+ */
+describe('compat share honesty (SH-7)', () => {
+  it('treats a missing, zero or placeholder pair as NO pair', () => {
+    expect(hasRealPair(null)).toBe(false);
+    expect(hasRealPair(undefined)).toBe(false);
+    expect(hasRealPair({ score: 0, partnerName: 'Mei' })).toBe(false);
+    expect(hasRealPair({ score: 82, partnerName: 'Your match' })).toBe(false);
+    expect(hasRealPair({ score: 82, partnerName: '   ' })).toBe(false);
+    expect(hasRealPair({ score: 82 })).toBe(false);
+  });
+
+  it('accepts a real scored pair with a real name', () => {
+    expect(hasRealPair({ score: 82, partnerName: 'Mei' })).toBe(true);
+    expect(hasRealPair({ score: 1, partnerName: 'A' })).toBe(true);
   });
 });

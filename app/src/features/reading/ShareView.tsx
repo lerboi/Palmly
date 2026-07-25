@@ -20,6 +20,7 @@ import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
 import { composeShareText, createInvite, loadDraftCardPreviewUrl, loadDraftShareCardId, publishShareCard, type CreatedInvite, type Framing } from '@/lib/invite';
 import { savePendingCompat } from '@/lib/pendingCompat';
+import type { CompatShareData } from '@/lib/compatCopy';
 import { maybeAskFirstCompatPush } from '@/lib/notifications';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -51,11 +52,14 @@ export interface ShareViewProps {
   /** The one-line shareable essence (redesign §2.6). */
   headline: string;
   /** Compatibility score 0–100 for the compare variant. */
-  score: number;
-  partnerName: string;
-  /** Compatibility blurb + dimension chips for the compat card. */
-  blurb?: string;
-  chips?: string[];
+  /**
+   * The REAL pair behind the compat card (Audit-4 SH-7). Absent → the compat tab is **invite-first**:
+   * there is no pair yet, so there is no card to show. It used to be four always-present props that
+   * the route filled with `score ?? 0` and `partnerName ?? 'Your match'`, which meant opening the
+   * compat tab from a reveal rendered a finished-looking card reading **0 out of 100** with a
+   * placeholder name — a fabricated result the user was invited to send to a friend.
+   */
+  pair?: CompatShareData;
   /** Which preview to open on (default `solo`, per §2.6). */
   initialVariant?: Variant;
   /** The reading this share is for — threaded into the minted invite's context (audit F0.4). */
@@ -81,10 +85,7 @@ type Variant = 'solo' | 'compat';
 export function ShareView({
   geometry,
   headline,
-  score,
-  partnerName,
-  blurb = 'A rare, easy resonance — you steady each other.',
-  chips = ['Emotion', 'Mind', 'Energy', 'Destiny'],
+  pair,
   initialVariant = 'solo',
   readingId,
   source = 'reveal',
@@ -242,7 +243,11 @@ export function ShareView({
           </Animated.View>
         ) : (
           <Animated.View key="compat" entering={shouldAnimate ? FadeIn.duration(theme.motion.duration.base) : undefined}>
-            <CompatPreview geometry={geometry} score={score} partnerName={partnerName} blurb={blurb} chips={chips} />
+            {pair ? (
+              <CompatPreview geometry={geometry} pair={pair} />
+            ) : (
+              <CompatInvitePrompt />
+            )}
           </Animated.View>
         )}
       </View>
@@ -596,19 +601,8 @@ function SoloPreview({ geometry, headline }: { geometry: LineGeometry; headline:
 
 /** The compatibility share card — two palms whose heart lines light up, tied by the claret thread,
  *  a labeled score ring + dimension chips. */
-function CompatPreview({
-  geometry,
-  score,
-  partnerName,
-  blurb,
-  chips,
-}: {
-  geometry: LineGeometry;
-  score: number;
-  partnerName: string;
-  blurb: string;
-  chips: string[];
-}) {
+function CompatPreview({ geometry, pair }: { geometry: LineGeometry; pair: CompatShareData }) {
+  const { score, partnerName, blurb, chips } = pair;
   const theme = useTheme();
   return (
     // Same frame as the server-rendered PNG (CO-12) — the card is one size either way.
@@ -633,9 +627,11 @@ function CompatPreview({
       <Text variant="editorialTitle" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
         You &amp; {partnerName}
       </Text>
-      <Text variant="body" tone="secondary" style={{ textAlign: 'center', marginTop: theme.spacing.xs }}>
-        {blurb}
-      </Text>
+      {blurb ? (
+        <Text variant="body" tone="secondary" style={{ textAlign: 'center', marginTop: theme.spacing.xs }}>
+          {blurb}
+        </Text>
+      ) : null}
 
       {/* Dimension chips. */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
@@ -657,6 +653,30 @@ function CompatPreview({
       </View>
 
       <CardSeal />
+      </View>
+    </PreviewFrame>
+  );
+}
+
+/**
+ * The compat tab with **no pair yet** (Audit-4 SH-7) — invite-first, not a fake result.
+ *
+ * A card needs two palms. Until the other person scans there is no score, no name and no narrative,
+ * so this offers the one thing that exists: the invite. The channel row below sends it.
+ */
+function CompatInvitePrompt() {
+  const theme = useTheme();
+  return (
+    <PreviewFrame>
+      <View style={{ backgroundColor: theme.colors.surfaceRaised, padding: theme.spacing.xl, alignItems: 'center', gap: theme.spacing.md }}>
+        <RedThread animate />
+        <Text variant="editorialTitle" style={{ textAlign: 'center' }}>
+          Compare palms with a friend
+        </Text>
+        <Text variant="body" tone="secondary" style={{ textAlign: 'center' }}>
+          Send them the thread. Once they scan, your match lands here — for both of you.
+        </Text>
+        <CardSeal />
       </View>
     </PreviewFrame>
   );

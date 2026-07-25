@@ -5,6 +5,7 @@ import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { loadReading } from '@/lib/readings';
 import { loadCompatShare } from '@/lib/compat';
+import { hasRealPair, type CompatShareData } from '@/lib/compatCopy';
 import { loadPendingCompat } from '@/lib/pendingCompat';
 
 /**
@@ -26,7 +27,7 @@ export default function Share() {
   }>();
   const [loaded, setLoaded] = useState<{ headline: string; geometry: LineGeometry } | null>(null);
   // Real compat pair result (score + partner name) for the compat card — null until loaded (A6).
-  const [compat, setCompat] = useState<{ score: number; partnerName: string } | null>(null);
+  const [compat, setCompat] = useState<CompatShareData | null>(null);
   // Home red-thread nudge (`?reshare=1`): reopen on the SAME sent link (no second invite minted).
   const [presetUrl, setPresetUrl] = useState<string | undefined>(undefined);
 
@@ -57,8 +58,11 @@ export default function Share() {
   useEffect(() => {
     if (initialVariant !== 'compat' || !pairId) return;
     let active = true;
+    // SH-7: only a REAL pair may render a card. A missing/zero result leaves `compat` null and the
+    // sheet shows its invite-first state rather than a fabricated "0 out of 100 with Your match".
     loadCompatShare(pairId).then((c) => {
-      if (active && c) setCompat(c);
+      if (!active || !c || !hasRealPair(c)) return;
+      setCompat(c);
     });
     return () => {
       active = false;
@@ -74,8 +78,7 @@ export default function Share() {
       readingId={readingId}
       geometry={loaded?.geometry ?? PREVIEW_GEOMETRY}
       headline={loaded?.headline ?? 'My palm reading'}
-      score={compat?.score ?? 0}
-      partnerName={compat?.partnerName ?? 'Your match'}
+      pair={compat ?? undefined}
       initialVariant={variant}
       source={shareSource}
       presetInviteUrl={presetUrl}

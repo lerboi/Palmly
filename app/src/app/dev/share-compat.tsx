@@ -1,5 +1,6 @@
 import { ShareView } from '@/features/reading/ShareView';
 import { PREVIEW_GEOMETRY, PREVIEW_READING } from '@/features/reading/reveal';
+import { PREVIEW_COMPAT_SHARE } from './fixtures';
 
 /**
  * /dev preview — the Share sheet's compatibility variant (redesign R16). The live sheet defaults
@@ -11,8 +12,7 @@ export default function ShareCompatPreview() {
     <ShareView
       geometry={PREVIEW_GEOMETRY}
       headline={PREVIEW_READING.headline}
-      score={82}
-      partnerName="Mei"
+      pair={PREVIEW_COMPAT_SHARE}
       initialVariant="compat"
     />
   );
