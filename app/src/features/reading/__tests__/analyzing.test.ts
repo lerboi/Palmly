@@ -1,11 +1,17 @@
 import {
+  CREEP_FROM,
+  CREEP_TO,
   FAILURE_DEFAULT,
+  RING_GLOW_WIDTH,
   SOCIAL_PROOF,
   STAGES,
+  analyzingProgress,
   failureHint,
   overrunLevel,
+  ringGeometry,
   socialProofAt,
   stageFor,
+  stageMessage,
   visibleGeometry,
 } from '../analyzing';
 import { PREVIEW_GEOMETRY } from '../reveal';
@@ -57,5 +63,71 @@ describe('analyzing loader logic (P6.T1)', () => {
     expect(socialProofAt(4000)).toBe(SOCIAL_PROOF[1]);
     expect(socialProofAt(8000)).toBe(SOCIAL_PROOF[2]);
     expect(socialProofAt(12_000)).toBe(SOCIAL_PROOF[0]); // wraps after the last item
+  });
+});
+
+/**
+ * The ring's geometry and its progress (Audit-4 CO-13). The ring parked at 75% for the slowest
+ * stretch of the pipeline — the exact moment a user starts wondering whether the app has hung — and
+ * its glow was clipped by its own viewport. Both are pure math, so both are pinned here.
+ */
+describe('analyzing progress ring (Audit-4 CO-13)', () => {
+  it('pads the viewport so the glow can never clip', () => {
+    for (const size of [120, 232, 300]) {
+      const g = ringGeometry(size);
+      // The glow is centred on `r` and RING_GLOW_WIDTH wide, so its outer edge is r + half.
+      expect(g.r + RING_GLOW_WIDTH / 2).toBeLessThanOrEqual(g.size / 2);
+      expect(g.cx).toBe(g.size / 2);
+      expect(g.cy).toBe(g.size / 2);
+      expect(g.circumference).toBeCloseTo(2 * Math.PI * g.r, 6);
+    }
+  });
+
+  it('keeps the visible ring bigger than the diagram it encircles', () => {
+    const g = ringGeometry(232);
+    expect(g.r * 2).toBeGreaterThan(232);
+  });
+
+  it('creeps through the long extraction stage instead of parking at 75%', () => {
+    const stage = STAGES.length - 2; // the last extraction stage — where it used to sit still
+    const at = (ms: number) => analyzingProgress(stage, ms);
+    const entry = (STAGES.length - 2) * 3500;
+    expect(at(entry)).toBeCloseTo(CREEP_FROM, 6);
+    // Strictly increasing over the whole overrun window — never parks.
+    let prev = at(entry);
+    for (let ms = entry + 2000; ms <= entry + 120_000; ms += 2000) {
+      const now = at(ms);
+      expect(now).toBeGreaterThan(prev);
+      prev = now;
+    }
+    // …and asymptotic: it approaches 92% without ever claiming to be done.
+    expect(at(entry + 120_000)).toBeLessThan(CREEP_TO);
+    expect(at(entry + 120_000)).toBeGreaterThan(0.9);
+  });
+
+  it('still steps the early stages and completes on the narrative stage', () => {
+    expect(analyzingProgress(0, 0)).toBeCloseTo(0.25, 6);
+    expect(analyzingProgress(1, 4000)).toBeCloseTo(0.5, 6);
+    expect(analyzingProgress(STAGES.length - 1, 0)).toBe(1);
+  });
+});
+
+/** Whose palm is being traced (Audit-4 SH-7) — the copy may only be possessive when it is true. */
+describe('analyzing stage copy (Audit-4 SH-7)', () => {
+  it('drops the possessive while the palm on screen is an abstract motif', () => {
+    for (let i = 0; i < STAGES.length - 1; i++) {
+      expect(stageMessage(i, false)).not.toMatch(/\byour\b/i);
+      expect(stageMessage(i, true)).toMatch(/\byour\b/i);
+    }
+  });
+
+  it('keeps the classics stage identical either way (it claims nothing about the reader)', () => {
+    const last = STAGES.length - 1;
+    expect(stageMessage(last, false)).toBe(stageMessage(last, true));
+  });
+
+  it('clamps out-of-range stages instead of returning undefined', () => {
+    expect(stageMessage(-1, false)).toBe(STAGES[0].abstract);
+    expect(stageMessage(99, true)).toBe(STAGES[STAGES.length - 1].message);
   });
 });

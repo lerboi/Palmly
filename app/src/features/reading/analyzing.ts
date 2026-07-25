@@ -5,14 +5,33 @@ import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
 /** The analyzing loader's UX stages (UIUX §2.4) — the product visibly working on *their* hand. */
 export interface AnalyzingStage {
   line: string | null; // the line being traced (null = the KB / "consulting the classics" stage)
+  /** Copy for when the palm on screen really IS theirs (a rescan, so a stored geometry exists). */
   message: string;
+  /** Copy for the abstract motif — no possessive, because there is nothing of theirs to trace yet. */
+  abstract: string;
 }
 export const STAGES: AnalyzingStage[] = [
-  { line: 'heart_line', message: 'Tracing your heart line…' },
-  { line: 'head_line', message: 'Reading your head line…' },
-  { line: 'life_line', message: 'Following your life line…' },
-  { line: null, message: 'Consulting the classics…' },
+  { line: 'heart_line', message: 'Tracing your heart line…', abstract: 'Tracing the heart line…' },
+  { line: 'head_line', message: 'Reading your head line…', abstract: 'Reading the head line…' },
+  { line: 'life_line', message: 'Following your life line…', abstract: 'Following the life line…' },
+  { line: null, message: 'Consulting the classics…', abstract: 'Consulting the classics…' },
 ];
+
+/**
+ * The stage line, possessive ONLY when it is true (Audit-4 SH-7, Direction §4.5).
+ *
+ * The loader traces `PREVIEW_GEOMETRY` — a fixture — while telling the user "Tracing **your** heart
+ * line…" and labelling it "Your palm line diagram". The user's real geometry does not exist until
+ * extraction finishes, so for a first scan every one of those words is false. On a rescan a stored
+ * geometry DOES exist, the route passes it, and the possessive becomes honest.
+ */
+export function stageMessage(stage: number, ownGeometry: boolean): string {
+  const s = STAGES[Math.min(Math.max(stage, 0), STAGES.length - 1)];
+  return ownGeometry ? s.message : s.abstract;
+}
+
+/** The a11y label for the traced hero — never claims the fixture is the reader's own hand (SH-7). */
+export const ABSTRACT_PALM_LABEL = 'Palm illustration';
 
 const STAGE_MS = 3500;
 
@@ -24,6 +43,59 @@ const STAGE_MS = 3500;
 export function stageFor(status: ScanStatus | null, elapsedMs: number): number {
   if (status === 'narrating' || status === 'complete' || status === 'matched') return STAGES.length - 1;
   return Math.min(Math.floor(Math.max(0, elapsedMs) / STAGE_MS), STAGES.length - 2);
+}
+
+// ── The progress ring (Audit-4 CO-13) ─────────────────────────────────────────────────────────────
+
+/** Ring stroke weights. The glow is the wide one — and the reason the viewport needs padding. */
+export const RING_TRACK_WIDTH = 5;
+export const RING_GLOW_WIDTH = 14;
+
+export interface RingGeometry {
+  /** The SVG viewport (square) — the ring's box PLUS room for the glow's outer half. */
+  size: number;
+  cx: number;
+  cy: number;
+  r: number;
+  circumference: number;
+}
+
+/**
+ * The ring around the traced palm, sized so the breathing glow **cannot clip** (CO-13).
+ *
+ * It used to draw at `r = size/2 - 6` with a 14-wide glow, putting the glow's outer edge 1px
+ * outside its own SVG viewport — so the soft halo was sliced flat on all four sides, which reads as
+ * a rendering bug rather than a glow. The viewport is now padded by the glow's half-width; the
+ * visible ring keeps its diameter, so nothing else moves.
+ */
+export function ringGeometry(diagramSize: number): RingGeometry {
+  const ring = diagramSize + 56; // the visible ring's diameter — unchanged
+  const size = ring + RING_GLOW_WIDTH; // half the glow width of padding on every side
+  const r = ring / 2 - RING_TRACK_WIDTH / 2;
+  return { size, cx: size / 2, cy: size / 2, r, circumference: 2 * Math.PI * r };
+}
+
+/** Where the ring parks vs. where it creeps to while extraction runs long (CO-13). */
+export const CREEP_FROM = 0.75;
+export const CREEP_TO = 0.92;
+const CREEP_TAU_MS = 20_000;
+
+/**
+ * The ring's fraction for a stage (CO-13, Direction §4.5).
+ *
+ * The old value was `(stage + 1) / STAGES.length`, and `stageFor` caps at stage 2 during
+ * extraction — so the ring hit 75% and **parked there** for the entire slowest stretch of the
+ * pipeline, which is exactly when a user starts to wonder whether the app has hung. The last
+ * extraction stage now creeps asymptotically toward 92%: always moving, never arriving, and never
+ * pretending to be finished. The narrative stage completes it.
+ */
+export function analyzingProgress(stage: number, elapsedMs: number): number {
+  const last = STAGES.length - 1;
+  if (stage >= last) return 1;
+  if (stage < last - 1) return (stage + 1) / STAGES.length;
+  // Time spent inside the final extraction stage — the stretch the old ring sat still for.
+  const inStage = Math.max(0, elapsedMs - (last - 1) * STAGE_MS);
+  return CREEP_FROM + (CREEP_TO - CREEP_FROM) * (1 - Math.exp(-inStage / CREEP_TAU_MS));
 }
 
 export type OverrunLevel = 'normal' | 'soft' | 'notify';

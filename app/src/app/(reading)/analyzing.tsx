@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { AnalyzingView } from '@/features/reading/AnalyzingView';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import type { LineGeometry } from '@/components/palm-diagram/geometry';
+import { loadHistory, loadReading } from '@/lib/readings';
 import { useScanStatus } from '@/lib/useScanStatus';
 import { requestPushPermission } from '@/lib/notifications';
 import { setLastScanMatched } from '@/lib/session';
@@ -17,8 +19,13 @@ import { track } from '@/lib/analytics';
  * the user (F1.T10 upgrades it to a real push-permission ask).
  *
  * Without a scanId (a dev/deep-link edge) it still renders a representative mid-pipeline state, so it
- * never blanks. The traced-palm hero uses PREVIEW_GEOMETRY as a placeholder — the "their own crop"
- * beat is a device follow-up (P5 / F1.T4); the real per-scan geometry only exists post-extraction.
+ * never blanks.
+ *
+ * **Whose palm is on screen (Audit-4 SH-7).** This scan's own geometry cannot exist until extraction
+ * finishes, so a FIRST scan traces an abstract motif and the copy drops the possessive. A RESCAN is
+ * different: the reader already has a stored reading, so we trace their real lines and the
+ * possessive is earned. The route resolves that in the background; until it does, the honest
+ * abstract state renders.
  */
 export default function Analyzing() {
   const { scanId, capturedUri, kind: kindParam } = useLocalSearchParams<{ scanId?: string; capturedUri?: string; kind?: string }>();
@@ -41,6 +48,24 @@ export default function Analyzing() {
   // Emit `reading_ready` once when the pipeline resolves (A7 — metric "is the wow landing?"). The
   // mount timer's `elapsedMs` is the wait the user actually felt; guard so a late duplicate broadcast
   // can't double-count.
+  // The reader's newest stored geometry, if any (SH-7). `loadHistory()[0]` → `loadReading` are both
+  // existing RLS-scoped client reads; a first-time user simply has none and keeps the motif.
+  const [own, setOwn] = useState<LineGeometry | null>(null);
+  useEffect(() => {
+    let active = true;
+    loadHistory()
+      .then((rows) => (rows[0] ? loadReading({ readingId: rows[0].id }) : null))
+      .then((res) => {
+        if (active && res) setOwn(res.geometry);
+      })
+      .catch(() => {
+        /* no stored reading (or it failed to load) → the abstract motif, which is the honest default */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const readyEmitted = useRef(false);
   useEffect(() => {
     if (!id) return;
@@ -64,7 +89,8 @@ export default function Analyzing() {
 
   return (
     <AnalyzingView
-      geometry={PREVIEW_GEOMETRY}
+      geometry={own ?? PREVIEW_GEOMETRY}
+      ownGeometry={own != null}
       status={status}
       elapsedMs={elapsedMs}
       capturedImageUri={typeof capturedUri === 'string' ? capturedUri : undefined}

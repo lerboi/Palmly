@@ -18,15 +18,21 @@ import { AppHeader, Button, Icon, Screen, Text } from '@/components/ui';
 import type { ScanStatus } from '@/lib/useScanStatus';
 import { useReducedMotion, useTheme } from '@/theme';
 import {
+  ABSTRACT_PALM_LABEL,
   FAILURE_TITLE,
   NOTIFY_COPY,
   NOTIFY_CTA,
   OVERRUN_SOFT,
+  RING_GLOW_WIDTH,
+  RING_TRACK_WIDTH,
   STAGES,
+  analyzingProgress,
   failureHint,
   overrunLevel,
+  ringGeometry,
   socialProofAt,
   stageFor,
+  stageMessage,
   visibleGeometry,
 } from './analyzing';
 
@@ -43,6 +49,10 @@ export interface AnalyzingViewProps {
   /** Non-null when the status fetch is currently failing — the hook keeps re-polling; the loader
    *  shows a quiet "retrying" caption so a bad connection is never a silent hang. */
   connectionError?: string | null;
+  /** The geometry really is this reader's (a rescan with a stored reading) — so the possessive copy
+   *  and the "Your palm" label are TRUE. Default false: a first scan traces an abstract motif until
+   *  extraction produces real lines (Audit-4 SH-7). */
+  ownGeometry?: boolean;
   onNotifyMe?: () => void;
   onRetry?: () => void;
   onUploadInstead?: () => void;
@@ -66,6 +76,7 @@ export function AnalyzingView({
   capturedImageUri,
   failureReason,
   connectionError,
+  ownGeometry = false,
   onNotifyMe,
   onRetry,
   onUploadInstead,
@@ -117,29 +128,22 @@ export function AnalyzingView({
   const stage = stageFor(status, elapsedMs);
   const overrun = overrunLevel(elapsedMs);
   const current = STAGES[stage];
-  const progress = (stage + 1) / STAGES.length;
-  const message = overrun === 'soft' ? OVERRUN_SOFT : current.message;
+  // Creeps 75 → 92% through the long extraction stage instead of parking at 75% (CO-13).
+  const progress = analyzingProgress(stage, elapsedMs);
+  const message = overrun === 'soft' ? OVERRUN_SOFT : stageMessage(stage, ownGeometry);
   const proof = socialProofAt(elapsedMs);
 
   return (
     <Screen>
       <AppHeader onBack={onBack} />
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.xxl }}>
-        <ProgressRing progress={progress} diagramSize={232}>
-          {/* The user's OWN photo sits faintly under the tracing — "we're working on MY hand"
-              (audit §7 P5). The picker path has the local URI client-side; camera-path URI is [~]. */}
-          {capturedImageUri ? (
-            <Image
-              source={{ uri: capturedImageUri }}
-              accessibilityLabel=""
-              style={{ position: 'absolute', width: 196, height: 196, borderRadius: 98, opacity: 0.28, alignSelf: 'center', top: 18 }}
-            />
-          ) : null}
+        <ProgressRing progress={progress} diagramSize={232} photoUri={capturedImageUri}>
           <PalmDiagram
             geometry={visibleGeometry(geometry, stage)}
             size={232}
             highlightedLine={current.line ?? undefined}
             animate
+            accessibilityLabel={ownGeometry ? 'Your palm line diagram' : ABSTRACT_PALM_LABEL}
           />
         </ProgressRing>
 
@@ -180,10 +184,12 @@ export function AnalyzingView({
           </View>
         ) : null}
 
-        {/* A failing status fetch never hangs silently — the hook keeps re-polling; say so quietly. */}
+        {/* A failing status fetch never hangs silently — the hook keeps re-polling; say so quietly.
+            Direction §5: "Still connecting…", not "Trouble reaching the server" — the old line named
+            OUR infrastructure at the exact moment the user is already anxious about their reading. */}
         {connectionError ? (
           <Text variant="caption" tone="tertiary" style={{ textAlign: 'center' }}>
-            Trouble reaching the server — still trying…
+            Still connecting…
           </Text>
         ) : null}
       </View>
@@ -199,18 +205,21 @@ export function AnalyzingView({
 function ProgressRing({
   progress,
   diagramSize,
+  photoUri,
   children,
 }: {
   progress: number;
   diagramSize: number;
+  /** The just-captured photo, drawn faintly UNDER the tracing and CONCENTRIC with the ring. */
+  photoUri?: string;
   children: React.ReactNode;
 }) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  const d = diagramSize + 56;
-  const r = d / 2 - 6;
-  const c = 2 * Math.PI * r;
+  // Padded viewport + a radius the glow fits inside (CO-13) — the math is pure and unit-tested.
+  const { size: d, cx, cy, r, circumference: c } = ringGeometry(diagramSize);
+  const photo = diagramSize - 36;
 
   const p = useSharedValue(progress);
   useEffect(() => {
@@ -243,23 +252,43 @@ function ProgressRing({
           </LinearGradient>
         </Defs>
         {/* breathing glow */}
-        <AnimatedCircle cx={d / 2} cy={d / 2} r={r} stroke={theme.colors.accent} strokeWidth={14} fill="none" animatedProps={glowProps} />
+        <AnimatedCircle cx={cx} cy={cy} r={r} stroke={theme.colors.accent} strokeWidth={RING_GLOW_WIDTH} fill="none" animatedProps={glowProps} />
         {/* track */}
-        <Circle cx={d / 2} cy={d / 2} r={r} stroke={theme.colors.border} strokeWidth={5} fill="none" />
-        {/* progress arc */}
-        <AnimatedCircle
-          cx={d / 2}
-          cy={d / 2}
-          r={r}
-          stroke="url(#ringAccent)"
-          strokeWidth={5}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          animatedProps={arcProps}
-          transform={`rotate(-90 ${d / 2} ${d / 2})`}
-        />
+        <Circle cx={cx} cy={cy} r={r} stroke={theme.colors.border} strokeWidth={RING_TRACK_WIDTH} fill="none" />
+        {/* Progress arc — omitted entirely at 0 (CO-13: a round cap on an empty arc drew a nub,
+            so an unstarted ring looked like it had already made progress). */}
+        {progress > 0 ? (
+          <AnimatedCircle
+            cx={cx}
+            cy={cy}
+            r={r}
+            stroke="url(#ringAccent)"
+            strokeWidth={RING_TRACK_WIDTH}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={c}
+            animatedProps={arcProps}
+            transform={`rotate(-90 ${cx} ${cy})`}
+          />
+        ) : null}
       </Svg>
+      {/* The reader's OWN photo, faint under the tracing (audit §7 P5) — positioned from the ring's
+          centre, not a hand-tuned `top`, which had it sitting 28px off the ring's axis (CO-13). */}
+      {photoUri ? (
+        <Image
+          source={{ uri: photoUri }}
+          accessibilityLabel=""
+          style={{
+            position: 'absolute',
+            width: photo,
+            height: photo,
+            borderRadius: photo / 2,
+            opacity: 0.28,
+            left: cx - photo / 2,
+            top: cy - photo / 2,
+          }}
+        />
+      ) : null}
       {children}
     </View>
   );
