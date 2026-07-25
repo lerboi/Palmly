@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 
-import { Button, Icon, Logomark, Screen, Text } from '@/components/ui';
+import { AppHeader, Button, Icon, Logomark, Screen, Text } from '@/components/ui';
 import { useTheme } from '@/theme';
 import { linkOAuth, startPhoneLink, verifyPhoneLink, type LinkProvider } from '@/lib/account';
 import { track } from '@/lib/analytics';
@@ -111,6 +111,9 @@ export function AccountSheet({ reason, mandatory = false, inviterName, onClose, 
 
   return (
     <Screen>
+      {/* A modal dismisses with a close, never a back arrow (SN-9). Mandatory linking offers no
+          dismiss at all — the caller is mid-claim and needs the account to proceed. */}
+      {mandatory ? null : <AppHeader onClose={onClose} />}
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <View style={{ alignItems: 'center', marginBottom: theme.spacing.xl }}>
           <Logomark size={56} tone="accent" accessibilityLabel="" />

@@ -15,6 +15,11 @@ export interface HistoryShelfProps {
   showUnchanged?: boolean;
   /** Injected clock so relative dates are deterministic in tests/screenshots. */
   now?: number;
+  /**
+   * Back affordance. Omitted by the Readings TAB (a tab root has nowhere to go back to, SN-3);
+   * passed by any route that PUSHES the shelf, e.g. from settings.
+   */
+  onBack?: () => void;
 }
 
 /**
@@ -24,7 +29,7 @@ export interface HistoryShelfProps {
  * ONCE in the header. The repeat-scan banner is an earned trust brag — green stays the semantic
  * "unchanged" check, the claret red-thread is the ornament (§3.2). English-first, no CJK.
  */
-export function HistoryShelf({ readings, showUnchanged = false, now }: HistoryShelfProps) {
+export function HistoryShelf({ readings, showUnchanged = false, now, onBack }: HistoryShelfProps) {
   const [nowTs] = useState(() => now ?? Date.now());
   const theme = useTheme();
   const router = useRouter();
@@ -34,6 +39,8 @@ export function HistoryShelf({ readings, showUnchanged = false, now }: HistorySh
           un-orphans Settings from the readings surface (audit F0.7). */}
       <AppHeader
         title="Your readings"
+        // Tab root → nothing passed → no back. A pushed instance passes `onBack` explicitly (SN-3).
+        onBack={onBack}
         right={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
             <HeaderIconButton name="settings" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />

@@ -43,7 +43,11 @@ export function ChatThread({ premium, messages, chips, typing = false, onSend, i
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  const back = onBack ?? (() => router.back());
+  // No `router.back()` fallback: a tab root must show no back arrow (SN-3), and `canGoBack()`
+  // can't tell us — inside a tab navigator it is true simply because switching tabs is history.
+  // The route that owns this screen decides: the Ask TAB passes nothing, a pushed instance passes
+  // `onBack`.
+  const back = onBack;
   const empty = messages.length === 0;
   // Composed question (F1.10). Declared before the early return (rules-of-hooks). A chip taps into it;
   // the fortune bridge seeds it via `initialInput`.
