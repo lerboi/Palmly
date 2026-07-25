@@ -12,18 +12,34 @@ import { getLastScanMatched } from '@/lib/session';
  */
 export default function History() {
   const [readings, setReadings] = useState<ReadingSummary[]>([]);
-  const [unchanged, setUnchanged] = useState(false);
+  const [matchedKind, setMatchedKind] = useState<'palm' | 'face' | null>(null);
+  // SH-5: a failed load used to resolve to an EMPTY list, so the shelf told a user with a dozen
+  // readings "No readings yet" and pointed them at the camera. Failure is now its own state.
+  const [failed, setFailed] = useState(false);
+  const [reloads, setReloads] = useState(0);
 
   useEffect(() => {
     let active = true;
     loadHistory()
-      .then((rows) => active && setReadings(visibleReadings(rows)))
-      .catch(() => active && setReadings([]));
-    getLastScanMatched().then((m) => active && setUnchanged(m));
+      .then((rows) => {
+        if (!active) return;
+        setReadings(visibleReadings(rows));
+        setFailed(false);
+      })
+      .catch(() => active && setFailed(true));
+    getLastScanMatched().then((k) => active && setMatchedKind(k));
     return () => {
       active = false;
     };
-  }, []);
+  }, [reloads]);
 
-  return <HistoryShelf readings={readings} showUnchanged={unchanged} />;
+  return (
+    <HistoryShelf
+      readings={readings}
+      showUnchanged={matchedKind != null}
+      matchedKind={matchedKind}
+      error={failed}
+      onRetry={() => setReloads((r) => r + 1)}
+    />
+  );
 }

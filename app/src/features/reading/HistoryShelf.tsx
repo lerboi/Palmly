@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Platform, View } from 'react-native';
-import { useRouter, type Href } from 'expo-router';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
@@ -15,6 +15,11 @@ export interface HistoryShelfProps {
   showUnchanged?: boolean;
   /** Injected clock so relative dates are deterministic in tests/screenshots. */
   now?: number;
+  /** The load FAILED (Audit-4 SH-5) — show the retry card, never the "No readings yet" lie. */
+  error?: boolean;
+  onRetry?: () => void;
+  /** Which kind the last scan matched, if any (SH-12) — the banner names it. */
+  matchedKind?: 'palm' | 'face' | null;
   /**
    * Back affordance. Omitted by the Readings TAB (a tab root has nowhere to go back to, SN-3);
    * passed by any route that PUSHES the shelf, e.g. from settings.
@@ -29,8 +34,15 @@ export interface HistoryShelfProps {
  * ONCE in the header. The repeat-scan banner is an earned trust brag — green stays the semantic
  * "unchanged" check, the claret red-thread is the ornament (§3.2). English-first, no CJK.
  */
-export function HistoryShelf({ readings, showUnchanged = false, now, onBack }: HistoryShelfProps) {
-  const [nowTs] = useState(() => now ?? Date.now());
+export function HistoryShelf({ readings, showUnchanged = false, now, error = false, onRetry, matchedKind = 'palm', onBack }: HistoryShelfProps) {
+  // `now` was frozen at mount, so a shelf left open overnight kept saying "Today" (CO-4). It
+  // refreshes whenever the tab regains focus.
+  const [nowTs, setNowTs] = useState(() => now ?? Date.now());
+  useFocusEffect(
+    useCallback(() => {
+      if (now === undefined) setNowTs(Date.now());
+    }, [now]),
+  );
   const theme = useTheme();
   const router = useRouter();
   return (
@@ -47,8 +59,10 @@ export function HistoryShelf({ readings, showUnchanged = false, now, onBack }: H
           full sentence, and a title + gear + sentence on one 390pt row truncated "Your readings"
           to "Your rea…". Still one signal for the whole shelf — just on its own line. */}
       <PrivacyBadge style={{ marginBottom: theme.spacing.md }} />
-      {showUnchanged ? <UnchangedBanner /> : null}
-      {readings.length === 0 ? (
+      {showUnchanged && matchedKind ? <UnchangedBanner kind={matchedKind} /> : null}
+      {error ? (
+        <ErrorState onRetry={onRetry} />
+      ) : readings.length === 0 ? (
         <>
           <ClaimAccountBanner />
           <EmptyState />
@@ -90,13 +104,19 @@ function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: num
             overflow: 'hidden',
           }}
         >
-          <PalmDiagram
-            geometry={reading.geometry}
-            size={56}
-            animate={false}
-            signatureLines={isPalm ? ['heart_line', 'fate_line'] : ['heart_line', 'head_line']}
-            accessibilityLabel=""
-          />
+          {/* CO-5: a face row used to draw an INVENTED palm (`FACE_GEOMETRY`), so the two kinds
+              looked alike and the face row claimed lines its reading never had. */}
+          {isPalm && reading.geometry ? (
+            <PalmDiagram
+              geometry={reading.geometry}
+              size={56}
+              animate={false}
+              signatureLines={['heart_line', 'fate_line']}
+              accessibilityLabel=""
+            />
+          ) : (
+            <Icon name={isPalm ? 'palm' : 'face'} size={28} color={theme.colors.textSecondary} decorative />
+          )}
         </View>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
@@ -116,7 +136,7 @@ function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: num
                 {isPalm ? 'Palm' : 'Face'}
               </Text>
             </View>
-            <Text variant="caption" tone="tertiary">
+            <Text variant="caption" tone="secondary">
               {relativeDate(reading.createdAt, now)}
             </Text>
           </View>
@@ -132,7 +152,6 @@ function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: num
           accessibilityLabel={`Share this ${isPalm ? 'palm' : 'face'} reading`}
           onPress={() => router.push(`/share?readingId=${reading.id}&source=home` as Href)}
         />
-        <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
       </View>
     </Card>
   );
@@ -169,8 +188,9 @@ function ClaimAccountBanner() {
 
 /** The repeat-scan trust brag — green is the semantic "unchanged" check; the claret thread is the
  *  ornament (your past + present readings, tied). */
-function UnchangedBanner() {
+function UnchangedBanner({ kind }: { kind: 'palm' | 'face' }) {
   const theme = useTheme();
+  const noun = kind === 'face' ? 'face' : 'palm';
   return (
     <Card
       elevation="sm"
@@ -180,13 +200,34 @@ function UnchangedBanner() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
         <Icon name="check" size={20} color={theme.colors.success} decorative />
         <Text variant="heading" color={theme.colors.success} style={{ flex: 1 }}>
-          Your palm is unchanged
+          Your {noun} is unchanged
         </Text>
         <Icon name="thread" size={22} color={theme.colors.textSecondary} decorative />
       </View>
       <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.xs }}>
-        Your reading stands — same palm, same reading. Your lines don&apos;t lie.
+        Your reading stands — same {noun}, same reading.
       </Text>
+    </Card>
+  );
+}
+
+/**
+ * A failed LOAD is not an empty shelf (Audit-4 SH-5). The route used to `.catch(() => setReadings([]))`,
+ * so a user with a dozen readings was told "No readings yet — read your palm" and invited to start
+ * over. This says what happened and offers the only useful action.
+ */
+function ErrorState({ onRetry }: { onRetry?: () => void }) {
+  const theme = useTheme();
+  return (
+    <Card elevation="sm" style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl, gap: theme.spacing.md }}>
+      <Icon name="warning" size={32} color={theme.colors.danger} decorative />
+      <Text variant="title" style={{ textAlign: 'center' }}>
+        We couldn’t load your readings
+      </Text>
+      <Text variant="body" tone="secondary" style={{ textAlign: 'center', maxWidth: 280 }}>
+        They’re safe — this was a hiccup on our side.
+      </Text>
+      {onRetry ? <Button label="Try again" variant="primary" onPress={onRetry} /> : null}
     </Card>
   );
 }

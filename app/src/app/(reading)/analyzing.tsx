@@ -76,7 +76,7 @@ export default function Analyzing() {
         readyEmitted.current = true;
         track('reading_ready', { scan_id: id, kind, latency_ms: elapsedMs });
       }
-      void setLastScanMatched(status === 'matched');
+      void setLastScanMatched(status === 'matched', kind);
       router.replace(`/reveal?scanId=${id}${status === 'matched' ? '&matched=1' : ''}` as Href);
     }
   }, [id, status, kind, elapsedMs]);

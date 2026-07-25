@@ -1,4 +1,4 @@
-import { PREVIEW_HISTORY, relativeDate, visibleReadings } from '../history';
+import { PREVIEW_HISTORY, parseMatchedKind, relativeDate, visibleReadings } from '../history';
 import { FACE_READING_ENABLED } from '@/lib/capabilities';
 
 const NOW = Date.parse('2026-07-14T12:00:00Z');
@@ -20,7 +20,12 @@ describe('reading history (P6.T4)', () => {
     expect(PREVIEW_HISTORY.length).toBeGreaterThan(0);
     expect(PREVIEW_HISTORY.some((r) => r.kind === 'palm')).toBe(true);
     expect(PREVIEW_HISTORY.some((r) => r.kind === 'face')).toBe(true);
-    for (const r of PREVIEW_HISTORY) expect(Object.keys(r.geometry).length).toBeGreaterThan(0);
+    // CO-5: a PALM row carries its own lines; a FACE row carries none, because a face has no palm
+    // geometry — the shelf used to invent one and the two kinds looked identical.
+    for (const r of PREVIEW_HISTORY) {
+      if (r.kind === 'palm') expect(Object.keys(r.geometry ?? {}).length).toBeGreaterThan(0);
+      else expect(r.geometry).toBeUndefined();
+    }
   });
 
   describe('visibleReadings — face door gate (F1.6)', () => {
@@ -38,5 +43,21 @@ describe('reading history (P6.T4)', () => {
       expect(FACE_READING_ENABLED).toBe(true);
       expect(visibleReadings(PREVIEW_HISTORY).some((r) => r.kind === 'face')).toBe(true);
     });
+  });
+});
+
+/** The shelf's honesty fixes (Audit-4 SH-12, CO-4). */
+describe('history shelf honesty', () => {
+  it('names the kind that was actually matched, and migrates the old flag (SH-12)', () => {
+    expect(parseMatchedKind('face')).toBe('face');
+    expect(parseMatchedKind('palm')).toBe('palm');
+    expect(parseMatchedKind('1')).toBe('palm'); // pre-SH-12 rows were always palms
+    expect(parseMatchedKind('0')).toBeNull();
+    expect(parseMatchedKind(null)).toBeNull();
+  });
+
+  it('falls back safely on an unparseable date instead of printing NaN', () => {
+    expect(relativeDate('not-a-date', Date.parse('2026-07-26T00:00:00Z'))).toBe('');
+    expect(relativeDate('', 0)).toBe('');
   });
 });

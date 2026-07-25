@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { parseMatchedKind } from '@/features/reading/history';
 
 /**
  * Returning-user session flags (audit F0.7). Persisted locally so a relaunch lands on the daily
@@ -99,18 +100,22 @@ export async function getPaywallDeclinedAt(): Promise<string | null> {
  */
 const LAST_SCAN_MATCHED_KEY = 'palmly.last_scan_matched.v1';
 
-export async function setLastScanMatched(matched: boolean): Promise<void> {
+export async function setLastScanMatched(matched: boolean, kind: 'palm' | 'face' = 'palm'): Promise<void> {
   try {
-    await AsyncStorage.setItem(LAST_SCAN_MATCHED_KEY, matched ? '1' : '0');
+    // The KIND rides along (Audit-4 SH-12): the flag was kind-agnostic, so a matched FACE scan made
+    // the shelf brag "Your palm is unchanged" — about a palm the user never rescanned.
+    await AsyncStorage.setItem(LAST_SCAN_MATCHED_KEY, matched ? kind : '0');
   } catch {
     /* best-effort */
   }
 }
 
-export async function getLastScanMatched(): Promise<boolean> {
+export async function getLastScanMatched(): Promise<'palm' | 'face' | null> {
   try {
-    return (await AsyncStorage.getItem(LAST_SCAN_MATCHED_KEY)) === '1';
+    return parseMatchedKind(await AsyncStorage.getItem(LAST_SCAN_MATCHED_KEY));
   } catch {
-    return false;
+    return null;
   }
 }
+
+

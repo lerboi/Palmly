@@ -9,7 +9,9 @@ export interface ReadingSummary {
   kind: 'palm' | 'face';
   headline: string;
   createdAt: string; // ISO
-  geometry: LineGeometry;
+  /** The reading's own traced lines. **Absent for face readings** (Audit-4 CO-5): a face has no palm
+   *  geometry, and the shelf used to draw an invented one, so a face row looked like a palm row. */
+  geometry?: LineGeometry;
 }
 
 /**
@@ -36,21 +38,22 @@ export function relativeDate(iso: string, now: number): string {
 }
 
 // ── Preview shelf for device-free web-screenshot verification (P6.T4). ──
-const FACE_GEOMETRY: LineGeometry = {
-  heart_line: [
-    [200, 380],
-    [500, 360],
-    [800, 380],
-  ],
-  head_line: [
-    [220, 520],
-    [520, 540],
-    [800, 560],
-  ],
-};
 
 export const PREVIEW_HISTORY: ReadingSummary[] = [
   { id: 'r1', kind: 'palm', headline: 'A Water hand — feeling runs deep in you.', createdAt: '2026-07-14T02:00:00Z', geometry: PREVIEW_GEOMETRY },
-  { id: 'r2', kind: 'face', headline: 'Balanced three courts — steady judgement.', createdAt: '2026-07-13T02:00:00Z', geometry: FACE_GEOMETRY },
+  { id: 'r2', kind: 'face', headline: 'Balanced three courts — steady judgement.', createdAt: '2026-07-13T02:00:00Z' },
   { id: 'r3', kind: 'palm', headline: 'A long fate line — a path you set yourself.', createdAt: '2026-07-08T02:00:00Z', geometry: PREVIEW_GEOMETRY },
 ];
+
+/**
+ * Read the stored match flag as a KIND (Audit-4 SH-12). Lives here, not in `lib/session`, because
+ * that module imports AsyncStorage and cannot be reached from a test — which is how a kind-agnostic
+ * flag came to brag "Your palm is unchanged" after a matched FACE scan in the first place.
+ *
+ * `'1'` is the pre-SH-12 value: a match with no kind recorded, which was always a palm in practice
+ * (the face path was flag-gated), so it reads as palm rather than being discarded.
+ */
+export function parseMatchedKind(raw: string | null): 'palm' | 'face' | null {
+  if (raw === 'face') return 'face';
+  return raw === 'palm' || raw === '1' ? 'palm' : null;
+}
