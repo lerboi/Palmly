@@ -159,8 +159,8 @@ export function PaywallView({
           <Svg width="100%" height="100%">
             <Defs>
               <SvgLinearGradient id="pwScrim" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={theme.colors.background} stopOpacity={0} />
-                <Stop offset="1" stopColor={theme.colors.background} stopOpacity={0.92} />
+                <Stop offset="0" stopColor={theme.colors.bg} stopOpacity={0} />
+                <Stop offset="1" stopColor={theme.colors.bg} stopOpacity={0.92} />
               </SvgLinearGradient>
             </Defs>
             <Rect x="0" y="0" width="100%" height="100%" fill="url(#pwScrim)" />
@@ -257,7 +257,7 @@ function Radio({ on }: { on: boolean }) {
       style={{
         width: 22,
         height: 22,
-        borderRadius: 11,
+        borderRadius: theme.radii.pill,
         borderWidth: 2,
         borderColor: on ? theme.colors.accent : theme.colors.border,
         alignItems: 'center',
@@ -265,7 +265,7 @@ function Radio({ on }: { on: boolean }) {
       }}
     >
       {on ? (
-        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: theme.colors.accent }} />
+        <View style={{ width: 12, height: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.accent }} />
       ) : null}
     </View>
   );
@@ -283,7 +283,7 @@ function PremiumSeal({ label }: { label: string }) {
         paddingVertical: 2,
       }}
     >
-      <Text variant="caption" color={theme.colors.onPremium} style={{ fontSize: 11, letterSpacing: 0.5 }}>
+      <Text variant="caption" color={theme.colors.onPremium} style={{ letterSpacing: 0.5 }}>
         {label}
       </Text>
     </View>

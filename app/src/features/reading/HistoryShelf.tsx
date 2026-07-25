@@ -205,7 +205,7 @@ function EmptyState() {
           style={{
             width: 88,
             height: 88,
-            borderRadius: 44,
+            borderRadius: theme.radii.pill,
             backgroundColor: theme.colors.surfaceSunken,
             alignItems: 'center',
             justifyContent: 'center',

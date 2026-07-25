@@ -196,7 +196,6 @@ describe('design tokens — role-based skin contract (redesign §3)', () => {
 
   it('exposes back-compat aliases mapped onto the new roles', () => {
     const check = (colors: ThemeColors, skin: SkinColors) => {
-      expect(colors.background).toBe(skin.bg);
       expect(colors.text).toBe(skin.textPrimary);
       expect(colors.gold).toBe(skin.premium);
       expect(colors.onGold).toBe(skin.onPremium);
@@ -215,6 +214,17 @@ describe('design tokens — role-based skin contract (redesign §3)', () => {
 
   it('draws diagram lines at the engraved 1.5px woodblock stroke', () => {
     expect(strokes.engraved).toBe(1.5);
+  });
+
+  it('gives the share-card serif its own scale entry (Audit-4 CO-11)', () => {
+    // This shipped twice as a `fontSize: 24, lineHeight: 30` override ON TOP of editorialHeadline,
+    // which meant it also inherited 34px-tuned tracking. Its own entry, its own tracking.
+    expect(typography.editorialTitle.fontSize).toBe(24);
+    expect(typography.editorialTitle.lineHeight).toBe(30);
+    expect(typography.editorialTitle.letterSpacing).toBe(-0.3);
+    expect(typography.editorialTitle.fontFamily).toBe(typography.editorialHeadline.fontFamily);
+    // The two serif entries are distinct sizes — one is not a restyled version of the other.
+    expect(typography.editorialTitle.fontSize).toBeLessThan(typography.editorialHeadline.fontSize);
   });
 
   it('keeps the accent-eligible type >= 18pt (a11y §1.2)', () => {

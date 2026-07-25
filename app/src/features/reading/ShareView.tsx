@@ -222,8 +222,8 @@ export function ShareView({
       <AppHeader title="Share your reading" onBack={onClose} />
 
       <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
-        <Segment label="My reading" active={variant === 'solo'} onPress={() => setVariant('solo')} />
-        <Segment label="Compatibility" active={variant === 'compat'} onPress={() => setVariant('compat')} />
+        <SelectPill label="My reading" role="tab" active={variant === 'solo'} onPress={() => setVariant('solo')} />
+        <SelectPill label="Compatibility" role="tab" active={variant === 'compat'} onPress={() => setVariant('compat')} />
       </View>
 
       {/* Top-anchored slot so switching tabs never re-centres / jumps the card. Intrinsic height,
@@ -316,27 +316,52 @@ export function ShareView({
   );
 }
 
-function Segment({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+/**
+ * One single-select control — the tab segments and the framing pills were 95% the same component
+ * and had drifted apart (Audit-4 CO-11). Shape, type scale, press depth and a11y role are the only
+ * real differences, so they are props.
+ *
+ * Colors follow the U0.T2 contract: a selected label is `accentPressed` (plain `accent` on
+ * `accentMuted` measures 4.00:1 and fails AA at every size), and an unselected one is `textPrimary`
+ * on the sunken fill (`textSecondary` there is 4.25:1).
+ */
+function SelectPill({
+  label,
+  active,
+  onPress,
+  role,
+  shape = 'rounded',
+  variant = 'bodyMedium',
+  pressScale = 0.97,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  role: 'tab' | 'radio';
+  shape?: 'rounded' | 'pill';
+  variant?: 'bodyMedium' | 'caption';
+  pressScale?: number;
+}) {
   const theme = useTheme();
-  const { scaleStyle: style, onPressIn, onPressOut } = usePressSpring(0.97);
+  const { scaleStyle: style, onPressIn, onPressOut } = usePressSpring(pressScale);
   return (
     <Animated.View style={[{ flex: 1 }, style]}>
       <Pressable
         onPress={onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
-        accessibilityRole="tab"
+        accessibilityRole={role}
         accessibilityState={{ selected: active }}
         style={{
           alignItems: 'center',
           paddingVertical: theme.spacing.sm,
-          borderRadius: theme.radii.md,
+          borderRadius: shape === 'pill' ? theme.radii.pill : theme.radii.md,
           backgroundColor: active ? theme.colors.accentMuted : theme.colors.surfaceSunken,
           borderWidth: theme.strokes.hairline,
           borderColor: active ? theme.colors.accent : 'transparent',
         }}
       >
-        <Text variant="bodyMedium" color={active ? theme.colors.accent : theme.colors.textSecondary}>
+        <Text variant={variant} color={active ? theme.colors.accentPressed : theme.colors.textPrimary}>
           {label}
         </Text>
       </Pressable>
@@ -361,38 +386,19 @@ function FramingPicker({ value, onChange }: { value: Framing; onChange: (f: Fram
       </Text>
       <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
         {FRAMINGS.map((f) => (
-          <FramingPill key={f.value} label={f.label} active={value === f.value} onPress={() => onChange(f.value)} />
+          <SelectPill
+            key={f.value}
+            label={f.label}
+            role="radio"
+            shape="pill"
+            variant="caption"
+            pressScale={0.95}
+            active={value === f.value}
+            onPress={() => onChange(f.value)}
+          />
         ))}
       </View>
     </View>
-  );
-}
-
-function FramingPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const theme = useTheme();
-  const { scaleStyle: style, onPressIn, onPressOut } = usePressSpring(0.95);
-  return (
-    <Animated.View style={[{ flex: 1 }, style]}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="radio"
-        accessibilityState={{ selected: active }}
-        style={{
-          alignItems: 'center',
-          paddingVertical: theme.spacing.sm,
-          borderRadius: theme.radii.pill,
-          backgroundColor: active ? theme.colors.accentMuted : theme.colors.surfaceSunken,
-          borderWidth: theme.strokes.hairline,
-          borderColor: active ? theme.colors.accent : 'transparent',
-        }}
-      >
-        <Text variant="caption" color={active ? theme.colors.accent : theme.colors.textSecondary}>
-          {label}
-        </Text>
-      </Pressable>
-    </Animated.View>
   );
 }
 
@@ -429,7 +435,7 @@ function ChannelButton({ icon, mono, label, onPress, confirmed = false }: { icon
           style={{
             width: 56,
             height: 56,
-            borderRadius: 28,
+            borderRadius: theme.radii.pill,
             backgroundColor: theme.colors.surfaceSunken,
             alignItems: 'center',
             justifyContent: 'center',
@@ -442,7 +448,7 @@ function ChannelButton({ icon, mono, label, onPress, confirmed = false }: { icon
           ) : icon ? (
             <Icon name={icon} size={24} color={theme.colors.textSecondary} decorative />
           ) : (
-            <Text variant="bodyMedium" color={theme.colors.textPrimary} style={{ fontWeight: '700' }}>
+            <Text variant="heading" color={theme.colors.textPrimary}>
               {mono}
             </Text>
           )}
@@ -537,10 +543,7 @@ function SoloPreview({ geometry, headline }: { geometry: LineGeometry; headline:
       ]}
     >
       <PalmDiagram geometry={geometry} size={200} signatureLines={['heart_line', 'fate_line']} animate />
-      <Text
-        variant="editorialHeadline"
-        style={{ textAlign: 'center', marginTop: theme.spacing.lg, fontSize: 24, lineHeight: 30 }}
-      >
+      <Text variant="editorialTitle" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
         {headline}
       </Text>
       <CardSeal />
@@ -593,10 +596,7 @@ function CompatPreview({
         <ScoreRing score={score} label="Compatibility" />
       </View>
 
-      <Text
-        variant="editorialHeadline"
-        style={{ textAlign: 'center', marginTop: theme.spacing.lg, fontSize: 24, lineHeight: 30 }}
-      >
+      <Text variant="editorialTitle" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
         You &amp; {partnerName}
       </Text>
       <Text variant="body" tone="secondary" style={{ textAlign: 'center', marginTop: theme.spacing.xs }}>

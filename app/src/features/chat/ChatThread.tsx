@@ -112,8 +112,8 @@ export function ChatThread({ premium, messages, chips, typing = false, onSend, i
               <Svg width={theme.spacing.xxl} height={44}>
                 <Defs>
                   <LinearGradient id="chipFade" x1="0" y1="0" x2="1" y2="0">
-                    <Stop offset="0" stopColor={theme.colors.background} stopOpacity={0} />
-                    <Stop offset="1" stopColor={theme.colors.background} stopOpacity={1} />
+                    <Stop offset="0" stopColor={theme.colors.bg} stopOpacity={0} />
+                    <Stop offset="1" stopColor={theme.colors.bg} stopOpacity={1} />
                   </LinearGradient>
                 </Defs>
                 <Rect width={theme.spacing.xxl} height={44} fill="url(#chipFade)" />
@@ -156,7 +156,7 @@ function ChatEmptyState() {
         style={{
           width: 88,
           height: 88,
-          borderRadius: 44,
+          borderRadius: theme.radii.pill,
           backgroundColor: theme.colors.surfaceRaised,
           borderWidth: theme.strokes.hairline,
           borderColor: theme.colors.border,
@@ -222,7 +222,7 @@ function Bubble({ message, index, shouldAnimate }: { message: ChatMessage; index
           style={{
             width: 28,
             height: 28,
-            borderRadius: 14,
+            borderRadius: theme.radii.pill,
             backgroundColor: theme.colors.accentMuted,
             alignItems: 'center',
             justifyContent: 'center',
@@ -260,7 +260,7 @@ function TypingBubble({ shouldAnimate }: { shouldAnimate: boolean }) {
         style={{
           width: 28,
           height: 28,
-          borderRadius: 14,
+          borderRadius: theme.radii.pill,
           backgroundColor: theme.colors.accentMuted,
           alignItems: 'center',
           justifyContent: 'center',

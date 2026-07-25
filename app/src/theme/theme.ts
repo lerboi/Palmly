@@ -23,12 +23,11 @@ export type ColorScheme = 'light' | 'dark';
  * The color surface exposed to components: the full role contract (`SkinColors`) plus a small
  * set of **deprecated aliases** kept alive so no consumer breaks in one step. Migrate off the
  * aliases toward the roles they point at:
- *   `background`→`bg`, `text`→`textPrimary`, `gold`→`premium`, `onGold`→`onPremium`,
- *   `jade`→`success`, `seal`→`heritageAccent`.
+ *   `text`→`textPrimary`, `gold`→`premium`, `onGold`→`onPremium`, `jade`→`success`,
+ *   `seal`→`heritageAccent`.
+ * `background` is GONE: it was the last alias with real consumers, and CO-11 migrated them all.
  */
 export interface ThemeColors extends SkinColors {
-  /** @deprecated use `bg` */
-  background: string;
   /** @deprecated use `textPrimary` */
   text: string;
   /** @deprecated use `premium` */
@@ -47,7 +46,6 @@ export interface ThemeColors extends SkinColors {
 function toThemeColors(roles: SkinColors): ThemeColors {
   return {
     ...roles,
-    background: roles.bg,
     text: roles.textPrimary,
     gold: roles.premium,
     goldPressed: roles.premiumPressed,

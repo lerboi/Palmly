@@ -112,7 +112,7 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
   const theme = useTheme();
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      style={{ flex: 1, backgroundColor: theme.colors.bg }}
       contentContainerStyle={styles.panelContent}
       showsVerticalScrollIndicator={false}
     >

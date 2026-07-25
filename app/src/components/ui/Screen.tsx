@@ -39,7 +39,7 @@ export function Screen({
   return (
     <SafeAreaView
       edges={edges}
-      style={[styles.fill, { backgroundColor: theme.colors.background }, style]}
+      style={[styles.fill, { backgroundColor: theme.colors.bg }, style]}
     >
       {scroll ? (
         <ScrollView

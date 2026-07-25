@@ -416,6 +416,12 @@ export const typography = {
   accent: { fontFamily: fonts.bodyBold, fontSize: 22, lineHeight: 30 },
   numeral: { fontFamily: fonts.bodyBold, fontSize: 30, lineHeight: 34 },
   editorialHeadline: { fontFamily: fonts.editorial, fontSize: 34, lineHeight: 42, letterSpacing: -0.5 },
+  /**
+   * The serif one step down — share-card previews, where the headline must sit inside a 340pt
+   * frame. Its own tracking: `editorialHeadline`'s −0.5 is tuned for 34px and reads too tight at
+   * 24 (Audit-4 CO-11, where this was pasted twice as a `fontSize`/`lineHeight` override).
+   */
+  editorialTitle: { fontFamily: fonts.editorial, fontSize: 24, lineHeight: 30, letterSpacing: -0.3 },
 } as const;
 
 export type SpacingKey = keyof typeof spacing;
