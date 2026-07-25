@@ -10,12 +10,13 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { AppHeader, Button, Card, HeaderIconButton, HeaderTextButton, Icon, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
-import { useEntrance, usePressSpring, useReducedMotion, useTheme } from '@/theme';
+import { controlHeight, useEntrance, usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
 import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
 import { FACE_READING_ENABLED } from '@/lib/capabilities';
@@ -85,7 +86,7 @@ const PENDING_LINES = [
  * The reading reveal (UIUX §2.5, redesign R15 / v2 V13) — the "wow". The user's own palm traces
  * itself as the hero, an **editorial** headline rises, and icon-led section cards **stagger** in
  * (draw → headline → 90ms cards). Locked premium depth teases behind the paywall, the compatibility
- * hook, a branded **seal** share affordance, and a single trust footer. English-first, no decorative
+ * hook, an earned **share pill**, and a single trust footer. English-first, no decorative
  * CJK. A living pending state + an honest error state.
  */
 export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', readingId, photoDeletedAt, photoKept = false, matched = false, onBack, onRetry, onDone, hasOtherHand = false, hasOtherKind = false }: RevealViewProps) {
@@ -158,7 +159,10 @@ export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', 
       <Screen
         scroll
         onScroll={onScroll}
-        contentStyle={{ paddingBottom: theme.spacing.xxl + 56 }}
+        contentStyle={{
+          // Clear the floating share pill: its height plus the gap it holds off the edge.
+          paddingBottom: theme.spacing.xxl + controlHeight.md,
+        }}
       >
         <AppHeader
           onBack={back}
@@ -243,8 +247,8 @@ export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', 
         ) : null}
       </Screen>
 
-      {/* ── Share affordance: a branded corner-seal (claret), earned once you've read past the hero ── */}
-      {scrolledPast ? <SealFab onPress={() => router.push(shareHref)} shouldAnimate={shouldAnimate} /> : null}
+      {/* ── Share affordance: a labeled pill (CO-3), earned once you've read past the hero ── */}
+      {scrolledPast ? <SharePill onPress={() => router.push(shareHref)} shouldAnimate={shouldAnimate} /> : null}
     </View>
   );
 }
@@ -628,16 +632,32 @@ function ReadyStamp({ shouldAnimate }: { shouldAnimate: boolean }) {
   );
 }
 
-/** The share affordance as a branded corner-seal (claret Logomark stamp) with a press-spring +
- *  entrance. Native-only spring/scroll-in [~]; web renders the settled seal. */
-function SealFab({ onPress, shouldAnimate }: { onPress: () => void; shouldAnimate: boolean }) {
+/**
+ * The share affordance as a **labeled pill** (Audit-4 CO-3, Direction §4.4 #1).
+ *
+ * What it replaces: a second claret `Logomark` seal, identical to the `ReadyStamp` 600px above it —
+ * so the page carried two of the same mark and only one of them did anything. It was also unlabeled
+ * (a floating seal reads as decoration, not "share"), it sat at a flat `spacing.xl` from the screen
+ * edge — i.e. UNDER the home indicator on an inset device — and its `shadow.md` was attached to a
+ * transparent `View`, which casts nothing at all on iOS and a rectangular halo on Android.
+ *
+ * Now: icon + word on a real `surface` fill (the fill is what makes the shadow render on both
+ * platforms), hairline border for the light scheme where a shadow alone is invisible, `44pt` floor,
+ * and a bottom offset that adds the safe-area inset. Still *earned* — it fades in once the reader is
+ * past the hero (§4.4 keeps that), and still stamps on press.
+ */
+function SharePill({ onPress, shouldAnimate }: { onPress: () => void; shouldAnimate: boolean }) {
   const theme = useTheme();
-  const { scaleStyle, onPressIn, onPressOut } = usePressSpring(0.92);
+  const insets = useSafeAreaInsets();
+  const { scaleStyle, onPressIn, onPressOut } = usePressSpring(0.96);
 
   return (
     <Animated.View
       entering={shouldAnimate ? FadeIn.duration(theme.motion.duration.base) : undefined}
-      style={[{ position: 'absolute', right: theme.spacing.lg, bottom: theme.spacing.xl }, scaleStyle]}
+      style={[
+        { position: 'absolute', right: theme.spacing.lg, bottom: insets.bottom + theme.spacing.lg },
+        scaleStyle,
+      ]}
     >
       <Pressable
         onPress={() => {
@@ -648,10 +668,23 @@ function SealFab({ onPress, shouldAnimate }: { onPress: () => void; shouldAnimat
         onPressOut={onPressOut}
         accessibilityRole="button"
         accessibilityLabel="Share this reading"
+        style={({ pressed }) => [
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.spacing.sm,
+            minHeight: controlHeight.md,
+            paddingHorizontal: theme.spacing.lg,
+            borderRadius: theme.radii.pill,
+            borderWidth: theme.strokes.hairline,
+            borderColor: theme.colors.border,
+            backgroundColor: pressed ? theme.colors.surfaceSunken : theme.colors.surface,
+          },
+          theme.shadow.md,
+        ]}
       >
-        <View style={[{ borderRadius: theme.radii.md }, theme.shadow.md]}>
-          <Logomark variant="stamp" filled tone="heritage" size={56} accessibilityLabel="" />
-        </View>
+        <Icon name="share" size={18} color={theme.colors.textPrimary} decorative />
+        <Text variant="button">Share</Text>
       </Pressable>
     </Animated.View>
   );
