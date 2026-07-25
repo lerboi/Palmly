@@ -39,6 +39,8 @@ export interface PairRevealViewProps {
   onBack?: () => void;
   onFullReading?: () => void;
   onShare?: () => void;
+  /** Leave the pair reveal for Today — the second peak needs an exit too (SN-1). */
+  onDone?: () => void;
 }
 
 /** Sub-score dimension → feature line-icon. */
@@ -65,6 +67,7 @@ export function PairRevealView({
   onBack,
   onFullReading,
   onShare,
+  onDone,
 }: PairRevealViewProps) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
@@ -135,8 +138,11 @@ export function PairRevealView({
       </View>
 
       <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xl, marginBottom: theme.spacing.lg }}>
-        <Button label="See my full reading" variant="primary" fullWidth onPress={onFullReading} />
+        {/* Only offered when a real reading resolved — the CTA used to push `/reveal` with no id,
+            which loaded nothing and dropped the user on the error state at the emotional peak (SN-6). */}
+        {onFullReading ? <Button label="See my full reading" variant="primary" fullWidth onPress={onFullReading} /> : null}
         <Button label="Share this match" variant="tonal" fullWidth onPress={onShare} />
+        {onDone ? <Button label="Done" variant="ghost" fullWidth onPress={onDone} /> : null}
       </View>
 
       <Text variant="caption" tone="tertiary" style={{ textAlign: 'center', marginBottom: theme.spacing.lg }}>

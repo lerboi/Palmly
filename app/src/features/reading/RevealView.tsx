@@ -13,7 +13,7 @@ import Animated, {
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
-import { AppHeader, Button, Card, Icon, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
+import { AppHeader, Button, Card, HeaderTextButton, Icon, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useEntrance, usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
@@ -47,6 +47,11 @@ export interface RevealViewProps {
   matched?: boolean;
   onBack?: () => void;
   onRetry?: () => void;
+  /**
+   * Leave the reading for Today. Defaults to `router.replace('/fortune')` — a REPLACE, so the
+   * finished reveal doesn't linger in the back stack behind the home screen.
+   */
+  onDone?: () => void;
 }
 
 /** The privacy badge, honestly (F1.1 + live find 2026-07-25): a timestamped "deleted" ONLY when
@@ -78,12 +83,16 @@ const PENDING_LINES = [
  * hook, a branded **seal** share affordance, and a single trust footer. English-first, no decorative
  * CJK. A living pending state + an honest error state.
  */
-export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', readingId, photoDeletedAt, photoKept = false, matched = false, onBack, onRetry }: RevealViewProps) {
+export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', readingId, photoDeletedAt, photoKept = false, matched = false, onBack, onRetry, onDone }: RevealViewProps) {
   const theme = useTheme();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
   const back = onBack ?? (() => router.back());
+  // SN-1: the reading used to be a dead end — `setFirstReadingComplete()` was written here but its
+  // only consumer was the cold-start redirect, so the ONLY way to reach home was to kill the app
+  // and relaunch. `replace` (not push) so Today becomes the root, with no finished reveal behind it.
+  const done = onDone ?? (() => router.replace('/fortune'));
   const shareHref = `/share${readingId ? `?readingId=${readingId}` : ''}` as Href;
   const shareCompatHref =
     `/share?${readingId ? `readingId=${readingId}&` : ''}initialVariant=compat` as Href;
@@ -126,7 +135,16 @@ export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', 
         onScroll={onScroll}
         contentStyle={{ paddingBottom: theme.spacing.xxl + 56 }}
       >
-        <AppHeader onBack={back} />
+        <AppHeader
+          onBack={back}
+          right={
+            <HeaderTextButton onPress={done}>
+              <Text variant="button" tone="accent">
+                Done
+              </Text>
+            </HeaderTextButton>
+          }
+        />
         {/* Heritage touch (§5.4 #1): the seal stamps-settle as the reading lands — "your reading is sealed". */}
         <ReadyStamp shouldAnimate={shouldAnimate} />
         {/* ── Hero: the palm draws itself (face reads its own themed motif), then the headline rises ── */}

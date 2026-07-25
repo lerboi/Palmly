@@ -10,6 +10,7 @@ import { useCompatStatus } from '@/lib/useCompatStatus';
 import { loadPartnerName, markCompatPromptSeen, requestCompat, toPairData, wasCompatPromptSeen } from '@/lib/compat';
 import { AUTO_PRESENT_DELAY_MS, shouldAutoPresent } from '@/lib/compatCopy';
 import { loadClaimContext } from '@/lib/claim';
+import { loadHistory } from '@/lib/readings';
 import { track } from '@/lib/analytics';
 
 /**
@@ -26,12 +27,18 @@ export default function Pair() {
   const [partnerName, setPartnerName] = useState('Your match');
   const [role, setRole] = useState<'sender' | 'recipient'>('sender');
   const [promptSeen, setPromptSeen] = useState(true); // default true → never auto-present until known
+  // SN-6: "See my full reading" pushed `/reveal` with NO id, so `loadReading({})` returned null and
+  // the primary CTA at the emotional peak landed on the error state. The compat row carries no
+  // reading id, so resolve the caller's own newest reading (RLS-scoped) and thread it. Null while
+  // it resolves, or when they have none — the CTA simply isn't offered then.
+  const [ownReadingId, setOwnReadingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!pairId) return;
     let active = true;
     loadPartnerName(pairId).then((n) => active && setPartnerName(n));
     loadClaimContext().then((ctx) => active && setRole(ctx ? 'recipient' : 'sender'));
+    loadHistory().then((rows) => active && setOwnReadingId(rows[0]?.id ?? null));
     wasCompatPromptSeen(pairId).then((seen) => active && setPromptSeen(seen));
     return () => {
       active = false;
@@ -74,7 +81,8 @@ export default function Pair() {
         data={toPairData(result, partnerName)}
         geometry={PREVIEW_GEOMETRY}
         onBack={() => router.back()}
-        onFullReading={() => router.push('/reveal' as Href)}
+        onDone={() => router.replace('/fortune')}
+        onFullReading={ownReadingId ? () => router.push(`/reveal?readingId=${ownReadingId}` as Href) : undefined}
         onShare={() => router.push(`/share?initialVariant=compat&source=compat&pairId=${pairId}` as Href)}
       />
     );
