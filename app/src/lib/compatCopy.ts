@@ -1,4 +1,5 @@
-import type { CompatStatus } from './useCompatStatus';
+import type { CompatStatus, CompatResultRow } from './useCompatStatus';
+import type { PairData } from '@/features/reading/PairRevealView';
 
 /**
  * Pure compat helpers (audit F1.7) — no `supabase`/AsyncStorage imports, so they can be unit-tested
@@ -29,4 +30,30 @@ export function elapsedLabel(sentISO: string, nowMs: number): string {
   if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
   const days = Math.floor(hrs / 24);
   return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+const SUB_LABELS: Record<string, string> = {
+  emotion: 'Emotion',
+  mind: 'Mind',
+  life_energy: 'Energy',
+  destiny: 'Destiny',
+  elements: 'Elements',
+};
+const SUB_ORDER = ['emotion', 'mind', 'life_energy', 'destiny', 'elements'];
+
+/** Map a completed `compatibility_results` row → the {@link PairData} the reveal renders. */
+export function toPairData(result: CompatResultRow, partnerName: string): PairData {
+  const subs = (result.sub_scores ?? {}) as Record<string, number>;
+  // The `key` rides along so the view's icon map keys on the STABLE server key, not display copy
+  // (Audit-4 CO-16 — a label rewrite used to silently turn every dimension icon into `sparkle`).
+  const subScores = SUB_ORDER.filter((k) => typeof subs[k] === 'number').map((k) => ({ key: k, label: SUB_LABELS[k], value: subs[k] }));
+  const sections = result.narrative?.sections ?? [];
+  return {
+    partnerName,
+    score: result.score ?? 0,
+    headline: result.narrative?.headline ?? 'Your compatibility',
+    subScores,
+    click: sections[0]?.body ?? '',
+    stretch: sections[1]?.body ?? '',
+  };
 }

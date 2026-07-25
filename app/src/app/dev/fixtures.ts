@@ -1,5 +1,6 @@
 import type { Fortune } from '@/features/fortune/fortune';
 import type { Reading } from '@/features/reading/reveal';
+import type { PairData } from '@/features/reading/PairRevealView';
 
 /**
  * `/dev`-only fixtures. These live HERE, not in the production module, so a fixture can never be
@@ -47,3 +48,27 @@ export const PREVIEW_ALL_SECTIONS_READING: Reading = {
   })),
   disclaimer: 'For reflection and entertainment.',
 };
+
+/**
+ * A representative compatibility result (Audit-4 U5.T3, closing the gap D24 flagged): `(reading)/pair`
+ * has been unreachable device-free since it was built, which is why U1.T2's pair CTA had to stay
+ * `[~]`. Sub-scores carry their STABLE server keys so the dimension icons resolve the same way they
+ * do in production.
+ */
+export const PREVIEW_PAIR: PairData = {
+  partnerName: 'Mira',
+  score: 78,
+  headline: 'Two steady hands — you settle each other.',
+  subScores: [
+    { key: 'emotion', label: 'Emotion', value: 84 },
+    { key: 'mind', label: 'Mind', value: 71 },
+    { key: 'life_energy', label: 'Energy', value: 66 },
+    { key: 'destiny', label: 'Destiny', value: 80 },
+    { key: 'elements', label: 'Elements', value: 74 },
+  ],
+  click: 'Your heart lines run the same depth — you both give warmth slowly and mean it when you do.',
+  stretch: 'Your head lines part ways: you think in images, they think in steps. That gap is the work, and the gift.',
+};
+
+/** The same pair with a HALF-GENERATED narrative — the CO-16 case that printed a bare heading. */
+export const PREVIEW_PAIR_PARTIAL: PairData = { ...PREVIEW_PAIR, click: PREVIEW_PAIR.click, stretch: '' };

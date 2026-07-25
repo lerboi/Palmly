@@ -1,7 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
-import type { PairData } from '@/features/reading/PairRevealView';
-import type { CompatResultRow } from './useCompatStatus';
 
 export type CompatRequestResult = { ok: true; status: string } | { ok: false; gated: boolean };
 
@@ -40,14 +38,6 @@ export async function markCompatPromptSeen(pairId: string): Promise<void> {
 }
 
 /** Backend `sub_scores` keys (compat.ts `SubScores`) → the display labels the reveal's icons map on. */
-const SUB_LABELS: Record<string, string> = {
-  emotion: 'Emotion',
-  mind: 'Mind',
-  life_energy: 'Energy',
-  destiny: 'Destiny',
-  elements: 'Elements',
-};
-const SUB_ORDER = ['emotion', 'mind', 'life_energy', 'destiny', 'elements'];
 
 /**
  * Resolve the OTHER pair member's display name for the "You & «Name»" header. RLS lets only a pair
@@ -81,17 +71,4 @@ export async function loadCompatShare(pairId: string): Promise<{ score: number; 
   return { score: row.score, partnerName };
 }
 
-/** Map a completed `compatibility_results` row → the {@link PairData} the reveal renders. */
-export function toPairData(result: CompatResultRow, partnerName: string): PairData {
-  const subs = (result.sub_scores ?? {}) as Record<string, number>;
-  const subScores = SUB_ORDER.filter((k) => typeof subs[k] === 'number').map((k) => ({ label: SUB_LABELS[k], value: subs[k] }));
-  const sections = result.narrative?.sections ?? [];
-  return {
-    partnerName,
-    score: result.score ?? 0,
-    headline: result.narrative?.headline ?? 'Your compatibility',
-    subScores,
-    click: sections[0]?.body ?? '',
-    stretch: sections[1]?.body ?? '',
-  };
-}
+export { toPairData } from './compatCopy';
