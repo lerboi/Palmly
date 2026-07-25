@@ -42,29 +42,7 @@ function photoTimeFrom(featureSets: unknown): string | null {
   return s?.image_deleted_at ?? s?.created_at ?? null;
 }
 
-/**
- * Load one reading by its own id, or by the scan id that produced it (readings →
- * feature_sets.scan_id). Returns null when no matching reading is visible to the caller.
- */
-export async function loadReading(params: { readingId?: string; scanId?: string }): Promise<LoadedReading | null> {
-  let query;
-  if (params.readingId) {
-    query = supabase
-      .from('readings')
-      .select('id, kind, narrative, feature_sets!inner(features, scans(image_deleted_at, created_at))')
-      .eq('id', params.readingId);
-  } else if (params.scanId) {
-    query = supabase
-      .from('readings')
-      .select('id, kind, narrative, feature_sets!inner(features, scan_id, scans(image_deleted_at, created_at))')
-      .eq('feature_sets.scan_id', params.scanId);
-  } else {
-    return null;
-  }
-
-  const { data, error } = await query.order('created_at', { ascending: false }).limit(1).maybeSingle();
-  if (error || !data) return null;
-  const row = data as Record<string, unknown>;
+function toLoaded(row: Record<string, unknown>): LoadedReading {
   return {
     id: row.id as string,
     kind: row.kind as 'palm' | 'face',
@@ -72,6 +50,56 @@ export async function loadReading(params: { readingId?: string; scanId?: string 
     geometry: geometryFrom(row.feature_sets),
     photoDeletedAt: photoTimeFrom(row.feature_sets),
   };
+}
+
+/**
+ * Load one reading by its own id, or by the scan id that produced it (readings →
+ * feature_sets.scan_id). Returns null when no matching reading is visible to the caller.
+ *
+ * MATCHED scans (Backend §6.6 item 4) need the fallback leg: a matched scan deliberately has NO
+ * feature_set of its own — the pipeline reused the subject's canonical — so the scan-keyed join
+ * finds nothing (live 2026-07-25: the first real matched scan error-stated the reveal). The DB
+ * enforces one subject per (user, kind+side), so the caller's NEWEST reading of the scan's
+ * kind+side IS the canonical's reading.
+ */
+export async function loadReading(params: { readingId?: string; scanId?: string }): Promise<LoadedReading | null> {
+  if (params.readingId) {
+    const { data, error } = await supabase
+      .from('readings')
+      .select('id, kind, narrative, feature_sets!inner(features, scans(image_deleted_at, created_at))')
+      .eq('id', params.readingId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return null;
+    return toLoaded(data as Record<string, unknown>);
+  }
+  if (!params.scanId) return null;
+
+  const direct = await supabase
+    .from('readings')
+    .select('id, kind, narrative, feature_sets!inner(features, scan_id, scans(image_deleted_at, created_at))')
+    .eq('feature_sets.scan_id', params.scanId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (direct.data) return toLoaded(direct.data as Record<string, unknown>);
+  if (direct.error) return null;
+
+  // No feature_set for this scan → matched path. Resolve via the scan's kind+side.
+  const { data: scan } = await supabase.from('scans').select('kind, side').eq('id', params.scanId).maybeSingle();
+  if (!scan) return null;
+  let byKind = supabase
+    .from('readings')
+    .select('id, kind, narrative, feature_sets!inner(features, side, scans(image_deleted_at, created_at))')
+    .eq('kind', scan.kind as string);
+  if (scan.side) byKind = byKind.eq('feature_sets.side', scan.side as string);
+  const { data: canonical, error: canonErr } = await byKind
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (canonErr || !canonical) return null;
+  return toLoaded(canonical as Record<string, unknown>);
 }
 
 /** List the caller's readings, newest first, as shelf summaries (empty array when none / on error). */
