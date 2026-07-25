@@ -54,22 +54,22 @@ export default function Index() {
     };
   }, []);
 
-  // A0 launcher (§3.1): once the brand draw has settled, auto-advance to welcome — a hands-off
-  // splash. Gated so it ONLY fires when the draw actually plays (native + motion) AND the async
-  // routing resolved to "stay on the launcher" (so a returning user's redirect always wins). On
-  // web / reduce-motion there is no draw → no auto-nav (no surprise); the user taps or uses the CTA.
+  // Advancing is EXPLICIT (SN-8). A 1500ms auto-advance timer used to fire alongside the draw and
+  // race the user's own tap — whichever won, the transition felt arbitrary. Tap the lockup or the
+  // CTA; nothing moves on its own.
   const advance = () => router.replace('/welcome' as Href);
-  useEffect(() => {
-    if (!shouldAnimate || !resolved || hasToken || asyncRoute !== null) return;
-    const t = setTimeout(() => router.replace('/welcome' as Href), 1500);
-    return () => clearTimeout(t);
-  }, [shouldAnimate, resolved, hasToken, asyncRoute]);
 
   if (hasToken) {
     return <Redirect href={`/claim?token=${params.token}` as Href} />;
   }
   if (asyncRoute === 'claim') return <Redirect href={'/claim' as Href} />;
   if (asyncRoute === 'fortune') return <Redirect href={'/fortune' as Href} />;
+
+  // Until routing resolves, hold a bare themed frame — NOT the launcher (SN-8). A returning user
+  // used to watch the marketing lockup mount and its logo draw start, only for the redirect to
+  // yank it away a frame or two later. The two AsyncStorage reads behind `resolved` are fast, so
+  // this is a brief paper-colored hold that reads as part of the splash rather than as a screen.
+  if (!resolved) return <Screen><View /></Screen>;
 
   return (
     <Screen>
