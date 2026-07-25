@@ -5,8 +5,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { withRetry } from '../_shared/gemini.ts';
 import { EXTRACTION_MODEL, extractFeatures, type GeminiCall, type GeminiResponse } from '../_shared/extraction.ts';
-import { deriveGeometry, featureHash, type Geometry } from '../_shared/features.ts';
-import { fieldMajority, matchSubject, sameFeatures, type SubjectCandidate } from '../_shared/consistency.ts';
+import { deriveGeometry, featureHash, parseHandSignature, type Geometry } from '../_shared/features.ts';
+import { fieldMajority, matchSubject, matchSubjectByHand, sameFeatures, type SubjectCandidate } from '../_shared/consistency.ts';
 import { writeTelemetry } from '../_shared/telemetry.ts';
 import { alreadyProcessed, decideFailure, exhausted } from '../_shared/retry.ts';
 import { AppError, jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
@@ -110,6 +110,7 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
 
   const { data: scan } = await db.from('scans').select('id,user_id,kind,side,storage_path,status,capture_meta').eq('id', scanId).single();
   if (!scan) return applyFailure('missing_scan');
+  const handSig = parseHandSignature((scan.capture_meta as Record<string, unknown> | null)?.hand_geometry);
 
   // H2: never re-run a scan the pipeline has already moved past. If `archive` below fails after the
   // narrative job is enqueued, pgmq redelivers this message — and because subject_profiles was
@@ -124,17 +125,34 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
     return { scanId, outcome: 'already_processed', status: scan.status };
   }
 
+  const kind = scan.kind as 'palm' | 'face';
+  const subjectKind = kind === 'face' ? 'face' : `palm_${scan.side}`;
+  const candidates = await loadSubjectCandidates(db, scan.user_id, subjectKind);
+
+  const settleMatched = async (subject: Candidate, via: 'hand' | 'lines') => {
+    await db.from('subject_profiles').update({ scan_count: subject.scanCount + 1, last_matched_at: new Date().toISOString() }).eq('id', subject.subjectId);
+    await setStatus(db, scanId, 'matched');
+    await writeTelemetry(db, { worker: 'worker-scan', queue: 'scan_jobs', msg_id: msg.msg_id, status: 'ok', queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started, detail: { reused: subject.canonicalFeatureSetId, via } });
+    await archive(db, msg.msg_id);
+    return { scanId, outcome: 'matched', canonical: subject.canonicalFeatureSetId };
+  };
+
+  // §6.6 items 3-4, the REAL fast path (2026-07-25): the client's MediaPipe hand-shape signature
+  // identifies the hand BEFORE any download or Gemini spend — a recognized hand settles in ~1s
+  // with the stored reading ("Your palm is unchanged"). Line-geometry matching demoted to
+  // fallback after failing its first live repeat-scan (0.156 vs the 0.08 threshold).
+  const preMatch = matchSubjectByHand(handSig, candidates);
+  if (preMatch) return settleMatched(preMatch.subject, 'hand');
+
   await setStatus(db, scanId, 'extracting');
 
   const dl = await db.storage.from('scans').download(scan.storage_path);
   if (dl.error || !dl.data) return applyFailure('image_unavailable'); // transient → retry
   const imageBase64 = bytesToBase64(new Uint8Array(await dl.data.arrayBuffer()));
 
-  const kind = scan.kind as 'palm' | 'face';
-  const subjectKind = kind === 'face' ? 'face' : `palm_${scan.side}`;
   const runExtract = () => extractFeatures({ imageBase64, kind, systemInstruction: EXTRACTION_PREFIX, geminiCall });
 
-  // vote A — its geometry also drives subject matching
+  // vote A — its geometry drives the fallback subject matching
   let a: Awaited<ReturnType<typeof runExtract>>;
   try {
     a = await runExtract();
@@ -146,15 +164,9 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
   }
   if (!a.ok) return applyFailure(a.failureReason);
 
-  // recognize the same hand → reuse the canonical feature_set (§6.6.4: no new extraction row)
-  const m = matchSubject(a.geometry, await loadSubjectCandidates(db, scan.user_id, subjectKind));
-  if (m) {
-    await db.from('subject_profiles').update({ scan_count: m.subject.scanCount + 1, last_matched_at: new Date().toISOString() }).eq('id', m.subject.subjectId);
-    await setStatus(db, scanId, 'matched');
-    await writeTelemetry(db, { worker: 'worker-scan', queue: 'scan_jobs', msg_id: msg.msg_id, status: 'ok', queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started, detail: { reused: m.subject.canonicalFeatureSetId } });
-    await archive(db, msg.msg_id);
-    return { scanId, outcome: 'matched', canonical: m.subject.canonicalFeatureSetId };
-  }
+  // fallback matcher (legacy scans without a hand signature): Gemini line geometry
+  const m = matchSubject(a.geometry, candidates);
+  if (m) return settleMatched(m.subject, 'lines');
 
   // new subject → confirm the trust-critical first extraction with a 2nd vote (+ tie-break).
   // A transient blip on a *confirming* vote must not fail the whole scan (vote A already succeeded)
@@ -178,7 +190,10 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
     }
   }
   const featHash = await featureHash(features);
-  const geometry = deriveGeometry(features);
+  // The stored geometry carries BOTH signatures: Gemini line geometry (fallback matching +
+  // diagram reuse) and the client's hand-shape signature (primary matching, may be null for
+  // legacy/web scans).
+  const geometry: Geometry = { ...deriveGeometry(features), hand: handSig };
 
   const { data: fs, error: fsErr } = await db
     .from('feature_sets')
@@ -192,15 +207,27 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
   if (fsErr || !fs) return applyFailure('store_failed'); // transient DB error → retry
 
   // subject_profiles has unique(user_id, kind) (verified live), so reaching here with an existing
-  // profile means matchSubject failed to recognize a subject we have already stored — today that is
-  // the H1 face-geometry bug (face geometry is all-null → distance ∞ → a face never matches itself).
-  // Not fatal: the reading still lands and the scan completes. But swallowing the error hid H1 for
-  // this long, so it is surfaced in telemetry instead of discarded.
+  // profile means the matchers failed to recognize a subject we already store (live 2026-07-25:
+  // the line matcher measured 0.156 on a real same-palm rescan; face geometry is all-null — H1).
+  // The constraint's philosophy is "one subject per (user, kind)", so on conflict we ADOPT: the
+  // newest extraction becomes the canonical feature_set. This also self-heals legacy subjects
+  // into the hand-signature era — the adopted canonical carries `geometry.hand`, so the user's
+  // NEXT scan pre-matches and the consistency promise starts holding.
   const { error: spErr } = await db
     .from('subject_profiles')
     .insert({ user_id: scan.user_id, kind: subjectKind, canonical_feature_set_id: fs.id });
-  const subjectProfile = spErr ? (spErr.code === '23505' ? 'exists_unmatched' : `error:${spErr.code ?? 'unknown'}`) : 'created';
-  if (spErr) console.error('[worker-scan] subject_profiles insert failed (non-fatal):', spErr.message);
+  let subjectProfile = 'created';
+  if (spErr && spErr.code === '23505') {
+    const { error: adoptErr } = await db
+      .from('subject_profiles')
+      .update({ canonical_feature_set_id: fs.id })
+      .eq('user_id', scan.user_id)
+      .eq('kind', subjectKind);
+    subjectProfile = adoptErr ? `adopt_error:${adoptErr.code ?? 'unknown'}` : 'adopted';
+  } else if (spErr) {
+    subjectProfile = `error:${spErr.code ?? 'unknown'}`;
+  }
+  if (spErr) console.error(`[worker-scan] subject_profiles insert conflict → ${subjectProfile}:`, spErr.message);
 
   await setStatus(db, scanId, 'narrating');
   await db.rpc('queue_send', { p_queue: 'narrative_jobs', p_msg: { scan_id: scanId, feature_set_id: fs.id } });

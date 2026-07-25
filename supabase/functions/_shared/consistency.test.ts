@@ -55,3 +55,40 @@ Deno.test('twoVoteExtract: an extraction failure fails fast', async () => {
   const r = await twoVoteExtract(() => Promise.resolve({ ok: false, failureReason: 'not_a_hand' }));
   assert(!r.ok && r.failureReason === 'not_a_hand');
 });
+
+// ── hand-signature matching (2026-07-25): the pre-extraction fast path ───────────────────────────
+
+Deno.test('matchSubjectByHand: same hand matches, different hand / missing signatures do not', async () => {
+  const { matchSubjectByHand, HAND_MATCH_THRESHOLD } = await import('./consistency.ts');
+  const hand = { fingers: [0.42, 0.48, 0.45, 0.36], palm_width: 0.38 };
+  const withHand: SubjectCandidate[] = [{ subjectId: 's1', canonicalFeatureSetId: 'f1', geometry: { ...geo(0), hand } }];
+
+  // repeat scan of the same hand: tiny MediaPipe jitter → match
+  const rescan = { fingers: [0.424, 0.479, 0.447, 0.362], palm_width: 0.377 };
+  const m = matchSubjectByHand(rescan, withHand);
+  assert(m !== null && m.subject.subjectId === 's1');
+  assert(m!.distance < HAND_MATCH_THRESHOLD);
+
+  // someone else's hand: proportions differ → no match
+  const other = { fingers: [0.48, 0.55, 0.51, 0.42], palm_width: 0.34 };
+  assertEquals(matchSubjectByHand(other, withHand), null);
+
+  // no incoming signature (legacy/web scan) → no match, no crash
+  assertEquals(matchSubjectByHand(null, withHand), null);
+
+  // stored canonical predates hand signatures → skipped, no crash
+  const legacy: SubjectCandidate[] = [{ subjectId: 's2', canonicalFeatureSetId: 'f2', geometry: geo(0) }];
+  assertEquals(matchSubjectByHand(rescan, legacy), null);
+});
+
+Deno.test('matchSubjectByHand: picks the closest of several candidates', async () => {
+  const { matchSubjectByHand } = await import('./consistency.ts');
+  const sig = { fingers: [0.42, 0.48, 0.45, 0.36], palm_width: 0.38 };
+  const near = { fingers: [0.421, 0.481, 0.449, 0.361], palm_width: 0.379 };
+  const nearish = { fingers: [0.43, 0.49, 0.46, 0.37], palm_width: 0.39 };
+  const candidates: SubjectCandidate[] = [
+    { subjectId: 'far-ish', canonicalFeatureSetId: 'f1', geometry: { ...geo(0), hand: nearish } },
+    { subjectId: 'nearest', canonicalFeatureSetId: 'f2', geometry: { ...geo(0), hand: near } },
+  ];
+  assertEquals(matchSubjectByHand(sig, candidates)!.subject.subjectId, 'nearest');
+});

@@ -168,6 +168,9 @@ export function useGuidedCapture({ kind, hand }: { kind: ScanKind; hand?: Hand }
           source: 'camera',
           method,
           from_ready: fromReady,
+          // Subject-identity signature (§6.6 item 3) — the worker matches on this BEFORE paying
+          // for extraction (the true "same hand → stored reading" fast path).
+          ...(canonical?.handGeometry ? { hand_geometry: canonical.handGeometry } : {}),
           ...(q
             ? {
                 quality: {

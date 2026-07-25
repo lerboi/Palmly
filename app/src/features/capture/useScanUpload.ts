@@ -71,6 +71,7 @@ export function useScanUpload({ kind, hand }: { kind: ScanKind; hand?: Hand }) {
     await uploadUri(canonical?.uri ?? picked, 'manual', {
       cv: canonical ? 'cv1' : 'none',
       source: 'library',
+      ...(canonical?.handGeometry ? { hand_geometry: canonical.handGeometry } : {}),
     });
   };
 

@@ -1,5 +1,6 @@
 import { canonicalizePalm, canonicalizeRegion } from 'palm-landmarks';
 import type { CanonicalizedPalm } from './canonicalize';
+import { handSignature } from './handSignature';
 
 export type { CanonicalizedPalm } from './canonicalize';
 
@@ -13,9 +14,11 @@ export type { CanonicalizedPalm } from './canonicalize';
 export async function tryCanonicalizePalm(uri: string): Promise<CanonicalizedPalm | null> {
   try {
     const res = await canonicalizePalm(uri);
+    const landmarks = res.landmarks.map((p) => [p.x, p.y] as [number, number]);
     return {
       uri: `file://${res.filePath}`,
-      landmarks: res.landmarks.map((p) => [p.x, p.y] as [number, number]),
+      landmarks,
+      handGeometry: handSignature(landmarks),
     };
   } catch (e) {
     if (__DEV__) console.log('[P4] canonicalize → raw fallback:', String(e));

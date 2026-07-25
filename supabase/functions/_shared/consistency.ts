@@ -4,12 +4,40 @@
 //   • for a genuinely new subject: 2-vote extraction with field-level majority (+ a tie-break 3rd
 //     run on disagreement); disagreeing enum fields are marked confidence:low so the narrative hedges.
 import { canonicalize } from './features.ts';
-import { geometryDistance, type Geometry } from './features.ts';
+import { geometryDistance, handDistance, type Geometry, type HandSignature } from './features.ts';
 import type { ExtractResult } from './extraction.ts';
 
 // Normalized geometry distance below which two scans are the same hand. Spec-silent; chosen
 // conservatively (Decision Log 2026-07-12) — tune against the P12 eval set.
+// ⚠️ Live finding 2026-07-25: a REAL same-palm rescan (canonical crops, temp 0) measured 0.156 —
+// Gemini's line drawings are too unstable to identify a hand. This matcher is now the FALLBACK
+// (legacy scans without a hand signature); kept strict because its failure mode when loose is
+// serving someone the wrong person's reading.
 export const MATCH_THRESHOLD = 0.08;
+
+// Mean |Δ| across the 5 hand-signature components (canonical palm-height units) below which two
+// scans are the same hand. Same-hand repeat jitter is expected ≲0.01 (MediaPipe on canonical
+// crops); different hands differ in length/width mix by ≳0.03. Provisional — tune against the
+// P12 eval set (Decision Log 2026-07-25).
+export const HAND_MATCH_THRESHOLD = 0.025;
+
+/** Closest subject by HAND-SHAPE signature within threshold, or null. The primary matcher —
+ *  runs BEFORE extraction (the §6.6 item 4 zero-extraction fast path). */
+export function matchSubjectByHand<T extends SubjectCandidate>(
+  sig: HandSignature | null,
+  candidates: T[],
+  threshold = HAND_MATCH_THRESHOLD,
+): { subject: T; distance: number } | null {
+  if (!sig) return null;
+  let best: { subject: T; distance: number } | null = null;
+  for (const c of candidates) {
+    const stored = c.geometry?.hand;
+    if (!stored) continue;
+    const d = handDistance(sig, stored);
+    if (d <= threshold && (best === null || d < best.distance)) best = { subject: c, distance: d };
+  }
+  return best;
+}
 
 export interface SubjectCandidate {
   subjectId: string;

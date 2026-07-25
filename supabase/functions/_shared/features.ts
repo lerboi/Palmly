@@ -37,11 +37,45 @@ export interface LineGeometry {
   end: Point;
   centroid: Point;
 }
+
+/**
+ * The client's scale-invariant hand-SHAPE signature (Backend §6.6 item 3): index/middle/ring/
+ * pinky chain lengths + palm width, measured on the 21 MediaPipe landmarks in the cv1 canonical
+ * frame (already palm-height-normalized by the warp). Arrives via `capture_meta.hand_geometry`
+ * and is stored inside `feature_sets.geometry.hand`. This is the PRIMARY identity matcher —
+ * added 2026-07-25 after the line-geometry matcher failed its first live repeat-scan (Gemini
+ * re-draws lines with ±0.02–0.07 variance; MediaPipe landmarks on a canonical crop are stable).
+ */
+export interface HandSignature {
+  fingers: number[]; // [index, middle, ring, pinky]
+  palm_width: number;
+}
+
 export interface Geometry {
   heart?: LineGeometry | null;
   head?: LineGeometry | null;
   life?: LineGeometry | null;
   fate?: LineGeometry | null;
+  hand?: HandSignature | null;
+}
+
+/** Parse/validate a client-supplied hand signature (untrusted capture_meta) — null if malformed. */
+export function parseHandSignature(raw: unknown): HandSignature | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const fingers = o.fingers;
+  const palmWidth = o.palm_width;
+  if (!Array.isArray(fingers) || fingers.length !== 4) return null;
+  if (!fingers.every((f) => typeof f === 'number' && Number.isFinite(f) && f > 0 && f < 5)) return null;
+  if (typeof palmWidth !== 'number' || !Number.isFinite(palmWidth) || palmWidth <= 0 || palmWidth >= 5) return null;
+  return { fingers: fingers as number[], palm_width: palmWidth };
+}
+
+/** Mean absolute component difference between two hand signatures (0 = identical shape). */
+export function handDistance(a: HandSignature, b: HandSignature): number {
+  let sum = Math.abs(a.palm_width - b.palm_width);
+  for (let i = 0; i < 4; i++) sum += Math.abs((a.fingers[i] ?? 0) - (b.fingers[i] ?? 0));
+  return sum / 5;
 }
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -78,7 +112,8 @@ export function deriveGeometry(features: Record<string, unknown>): Geometry {
 
 /** Euclidean-ish distance between two geometry signatures (0 = identical). P5.T3 uses a threshold. */
 export function geometryDistance(a: Geometry, b: Geometry): number {
-  const keys: (keyof Geometry)[] = ['heart', 'head', 'life', 'fate'];
+  // Lines only — the `hand` signature has its own matcher (handDistance / matchSubjectByHand).
+  const keys = ['heart', 'head', 'life', 'fate'] as const;
   let sum = 0;
   let n = 0;
   for (const k of keys) {
