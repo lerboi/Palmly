@@ -16,6 +16,30 @@ describe('motion tokens — animation foundation (redesign v2 §4.1)', () => {
     expect(motion.duration.draw).toBe(1200);
   });
 
+  it('names every authored beat, so none of them ships as a literal (Audit-4 CO-10)', () => {
+    expect(motion.duration.thread).toBe(800);
+    expect(motion.duration.ring).toBe(900);
+    expect(motion.duration.breath).toBe(1500);
+    expect(motion.duration.rotate).toBe(2800);
+  });
+
+  it('keeps the ladder monotonic, so a longer name always means a longer beat', () => {
+    const ladder = [
+      motion.duration.instant,
+      motion.duration.fast,
+      motion.duration.base,
+      motion.duration.slow,
+      motion.duration.thread,
+      motion.duration.ring,
+      motion.duration.draw,
+      motion.duration.breath,
+      motion.duration.rotate,
+    ];
+    expect(ladder).toEqual([...ladder].sort((a, b) => a - b));
+    // Every beat is distinct — two names for the same number is how 1400-vs-1500 happened.
+    expect(new Set(ladder).size).toBe(ladder.length);
+  });
+
   it('stores easing as 4-point cubic-bezier control tuples (reanimated-free)', () => {
     for (const curve of [motion.easing.standard, motion.easing.decelerate]) {
       expect(curve).toHaveLength(4);

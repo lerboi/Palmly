@@ -161,13 +161,14 @@ function StreakStrip({ streak }: { streak: number }) {
   const days = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6'];
 
   const pulse = useSharedValue(1);
+  const breath = theme.motion.duration.breath;
   useEffect(() => {
     if (!shouldAnimate) {
       pulse.value = 1;
       return;
     }
-    pulse.value = withRepeat(withTiming(1.15, { duration: 900, easing: Easing.inOut(Easing.ease) }), -1, true);
-  }, [shouldAnimate, pulse]);
+    pulse.value = withRepeat(withTiming(1.15, { duration: breath, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [shouldAnimate, pulse, breath]);
   const flameStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
   return (

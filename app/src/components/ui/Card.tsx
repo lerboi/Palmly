@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
-import { Platform, Pressable, StyleSheet, type ViewStyle } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
+import { Pressable, StyleSheet, type ViewStyle } from 'react-native';
+import Animated from 'react-native-reanimated';
+import { useEntrance, usePressSpring, useTheme } from '@/theme';
 import type { ShadowKey } from '@/theme';
 import { tick } from '@/lib/haptics';
 
@@ -50,8 +50,6 @@ export function Card({
   style,
 }: CardProps) {
   const theme = useTheme();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
   const lifted = elevation !== 'none';
   // Separation is never shadow-only on light (Audit-4 CC-3 / Design-Direction §2 P2): a white card
   // on paper keeps its hairline at every elevation. On dark the raised surface role does the work,
@@ -67,15 +65,9 @@ export function Card({
   };
 
   // Cards settle in on a SPRING (redesign §4.1 `motion.spring.entrance`, F2.7) rather than a flat
-  // duration, so the stagger feels physical. Native-only; reduce-motion / web render the settled card.
-  const entering =
-    shouldAnimate && entranceIndex !== undefined
-      ? FadeInDown.delay(entranceIndex * theme.motion.stagger.list)
-          .springify()
-          .damping(theme.motion.spring.entrance.damping)
-          .stiffness(theme.motion.spring.entrance.stiffness)
-          .mass(theme.motion.spring.entrance.mass)
-      : undefined;
+  // duration, so the stagger feels physical. The builder is the app's ONE entrance system
+  // (`useEntrance`), shared with the handful of non-card entrances.
+  const entering = useEntrance()(entranceIndex);
 
   // The scale-down press-spring is the shared @/theme hook (redesign §5.6).
   const { scaleStyle, onPressIn, onPressOut } = usePressSpring(0.985);

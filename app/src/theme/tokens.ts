@@ -337,7 +337,20 @@ export type ShadowKey = keyof typeof shadow;
  * `withSpring(to, theme.motion.spring.press)`.
  */
 export const motion = {
-  duration: { instant: 0, fast: 120, base: 220, slow: 360, draw: 1200 },
+  // The full ladder. Anything longer than `slow` is an *authored beat*, not a transition, so it
+  // gets a name (Audit-4 CO-10: these shipped as bare 800/900/1400/1500/2800 literals, with two
+  // different numbers — 1400 and 1500 — for the same breathing idea).
+  duration: {
+    instant: 0,
+    fast: 120,
+    base: 220,
+    slow: 360,
+    thread: 800, // the red thread drawing itself between two palms
+    ring: 900, // a score/progress ring sweeping to its value
+    draw: 1200, // a palm line drawing on
+    breath: 1500, // one half-cycle of a breathing loop (glow, pulse, opacity)
+    rotate: 2800, // how long a rotating line of copy holds before the next one
+  },
   easing: {
     standard: [0.2, 0, 0, 1], // general in/out — most transitions
     decelerate: [0, 0, 0.2, 1], // entrances — fast start, gentle land

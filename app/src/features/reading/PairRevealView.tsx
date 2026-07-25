@@ -154,14 +154,15 @@ function SubScoreBar({ label, value, index }: { label: string; value: number; in
   const clamped = Math.max(0, Math.min(100, value));
   const w = useSharedValue(shouldAnimate ? 0 : clamped);
   const base = theme.motion.duration.base;
+  const stagger = theme.motion.stagger.reveal;
   useEffect(() => {
     if (!shouldAnimate) {
       w.value = clamped;
       return;
     }
     w.value = 0;
-    w.value = withDelay(index * 90, withTiming(clamped, { duration: base }));
-  }, [shouldAnimate, clamped, index, w, base]);
+    w.value = withDelay(index * stagger, withTiming(clamped, { duration: base }));
+  }, [shouldAnimate, clamped, index, w, base, stagger]);
   const fillStyle = useAnimatedStyle(() => ({ width: `${w.value}%` }));
 
   return (

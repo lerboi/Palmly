@@ -20,7 +20,9 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
     shouldAnimate ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base) : undefined;
 
   return (
-    <Card elevation="md" style={{ marginBottom: theme.spacing.md }}>
+    // The hero animates FIRST (Direction §3): Today used to spring its secondary rows in while
+    // the fortune card — the page's whole point — just appeared.
+    <Card elevation="md" entranceIndex={0} style={{ marginBottom: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.md }}>
         <View
           style={{

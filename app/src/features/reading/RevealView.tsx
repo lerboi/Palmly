@@ -4,7 +4,6 @@ import { useRouter, type Href } from 'expo-router';
 import Animated, {
   Easing,
   FadeIn,
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -16,7 +15,7 @@ import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { AppHeader, Button, Card, Icon, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
-import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
+import { useEntrance, usePressSpring, useReducedMotion, useTheme } from '@/theme';
 import { track } from '@/lib/analytics';
 import { CANONICAL_DELETION_SHORT } from '@/lib/trustCopy';
 import { FACE_READING_ENABLED } from '@/lib/capabilities';
@@ -88,8 +87,10 @@ export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', 
   const shareHref = `/share${readingId ? `?readingId=${readingId}` : ''}` as Href;
   const shareCompatHref =
     `/share?${readingId ? `readingId=${readingId}&` : ''}initialVariant=compat` as Href;
-  const enter = (i: number) =>
-    shouldAnimate ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base) : undefined;
+  // The ONE entrance system (Audit-4 CO-10): this reveal used to run its own FadeInDown duration
+  // stagger alongside `Card entranceIndex`'s spring, at a different delay. Cards below take an
+  // `entranceIndex`; the two bare-text heroes use the same builder directly.
+  const enter = useEntrance();
 
   // The share seal appears only once the reader scrolls past the hero/first section (audit F0.12) —
   // an earned affordance, not a timer pop. The same handler fires the reveal scroll-depth funnel
@@ -151,22 +152,16 @@ export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', 
 
         {/* Repeat-scan consistency micro-survey (F1.10) — only when this reveal came from a `matched` resolve. */}
         {matched && readingId ? (
-          <Animated.View entering={enter(n++)}>
-            <ConsistencySurvey readingId={readingId} />
-          </Animated.View>
+          <ConsistencySurvey readingId={readingId} entranceIndex={n++} />
         ) : null}
 
         {/* ── Free section cards; the compatibility hook lives inside the reading (P2) ── */}
         {free.map((section, i) => (
           <View key={section.key}>
-            <Animated.View entering={enter(n++)}>
-              <SectionCard section={section} geometry={geometry} kind={kind} readingId={readingId} index={i} />
-            </Animated.View>
+            <SectionCard section={section} geometry={geometry} kind={kind} readingId={readingId} index={i} entranceIndex={n++} />
             {/* The compat hook is palm-based (a face reading has no palm to compare) — palm only. */}
             {kind === 'palm' && i === 1 ? (
-              <Animated.View entering={enter(n++)}>
-                <CompareCard onPress={() => router.push(shareCompatHref)} />
-              </Animated.View>
+              <CompareCard onPress={() => router.push(shareCompatHref)} entranceIndex={n++} />
             ) : null}
           </View>
         ))}
@@ -178,9 +173,7 @@ export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', 
               Go deeper
             </Text>
             {locked.map((section) => (
-              <Animated.View key={section.key} entering={enter(n++)}>
-                <LockedCard section={section} onUnlock={() => router.push(`/paywall?trigger=locked_section&section=${section.key}` as Href)} />
-              </Animated.View>
+              <LockedCard key={section.key} section={section} entranceIndex={n++} onUnlock={() => router.push(`/paywall?trigger=locked_section&section=${section.key}` as Href)} />
             ))}
           </View>
         ) : null}
@@ -214,16 +207,19 @@ function PendingReveal({ geometry, onBack }: { geometry: LineGeometry; onBack: (
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  const proof = useRotating(PENDING_LINES, 2800, shouldAnimate);
+  // Rotating copy is CONTENT, not motion (Direction §3): it keeps advancing under reduce-motion —
+  // only the crossfade below hard-swaps. Web holds line 1 so the static export stays deterministic.
+  const proof = useRotating(PENDING_LINES, theme.motion.duration.rotate, Platform.OS !== 'web');
 
   const breath = useSharedValue(1);
+  const breathMs = theme.motion.duration.breath;
   useEffect(() => {
     if (!shouldAnimate) {
       breath.value = 1;
       return;
     }
-    breath.value = withRepeat(withTiming(0, { duration: 1500, easing: Easing.inOut(Easing.ease) }), -1, true);
-  }, [shouldAnimate, breath]);
+    breath.value = withRepeat(withTiming(0, { duration: breathMs, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [shouldAnimate, breath, breathMs]);
   const breathStyle = useAnimatedStyle(() => ({ opacity: 0.82 + 0.18 * breath.value }));
 
   return (
@@ -327,7 +323,7 @@ function FeatureIcon({
   );
 }
 
-function SectionCard({ section, geometry, kind, readingId, index }: { section: ReadingSection; geometry: LineGeometry; kind: ReadingKind; readingId?: string; index: number }) {
+function SectionCard({ section, geometry, kind, readingId, index, entranceIndex }: { section: ReadingSection; geometry: LineGeometry; kind: ReadingKind; readingId?: string; index: number; entranceIndex?: number }) {
   const theme = useTheme();
   // Each free section rendered into the reveal is a funnel step (F0.T12) — only for a real reading.
   useEffect(() => {
@@ -338,7 +334,7 @@ function SectionCard({ section, geometry, kind, readingId, index }: { section: R
   // Face: no line geometry exists, so the marker is a themed feature-icon tile.
   const line = SECTION_LINE[section.key];
   return (
-    <Card elevation="sm" style={{ marginBottom: theme.spacing.md }}>
+    <Card elevation="sm" entranceIndex={entranceIndex} style={{ marginBottom: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
         <View style={{ width: 64, alignItems: 'center' }}>
           {kind === 'face' ? (
@@ -370,10 +366,10 @@ function SectionCard({ section, geometry, kind, readingId, index }: { section: R
   );
 }
 
-function CompareCard({ onPress }: { onPress: () => void }) {
+function CompareCard({ onPress, entranceIndex }: { onPress: () => void; entranceIndex?: number }) {
   const theme = useTheme();
   return (
-    <Card elevation="md" style={{ marginBottom: theme.spacing.md, alignItems: 'center' }}>
+    <Card elevation="md" entranceIndex={entranceIndex} style={{ marginBottom: theme.spacing.md, alignItems: 'center' }}>
       <FeatureIcon icon="thread" tone="heritage" />
       <Text variant="title" style={{ textAlign: 'center', marginTop: theme.spacing.sm }}>
         Compare with a friend
@@ -390,11 +386,11 @@ function CompareCard({ onPress }: { onPress: () => void }) {
   );
 }
 
-function LockedCard({ section, onUnlock }: { section: ReadingSection; onUnlock: () => void }) {
+function LockedCard({ section, onUnlock, entranceIndex }: { section: ReadingSection; onUnlock: () => void; entranceIndex?: number }) {
   const theme = useTheme();
   return (
     <Pressable onPress={onUnlock} accessibilityRole="button" accessibilityLabel={`Unlock ${section.title}`}>
-      <Card elevation="sm" style={{ marginBottom: theme.spacing.md }}>
+      <Card elevation="sm" entranceIndex={entranceIndex} style={{ marginBottom: theme.spacing.md }}>
         <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
           <FeatureIcon icon="lock" tone="premiumInk" size={44} />
           <View style={{ flex: 1 }}>
@@ -512,7 +508,7 @@ function PalmOfferCard({ onPress }: { onPress: () => void }) {
 
 /** Repeat-scan consistency micro-survey (audit F1.10, Backend §6.6.4) — a one-tap 3-option prompt
  *  shown when a scan resolved `matched`; fires `consistency_survey` and thanks the user. */
-function ConsistencySurvey({ readingId }: { readingId: string }) {
+function ConsistencySurvey({ readingId, entranceIndex }: { readingId: string; entranceIndex?: number }) {
   const theme = useTheme();
   const [answered, setAnswered] = useState(false);
   const answer = (response: 'consistent' | 'inconsistent' | 'unsure') => {
@@ -520,7 +516,7 @@ function ConsistencySurvey({ readingId }: { readingId: string }) {
     setAnswered(true);
   };
   return (
-    <Card elevation="sm" style={{ marginBottom: theme.spacing.md, gap: theme.spacing.md }}>
+    <Card elevation="sm" entranceIndex={entranceIndex} style={{ marginBottom: theme.spacing.md, gap: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
         <FeatureIcon icon="check" size={40} />
         <View style={{ flex: 1 }}>

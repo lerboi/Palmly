@@ -223,13 +223,14 @@ function ProgressRing({
   const arcProps = useAnimatedProps(() => ({ strokeDashoffset: c * (1 - p.value) }));
 
   const breath = useSharedValue(1);
+  const breathMs = theme.motion.duration.breath;
   useEffect(() => {
     if (!shouldAnimate) {
       breath.value = 1;
       return;
     }
-    breath.value = withRepeat(withTiming(0.4, { duration: 1400, easing: Easing.inOut(Easing.ease) }), -1, true);
-  }, [shouldAnimate, breath]);
+    breath.value = withRepeat(withTiming(0.4, { duration: breathMs, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [shouldAnimate, breath, breathMs]);
   const glowProps = useAnimatedProps(() => ({ strokeOpacity: 0.05 + 0.1 * breath.value }));
 
   return (

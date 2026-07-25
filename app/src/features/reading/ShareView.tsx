@@ -628,14 +628,15 @@ export function RedThread({ animate = false }: { animate?: boolean }) {
   const shouldAnimate = animate && !reduceMotion && Platform.OS !== 'web';
   const THREAD_LEN = 86; // approx path length → seeds the draw-on dash
   const progress = useSharedValue(1);
+  const threadMs = theme.motion.duration.thread;
   useEffect(() => {
     if (!shouldAnimate) {
       progress.value = 1;
       return;
     }
     progress.value = 0;
-    progress.value = withTiming(1, { duration: 800, easing: Easing.inOut(Easing.cubic) });
-  }, [shouldAnimate, progress]);
+    progress.value = withTiming(1, { duration: threadMs, easing: Easing.inOut(Easing.cubic) });
+  }, [shouldAnimate, progress, threadMs]);
   const threadProps = useAnimatedProps(() => ({ strokeDashoffset: THREAD_LEN * (1 - progress.value) }));
   return (
     <Svg width={72} height={60} viewBox="0 0 72 60">
@@ -678,14 +679,15 @@ export function ScoreRing({
 
   const shown = useCountUp(score, shouldAnimate);
   const progress = useSharedValue(shouldAnimate ? 0 : score / 100);
+  const ringMs = theme.motion.duration.ring;
   useEffect(() => {
     if (!shouldAnimate) {
       progress.value = score / 100;
       return;
     }
     progress.value = 0;
-    progress.value = withTiming(score / 100, { duration: 900, easing: Easing.out(Easing.cubic) });
-  }, [shouldAnimate, score, progress]);
+    progress.value = withTiming(score / 100, { duration: ringMs, easing: Easing.out(Easing.cubic) });
+  }, [shouldAnimate, score, progress, ringMs]);
   const arcProps = useAnimatedProps(() => ({ strokeDashoffset: c * (1 - progress.value) }));
 
   return (
