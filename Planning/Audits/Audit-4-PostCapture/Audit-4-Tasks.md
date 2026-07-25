@@ -23,12 +23,12 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 
 | Field | Value |
 |---|---|
-| Current phase | U3 — the almanac card |
-| Next task | U3.G (phase gate) |
+| Current phase | U4 — reveal |
+| Next task | U4.T1 |
 | Blocked on | — |
 | Waiting on human | — |
 | Last run | 2026-07-25 |
-| Last completed task | U3.T3 |
+| Last completed task | U3.G — **U3 COMPLETE** (3 tasks + gate) |
 | Notes for next run | **Three contracts U0.T1–T3 established — extend them, never route around them.** (1) The AA matrix in `theme/__tests__/tokens.test.ts` is the contrast contract; adding a role means adding its used pairings. Sunken chip/pill labels are `textPrimary` (`textSecondary` on `surfaceSunken` is 4.25:1 and is deliberately absent from the matrix as a text pairing). (2) Accent TEXT is `accentPressed`; `accent` is fills / selected / palm-line only; premium TEXT is `premiumInk`, `premium` is fill only. (3) Decorative glyphs are `textSecondary` on a `surfaceSunken` well — `accentMuted` wells now mean "selected". Screenshot recipe erratum: this host's headless Chrome renders **dark** by default, and metro caches the inlined env var — light shots need `EXPO_PUBLIC_FORCE_SCHEME=light npx expo export --platform web` plus `--clear` whenever the flag's value changes. |
 
 ---
@@ -321,7 +321,7 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
   coordinate with U6.T4 if not yet landed; whichever lands second wires the focus).
   - Verify: standing gates; free + premium shots; prefill with empty direction produces a
     well-formed question (unit test).
-- [ ] **U3.G** 🚦 Almanac gate: standing gates + shots (free/premium × light/dark × 375/320) to
+- [x] **U3.G** 🚦 Almanac gate: standing gates + shots (free/premium × light/dark × 375/320) to
   `docs/checkpoints/audit4/u3-gate/`; update STATE.
 
 ## U4 — Reveal (Direction §4.4)
@@ -457,6 +457,7 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 
 | Date | Task | One-line result |
 |---|---|---|
+| 2026-07-25 | **U3.G** 🚦 | **Almanac gate PASSED.** 8 shots — free/premium × light/dark × 375/320 — to `docs/checkpoints/audit4/u3-gate/`. **Accent litmus: 95–96% of each screen's accent is ONE small band** (free = the h24 tonal CTA label; premium = the h31 "Ask about today" link), plus 1–3% in the week strip's today ring — so the card contributes exactly **one interactive** accent and the ring is §4.1's sanctioned ambient one. **Edge-clip probe clean in all 8**: zero non-page pixels in the outer 2pt margins at either width, which is the CO-6 overflow the audit measured on a 320pt device. Results are identical across schemes and widths, i.e. the card no longer changes behavior with the viewport. Standing gates: typecheck 0, lint 0, 119 tests. |
 | 2026-07-25 | U3.T3 | **The free state stops reading like a spec sheet (CP-6).** "Do · Avoid · lucky direction · hours · love, career & wealth" — a seven-item interpunct list in low-contrast gold — becomes the single §5 line, in ink (D43), with the CTA renamed to "Unlock the full almanac" and carrying U0.T2's AA-fixed tonal label. **The chat bridge can no longer emit a broken sentence**: `Why is ${lucky_direction} my lucky direction today?` was unguarded, so an empty direction produced "Why is  my lucky direction today?" — a doubled space and a question about nothing. A pure `askPrefill()` now trims, and falls back to "What should I focus on today?" — 4 tests, including an explicit assertion that no output ever contains a double space. `autoFocus` wired here since this task landed first (D42). Tests 115 → 119. |
 | 2026-07-25 | U3.T2 | **The Lucky row stops overflowing (CO-6).** The cells carried `minWidth: 84` and no `flexBasis`, so they could only ever GROW to fit content — "Southeast" with its icon, "Jade green", "7–9am · 3–5pm" — and three of them blew past a 320pt device's 256pt content box. Now `flexBasis` + `minWidth: 0` lets text wrap inside the cell, with a testable `luckyColumns()` rule (D41): thirds ≥360pt, 2+1 below. **Measured by DOM probe, not eyeballed:** at 390pt all three labels share top `819` (one row); at 320pt Direction/Color share `849` and Hours drops to `909` (2+1), hours on one line, nothing clipped. The compass rotation, its safe fallback and the unmapped-input test already landed in U0.T5 — cited, not duplicated. Tests 112 → 115. |
 | 2026-07-25 | U3.T1 | **The almanac card stops being an info dump.** Eyebrow loses its icon chip; the essence moves from 17px body to the serif `editorialTitle`, so the card finally has the one editorial moment §4.2 promises (and the share crop it was designed around). Do/Avoid go from two ~120pt columns that wrapped mid-phrase to **full-width rows**, with the semantic color on the MARK only and headings in ink — CC-2's four-hue pile-up (accent + success-green + danger-crimson + premium-gold, with `danger #A93226` so near `accent #D13B27` that "Avoid" read as brand-red) is gone. Aspect labels `tertiary` → `secondary` (CC-5). **Four-hue check: the card's only accent is its "Ask about today" link** — 1 occurrence, interactive. 320pt probe: 0 non-page pixels in the outer margins, nothing clipped. Also `/dev/fortune-premium` added (D39) and "Colour" → "Color" (D40). Gates green, 112 tests. |
