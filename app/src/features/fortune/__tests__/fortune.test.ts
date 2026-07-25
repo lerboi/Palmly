@@ -43,6 +43,17 @@ describe('fortune (P9.T3)', () => {
       expect(homeState({ fortune: null })).toBe('error');
     });
 
+    it('never renders the locked/unlocked branch while entitlement is pending (SH-2)', () => {
+      // Entitlements default to `premium: false` while the subscriptions read is in flight, so
+      // rendering `ready` early flashed the LOCKED fortune card at paying users on every open.
+      // The skeleton must cover that window.
+      expect(homeState({ entitlementLoading: true, fortune: f, firstRun: false })).toBe('loading');
+      // …and it outranks even a resolved fortune with a known returning user.
+      expect(homeState({ entitlementLoading: true, fortune: f })).not.toBe('ready');
+      // Once entitlement resolves, the branch may render.
+      expect(homeState({ entitlementLoading: false, fortune: f, firstRun: false })).toBe('ready');
+    });
+
     it('is ready when a returning user has a fortune', () => {
       expect(homeState({ firstRun: false, fortune: f })).toBe('ready');
     });

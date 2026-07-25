@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import { Button, Card, HeaderIconButton, Icon, Screen, Skeleton, Text } from '@/components/ui';
@@ -30,6 +30,8 @@ export interface FortuneHomeProps {
   firstRun?: boolean;
   /** The fortune request is still in flight — render the skeleton, never the first-run hero. */
   loading?: boolean;
+  /** The entitlement read is still in flight — the locked/unlocked branch must wait (SH-2). */
+  entitlementLoading?: boolean;
   /** The fortune request failed — render the retry card, never the first-run hero. */
   error?: boolean;
   /** Retry the failed fortune fetch. */
@@ -43,23 +45,30 @@ export interface FortuneHomeProps {
  * fortune hero card (free/premium), a pending-compatibility red-thread row, and entries to the
  * readings shelf and chat. English-first, no CJK. A first-run user sees a traced-palm hero.
  */
-export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRun, loading, error, onRetry, now }: FortuneHomeProps) {
+export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRun, loading, entitlementLoading, error, onRetry, now }: FortuneHomeProps) {
   const theme = useTheme();
   const router = useRouter();
-  const { isAnonymous } = useAccountIdentity();
+  const { isAnonymous, loading: identityLoading } = useAccountIdentity();
   const [ts] = useState(() => now ?? Date.now());
   const date = almanacDate(new Date(ts));
   // One resolver, unit-tested (SH-1). `loading`/`error` are about the REQUEST and win first;
   // `firstRun` is about the USER. A missing fortune row on a ready screen is NOT first-run.
-  const state = homeState({ loading, error, firstRun, fortune });
+  const state = homeState({ loading, entitlementLoading, error, firstRun, fortune });
+  const reduceMotion = useReducedMotion();
+  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
 
   // Live pending-compat red-thread (audit F1.7): the last invite the user SENT, read back from the
   // local store so the row re-shares the EXACT same link — never mints a second. `partnerName` (a
   // prop) is a /dev override; production drives the row off the store.
   const [pending, setPending] = useState<PendingCompat | null>(null);
+  const [pendingResolved, setPendingResolved] = useState(false);
   useEffect(() => {
     let active = true;
-    loadPendingCompat().then((p) => active && setPending(p));
+    loadPendingCompat().then((p) => {
+      if (!active) return;
+      setPending(p);
+      setPendingResolved(true);
+    });
     return () => {
       active = false;
     };
@@ -71,10 +80,13 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
   // Daily-fortune push opt-in (sanctioned moment #2, F1.T10) — shown once, in-context on the home the
   // fortune lives on (never at launch), until enabled or dismissed. The OS ask is device-only.
   const [showOptIn, setShowOptIn] = useState(false);
+  const [optInResolved, setOptInResolved] = useState(false);
   useEffect(() => {
     let active = true;
     Promise.all([getPushPermission(), fortuneOptInDismissed()]).then(([status, dismissed]) => {
-      if (active) setShowOptIn(status === 'undetermined' && !dismissed);
+      if (!active) return;
+      setShowOptIn(status === 'undetermined' && !dismissed);
+      setOptInResolved(true);
     });
     return () => {
       active = false;
@@ -84,6 +96,10 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
     setShowOptIn(false);
     void requestPushPermission('fortune_optin');
   };
+  // All three async tail reads have answered — the notify row, the red thread, and the claim row
+  // now appear together instead of arriving one at a time (SH-3).
+  const tailReady = pendingResolved && optInResolved && !identityLoading;
+
   const onDismissPush = () => {
     setShowOptIn(false);
     void dismissFortuneOptIn();
@@ -128,20 +144,28 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
               onAsk={(q) => router.push(`/chat?q=${encodeURIComponent(q)}` as Href)}
             />
           ) : null}
-          {showOptIn ? <NotifyOptInCard onEnable={onEnablePush} onDismiss={onDismissPush} /> : null}
-          {showThread ? (
-            <RedThreadRow
-              name={nudgeName}
-              elapsed={nudgeElapsed}
-              onPress={() => router.push((pending ? '/share?initialVariant=compat&reshare=1' : '/share') as Href)}
-              index={0}
-            />
-          ) : null}
+          {/* The tail mounts ONCE, after all three of its async reads have answered, and fades in
+              (SH-3). Previously each read inserted its own row on arrival, so Today visibly
+              reflowed two or three times per open. It sits below the hero, so appearing costs
+              nothing above it — what jumped before was this block growing in stages. */}
+          {tailReady ? (
+            <Animated.View entering={shouldAnimate ? FadeIn.duration(theme.motion.duration.base) : undefined}>
+              {showOptIn ? <NotifyOptInCard onEnable={onEnablePush} onDismiss={onDismissPush} /> : null}
+              {showThread ? (
+                <RedThreadRow
+                  name={nudgeName}
+                  elapsed={nudgeElapsed}
+                  onPress={() => router.push((pending ? '/share?initialVariant=compat&reshare=1' : '/share') as Href)}
+                  index={0}
+                />
+              ) : null}
           {/* Readings and Ask left with the tab bar (SN-2/SN-5, Direction §1 P3) — Today is a page
               again, not a menu. The free-chat row in particular was a two-hop trap: chip → gate →
               paywall. The Ask TAB now shows that gate, and its CTA goes straight to the paywall. */}
-          {isAnonymous ? (
-            <RowLink icon="sparkle" label="Claim your account" onPress={() => router.push('/account?reason=fortune' as Href)} index={1} />
+              {isAnonymous ? (
+                <RowLink icon="sparkle" label="Claim your account" onPress={() => router.push('/account?reason=fortune' as Href)} index={1} />
+              ) : null}
+            </Animated.View>
           ) : null}
         </>
       )}

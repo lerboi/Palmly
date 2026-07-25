@@ -15,7 +15,7 @@ import { track } from '@/lib/analytics';
  * Premium fixtures live under `/dev/*` only.
  */
 export default function FortuneScreen() {
-  const { premium } = useEntitlement();
+  const { premium, loading: entitlementLoading } = useEntitlement();
   const [fortune, setFortune] = useState<Fortune | null>(null);
   // The request's own state, tracked explicitly (SH-1). A missing fortune used to stand in for
   // "loading" AND "failed" AND "new user", so all three rendered the first-run hero.
@@ -89,6 +89,7 @@ export default function FortuneScreen() {
       fortune={fortune}
       premium={premium}
       loading={loading}
+      entitlementLoading={entitlementLoading}
       error={failed}
       firstRun={firstRun}
       onRetry={() => setReloads((n) => n + 1)}

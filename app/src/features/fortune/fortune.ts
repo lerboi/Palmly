@@ -134,11 +134,17 @@ export type HomeState = 'loading' | 'error' | 'firstRun' | 'ready';
  */
 export function homeState(input: {
   loading?: boolean;
+  /**
+   * The entitlement read is still in flight. Counts as loading (Audit-4 SH-2): entitlements
+   * default to `premium: false` while resolving, so rendering the ready branch early flashed the
+   * LOCKED fortune card at paying users on every single open.
+   */
+  entitlementLoading?: boolean;
   error?: boolean;
   firstRun?: boolean;
   fortune?: Fortune | null;
 }): HomeState {
-  if (input.loading) return 'loading';
+  if (input.loading || input.entitlementLoading) return 'loading';
   if (input.error) return 'error';
   if (input.firstRun) return 'firstRun';
   if (!input.fortune) return 'error';
