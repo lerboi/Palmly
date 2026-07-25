@@ -130,9 +130,19 @@ async function processMessage(db: SupabaseClient, msg: ScanMessage, geminiCall: 
   const candidates = await loadSubjectCandidates(db, scan.user_id, subjectKind);
 
   const settleMatched = async (subject: Candidate, via: 'hand' | 'lines') => {
+    // Self-heal leg 2 (2026-07-25): a line-matched scan that carries a hand signature the stored
+    // canonical lacks BACKFILLS it — otherwise legacy subjects stay stuck on the line-matcher
+    // coin flip forever (live: scan2 missed at 0.156, scan3 hit at <0.08, same palm).
+    const backfillHand = via === 'lines' && handSig !== null && !subject.geometry?.hand;
+    if (backfillHand) {
+      await db
+        .from('feature_sets')
+        .update({ geometry: { ...subject.geometry, hand: handSig } })
+        .eq('id', subject.canonicalFeatureSetId);
+    }
     await db.from('subject_profiles').update({ scan_count: subject.scanCount + 1, last_matched_at: new Date().toISOString() }).eq('id', subject.subjectId);
     await setStatus(db, scanId, 'matched');
-    await writeTelemetry(db, { worker: 'worker-scan', queue: 'scan_jobs', msg_id: msg.msg_id, status: 'ok', queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started, detail: { reused: subject.canonicalFeatureSetId, via } });
+    await writeTelemetry(db, { worker: 'worker-scan', queue: 'scan_jobs', msg_id: msg.msg_id, status: 'ok', queue_age_ms: queueAgeMs, model_latency_ms: Date.now() - started, detail: { reused: subject.canonicalFeatureSetId, via, ...(backfillHand ? { hand_backfilled: true } : {}) } });
     await archive(db, msg.msg_id);
     return { scanId, outcome: 'matched', canonical: subject.canonicalFeatureSetId };
   };
