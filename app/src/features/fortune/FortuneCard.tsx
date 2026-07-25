@@ -34,7 +34,7 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
         tone="secondary"
         style={{ textTransform: 'uppercase', letterSpacing: 1, marginBottom: theme.spacing.sm }}
       >
-        Today&apos;s fortune
+        Today’s fortune
       </Text>
 
       {/* The essence is the card's hero and its share crop — set in the serif, the one editorial

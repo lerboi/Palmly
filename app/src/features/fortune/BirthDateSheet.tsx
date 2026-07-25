@@ -85,7 +85,7 @@ export function BirthDateSheet({ onSave, onSkip, busy, failed }: BirthDateSheetP
 
             <Text variant="title">When were you born?</Text>
             <Text variant="body" tone="secondary">
-              Your birth date tunes each day&apos;s fortune to you.
+              Your birth date tunes each day’s fortune to you.
             </Text>
 
             {isWeb ? (
@@ -122,7 +122,7 @@ export function BirthDateSheet({ onSave, onSkip, busy, failed }: BirthDateSheetP
 
             {failed ? (
               <Text variant="caption" tone="danger">
-                That didn&apos;t save — check your connection and try again.
+                That didn’t save — check your connection and try again.
               </Text>
             ) : null}
 

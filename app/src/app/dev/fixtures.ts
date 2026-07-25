@@ -9,7 +9,7 @@ import type { CompatShareData } from '@/lib/compatCopy';
  * production files). Only routes under `src/app/dev/` may import from this file.
  */
 export const PREVIEW_FORTUNE: Fortune = {
-  overall: 'A steady, favourable day — move with intention and doors open quietly.',
+  overall: 'A steady, favorable day — move with intention and doors open quietly.',
   career: 'Progress through patience; a senior notices your reliability.',
   love: 'Warmth returned in kind. Say the honest thing.',
   wealth: 'Hold, don’t chase — a small saving beats a big gamble.',

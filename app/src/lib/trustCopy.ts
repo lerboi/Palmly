@@ -20,3 +20,13 @@ export const CANONICAL_DELETION_SHORT = 'Deleted right after your reading — wi
 export const CANONICAL_DELETION_BADGE = 'Photo deletes within 24 hours';
 /** The keep-my-scan opt-in (D2): the badge must say "saved", never "deleted". */
 export const CANONICAL_PHOTO_KEPT = 'Photo saved to your account — delete anytime';
+
+// ── The disclaimer, in its three sanctioned lengths (Audit-4 U7.T1, Direction §5) ────────────────
+// Five copies of this sentence were scattered across reveal, pair, methodology and the fixtures.
+// A legal line that exists in five places is a legal line that will eventually disagree with itself.
+
+/** The short mark under a reading (reveal, pair). */
+export const DISCLAIMER_SHORT = 'For reflection and entertainment.';
+/** The full form, where there is room to be explicit (methodology, legal). */
+export const DISCLAIMER_FULL =
+  'For reflection and entertainment — not fortune-telling, medical, or financial advice.';

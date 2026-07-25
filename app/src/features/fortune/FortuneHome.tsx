@@ -265,7 +265,7 @@ function FortuneError({ onRetry }: { onRetry?: () => void }) {
   const theme = useTheme();
   return (
     <Card style={{ gap: theme.spacing.md }}>
-      <Text variant="heading">Today&apos;s reading isn&apos;t loading</Text>
+      <Text variant="heading">Today’s reading isn’t loading</Text>
       <Text variant="body" tone="secondary">
         Your readings are safe — this was a hiccup on our side.
       </Text>

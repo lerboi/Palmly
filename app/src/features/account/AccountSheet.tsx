@@ -222,7 +222,7 @@ export function AccountSheet({ reason, mandatory = false, inviterName, onClose, 
 
       {mandatory ? (
         <Text variant="caption" tone="tertiary" style={{ textAlign: 'center', marginBottom: theme.spacing.md }}>
-          Needed so {inviterName || 'your match'} knows it&apos;s you.
+          Needed so {inviterName || 'your match'} knows it’s you.
         </Text>
       ) : (
         <Button label="Not now" variant="ghost" fullWidth style={{ marginBottom: theme.spacing.md }} onPress={onClose} />

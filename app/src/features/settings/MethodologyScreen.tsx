@@ -7,7 +7,7 @@ import type { IconName } from '@/components/ui';
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { useReducedMotion, useTheme } from '@/theme';
-import { CANONICAL_DELETION_PROMISE } from '@/lib/trustCopy';
+import { CANONICAL_DELETION_PROMISE, DISCLAIMER_FULL } from '@/lib/trustCopy';
 import { PrivacyTrustCard } from './settingsUi';
 
 interface StepDef {
@@ -74,7 +74,7 @@ export function MethodologyScreen() {
           Same palm, same reading — your lines don’t lie.
         </Text>
         <Text variant="body" tone="secondary">
-          For reflection and entertainment — not fortune-telling, medical, or financial advice.
+          {DISCLAIMER_FULL}
         </Text>
       </PrivacyTrustCard>
     </Screen>

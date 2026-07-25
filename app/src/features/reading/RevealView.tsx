@@ -304,7 +304,7 @@ function ErrorReveal({
           style={{ alignItems: 'center', gap: theme.spacing.lg }}
         >
           <Text variant="title" style={{ textAlign: 'center' }}>
-            We couldn&apos;t load your reading
+            We couldn’t load your reading
           </Text>
           <Text variant="bodyLarge" tone="secondary" style={{ textAlign: 'center', maxWidth: 300 }}>
             Your lines are safe — this was just a hiccup on our side.
@@ -590,7 +590,8 @@ function ConsistencySurvey({ readingId, kind, entranceIndex }: { readingId: stri
         <View style={{ flex: 1 }}>
           <Text variant="heading">{kind === 'face' ? 'You’ve scanned this face before' : 'You’ve scanned this palm before'}</Text>
           <Text variant="caption" tone="secondary">
-            {answered ? 'Thanks — that helps us keep your readings consistent.' : 'Does this reading match what you remember?'}
+            {/* Direction §5: shorter, warmer, and it stops explaining our QA to the reader. */}
+            {answered ? 'Noted — thank you.' : 'Same as you remember?'}
           </Text>
         </View>
       </View>

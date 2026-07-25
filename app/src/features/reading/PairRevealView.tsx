@@ -14,6 +14,7 @@ import { differentiateGeometry, type LineGeometry } from '@/components/palm-diag
 import { AppHeader, Button, Card, Icon, Screen, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { success } from '@/lib/haptics';
+import { DISCLAIMER_SHORT } from '@/lib/trustCopy';
 import { RedThread, ScoreRing } from './ShareView';
 import {
   WAITING_NUDGE_COPY,
@@ -157,7 +158,7 @@ export function PairRevealView({
       </View>
 
       <Text variant="caption" tone="tertiary" style={{ textAlign: 'center', marginBottom: theme.spacing.lg }}>
-        For reflection and entertainment.
+        {DISCLAIMER_SHORT}
       </Text>
     </Screen>
   );

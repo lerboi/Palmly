@@ -129,7 +129,7 @@ export default function Claim() {
           tone="secondary"
           style={{ textAlign: 'center', marginTop: theme.spacing.sm, maxWidth: 320 }}
         >
-          Scan your palm to reveal your compatibility — you&apos;ll get your own full reading too.
+          Scan your palm to reveal your compatibility — you’ll get your own full reading too.
         </Text>
         <PrivacyBadge style={{ marginTop: theme.spacing.lg }} />
         <PairTease />
@@ -267,7 +267,7 @@ function PairTease() {
         </View>
       </View>
       <Text variant="caption" tone="tertiary" style={{ marginTop: theme.spacing.sm }}>
-        What you&apos;ll both see
+        What you’ll both see
       </Text>
     </View>
   );
