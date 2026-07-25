@@ -15,7 +15,7 @@ export async function deleteScanPhotos(): Promise<ActionResult> {
   if (error) return { ok: false, message: 'Couldn’t delete just now — please try again.' };
   // image-delete responds `{ deleted, storage_objects_removed, storage_objects_total }`.
   const removed = (data as { storage_objects_removed?: number } | null)?.storage_objects_removed ?? 0;
-  return { ok: true, message: removed > 0 ? 'Photos deleted ✓' : 'No photos to delete — you’re clear ✓' };
+  return { ok: true, message: removed > 0 ? 'Photos deleted.' : 'No photos to delete — you’re clear.' };
 }
 
 /** "Delete everything" (PrivacyCenter) → the deployed `account-delete` fn, then sign out locally. */

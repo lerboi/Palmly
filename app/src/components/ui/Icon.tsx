@@ -8,6 +8,11 @@ import { useTheme } from '@/theme';
  * is a stroke-based 24×24 path in `react-native-svg`, inheriting a shared stroke via `<G>` so
  * it recolors cleanly with the theme. Feature icons (heart/mind/life/path) map to the palm
  * lines Heart/Head/Life/Fate. Each icon carries a default `accessibilityLabel`.
+ *
+ * ⚠ `apple` and `google` are HOUSE APPROXIMATIONS drawn in this set's style, not the official
+ * brand assets. They are fine for development and for the device-free harness, but Apple's HIG
+ * requires their supplied "Sign in with Apple" mark and Google requires the "G" from their
+ * official asset pack — both must be swapped in before store submission (owner task).
  */
 export type IconName =
   | 'heart'
@@ -38,7 +43,13 @@ export type IconName =
   | 'document'
   | 'settings'
   | 'info'
-  | 'torch';
+  | 'torch'
+  | 'today'
+  | 'compass'
+  | 'logout'
+  | 'warning'
+  | 'apple'
+  | 'google';
 
 // Geometry only — stroke/fill/caps come from the shared <G> below.
 const PATHS: Record<IconName, ReactNode> = {
@@ -214,6 +225,67 @@ const PATHS: Record<IconName, ReactNode> = {
   ),
   // Lightning bolt — the guided-capture torch toggle (§2.3 'dark' guidance stand-in).
   torch: <Path d="M13 2.5 L6.5 13.5 H11 L10 21.5 L17.5 10.5 H12.5 Z" />,
+  // Sun disc — the Today tab (Direction §1 P3). Eight short rays keep it legible at 24px.
+  today: (
+    <G>
+      <Circle cx="12" cy="12" r="4.4" />
+      <Path d="M12 2.6 V4.8" />
+      <Path d="M12 19.2 V21.4" />
+      <Path d="M2.6 12 H4.8" />
+      <Path d="M19.2 12 H21.4" />
+      <Path d="M5.4 5.4 L6.9 6.9" />
+      <Path d="M17.1 17.1 L18.6 18.6" />
+      <Path d="M18.6 5.4 L17.1 6.9" />
+      <Path d="M6.9 17.1 L5.4 18.6" />
+    </G>
+  ),
+  // An 8-way bearing arrow, drawn pointing NORTH and turned by the `rotate` prop — this replaces
+  // the ↑↗→↘↓↙←↖ text glyphs (Audit-4 CO-8). One shape, eight directions, no font dependency.
+  compass: (
+    <G>
+      <Path d="M12 20 V5" />
+      <Path d="M6.8 10.2 L12 5 L17.2 10.2" />
+    </G>
+  ),
+  // Door with an arrow leaving it — sign out (the `back` arrow used to stand in here, CO-7).
+  logout: (
+    <G>
+      <Path d="M14 4.5 H5.5 V19.5 H14" />
+      <Path d="M11.5 12 H20.5" />
+      <Path d="M17.2 8.7 L20.5 12 L17.2 15.3" />
+    </G>
+  ),
+  // Triangle + bang — the honest failure mark (an `info` glyph tinted red used to do this job).
+  warning: (
+    <G>
+      <Path d="M12 3.8 L21.2 19.8 H2.8 Z" />
+      <Path d="M12 9.8 V14.4" />
+      <Circle cx="12" cy="17.2" r="0.95" fill="currentColor" stroke="none" />
+    </G>
+  ),
+  // ── Provider marks (auth buttons only) ────────────────────────────────
+  // Filled silhouettes, not strokes: both marks are recognized by their solid shape. See the
+  // note on DEFAULT_LABELS — these are house approximations, NOT the official brand assets.
+  apple: (
+    <G>
+      <Path
+        d="M16.1 12.6 C16.1 10.5 17.8 9.5 17.9 9.4 C16.9 8 15.5 7.8 15 7.8 C13.8 7.7 12.6 8.5 12 8.5 C11.4 8.5 10.4 7.8 9.4 7.8 C8.1 7.8 6.9 8.6 6.2 9.8 C4.8 12.2 5.8 15.8 7.2 17.8 C7.9 18.8 8.7 19.9 9.7 19.8 C10.7 19.8 11.1 19.2 12.3 19.2 C13.5 19.2 13.8 19.8 14.9 19.8 C16 19.8 16.7 18.8 17.4 17.8 C18.2 16.7 18.5 15.6 18.5 15.5 C18.5 15.5 16.1 14.7 16.1 12.6 Z"
+        fill="currentColor"
+        stroke="none"
+      />
+      <Path
+        d="M14.3 6.5 C14.9 5.8 15.3 4.8 15.2 3.8 C14.3 3.9 13.2 4.4 12.6 5.1 C12.1 5.7 11.6 6.8 11.7 7.7 C12.7 7.8 13.7 7.2 14.3 6.5 Z"
+        fill="currentColor"
+        stroke="none"
+      />
+    </G>
+  ),
+  google: (
+    <G>
+      <Path d="M20.6 12.3 A8.6 8.6 0 1 1 17.9 6" />
+      <Path d="M20.6 12.3 H12.3" />
+    </G>
+  ),
 };
 
 const DEFAULT_LABELS: Record<IconName, string> = {
@@ -246,6 +318,12 @@ const DEFAULT_LABELS: Record<IconName, string> = {
   settings: 'Settings',
   info: 'Information',
   torch: 'Torch',
+  today: 'Today',
+  compass: 'Direction',
+  logout: 'Sign out',
+  warning: 'Warning',
+  apple: 'Apple',
+  google: 'Google',
 };
 
 export interface IconProps {
@@ -263,6 +341,8 @@ export interface IconProps {
   accessibilityLabel?: string;
   /** Hide from assistive tech (icon is purely decorative next to a text label). */
   decorative?: boolean;
+  /** Clockwise rotation in degrees about the icon's centre — `compass` uses it for the 8 bearings. */
+  rotate?: number;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -273,6 +353,7 @@ export function Icon({
   strokeWidth = 2,
   accessibilityLabel,
   decorative = false,
+  rotate,
   style,
 }: IconProps) {
   const { colors } = useTheme();
@@ -297,6 +378,8 @@ export function Icon({
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
+        // Rotating the group (not the Svg) keeps the icon's layout box square and unmoved.
+        transform={rotate ? `rotate(${rotate} 12 12)` : undefined}
       >
         {PATHS[name]}
       </G>

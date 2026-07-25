@@ -10,5 +10,7 @@ export function composeShareText(headline: string, url?: string, channel?: strin
   if (!url) return lead;
   // Instagram/TikTok are caption-driven and visual — a terse hook reads better than a full sentence.
   const visual = channel === 'instagram' || channel === 'tiktok';
-  return visual ? `${lead} ✨ Try yours & compare 👇\n${url}` : `${lead}\nSee what yours says & compare palms: ${url}`;
+  // No emoji in outbound copy — the icon module's own no-emoji rule applies to the text we put in
+  // someone else's feed too (Audit-4 CO-8).
+  return visual ? `${lead}\nTry yours & compare palms:\n${url}` : `${lead}\nSee what yours says & compare palms: ${url}`;
 }

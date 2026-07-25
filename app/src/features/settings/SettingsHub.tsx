@@ -36,7 +36,7 @@ export function SettingsHub({ premium = false }: { premium?: boolean }) {
         ) : (
           <>
             <SettingRow first leadingIcon="shield" label="Signed in as" value={label ?? 'your account'} />
-            <SettingRow leadingIcon="back" label="Sign out" onPress={() => void signOutAccount().then(() => router.replace('/'))} />
+            <SettingRow leadingIcon="logout" label="Sign out" onPress={() => void signOutAccount().then(() => router.replace('/'))} />
           </>
         )}
       </SettingGroup>

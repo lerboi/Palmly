@@ -297,7 +297,8 @@ export function ShareView({
             key={c.key}
             icon={c.icon}
             mono={c.mono}
-            label={c.action === 'copy' && copied ? 'Link copied ✓' : c.label}
+            label={c.action === 'copy' && copied ? 'Copied' : c.label}
+            confirmed={c.action === 'copy' && copied}
             onPress={c.action === 'copy' ? onCopyLink : () => onShare(c.key)}
           />
         ))}
@@ -411,7 +412,7 @@ const CHANNELS: { key: string; label: string; mono?: string; icon?: IconName; ac
 
 /** One channel tile — a glyph tile (Copy/More) or an honest brand monogram (no faked logos), with a
  *  label below. Both share the same round accent tile so the row reads as one family. */
-function ChannelButton({ icon, mono, label, onPress }: { icon?: IconName; mono?: string; label: string; onPress: () => void }) {
+function ChannelButton({ icon, mono, label, onPress, confirmed = false }: { icon?: IconName; mono?: string; label: string; onPress: () => void; confirmed?: boolean }) {
   const theme = useTheme();
   const { scaleStyle: style, onPressIn, onPressOut } = usePressSpring(0.9);
   return (
@@ -434,7 +435,11 @@ function ChannelButton({ icon, mono, label, onPress }: { icon?: IconName; mono?:
             justifyContent: 'center',
           }}
         >
-          {icon ? (
+          {/* Confirmation is the tile's own icon turning into a check — so the LABEL can stay short
+              enough to fit 68pt instead of truncating to "Link copie…" (Audit-4 CO-8). */}
+          {confirmed ? (
+            <Icon name="check" size={24} color={theme.colors.success} decorative />
+          ) : icon ? (
             <Icon name={icon} size={24} color={theme.colors.textSecondary} decorative />
           ) : (
             <Text variant="bodyMedium" color={theme.colors.textPrimary} style={{ fontWeight: '700' }}>

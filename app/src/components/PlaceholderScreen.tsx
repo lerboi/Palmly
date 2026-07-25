@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import { router, type Href } from 'expo-router';
-import { Button, Screen, Text } from '@/components/ui';
+import { Button, Icon, Screen, Text } from '@/components/ui';
 
 export interface RouteLink {
   href: string;
@@ -53,7 +53,7 @@ export function PlaceholderScreen({
             />
           ))}
           {showBack ? (
-            <Button label="← Back" variant="ghost" onPress={() => router.back()} />
+            <Button label="Back" variant="ghost" icon={<Icon name="back" size={16} decorative />} onPress={() => router.back()} />
           ) : null}
         </View>
       </View>

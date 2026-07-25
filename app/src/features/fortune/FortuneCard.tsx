@@ -2,8 +2,9 @@ import { Platform, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Button, Card, Icon, Text } from '@/components/ui';
+import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
-import { DIRECTION_ARROW, type Fortune } from './fortune';
+import { DIRECTION_BEARING, type Fortune } from './fortune';
 
 /**
  * The daily fortune card (UIUX §2.11, redesign R18 / v2 V17) — a true hero (`elevation="md"` +
@@ -72,7 +73,7 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
           <Divider />
 
           <Animated.View entering={unfold(2)} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
-            <Lucky label="Direction" value={`${DIRECTION_ARROW[fortune.lucky_direction] ?? ''} ${fortune.lucky_direction}`} />
+            <Lucky label="Direction" value={fortune.lucky_direction} bearing={DIRECTION_BEARING[fortune.lucky_direction]} />
             <Lucky label="Colour" value={fortune.lucky_color} />
             <Lucky label="Hours" value={fortune.lucky_hours} />
           </Animated.View>
@@ -112,7 +113,9 @@ function SectionLabel({ children }: { children: string }) {
 function DoDont({ title, items, tone }: { title: string; items: string[]; tone: 'success' | 'danger' }) {
   const theme = useTheme();
   const color = tone === 'success' ? theme.colors.success : theme.colors.danger;
-  const marker = tone === 'success' ? '✓' : '✕';
+  // The marker is an ICON, not a font glyph (Audit-4 CO-8): ✓/✕ render inconsistently across
+  // platforms and carry no accessible meaning. Semantic color stays on the mark only (CC-2).
+  const marker: IconName = tone === 'success' ? 'check' : 'close';
   return (
     <View style={{ flex: 1, gap: theme.spacing.xs }}>
       <Text variant="heading" color={color}>
@@ -120,9 +123,7 @@ function DoDont({ title, items, tone }: { title: string; items: string[]; tone: 
       </Text>
       {items.map((it, i) => (
         <View key={`${title}-${i}`} style={{ flexDirection: 'row', gap: theme.spacing.xs }}>
-          <Text variant="small" color={color}>
-            {marker}
-          </Text>
+          <Icon name={marker} size={16} color={color} decorative style={{ marginTop: 2 }} />
           <Text variant="small" tone="secondary" style={{ flex: 1 }}>
             {it}
           </Text>
@@ -141,11 +142,18 @@ function Aspect({ label, text }: { label: string; text: string }) {
   );
 }
 
-function Lucky({ label, value }: { label: string; value: string }) {
+function Lucky({ label, value, bearing }: { label: string; value: string; bearing?: number }) {
+  const theme = useTheme();
   return (
     <View style={{ gap: 2, minWidth: 84 }}>
       <SectionLabel>{label}</SectionLabel>
-      <Text variant="bodyMedium">{value}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
+        {/* Unmapped bearing → no icon at all, rather than the old `' ' + value` leading space. */}
+        {bearing === undefined ? null : (
+          <Icon name="compass" size={16} color={theme.colors.textSecondary} rotate={bearing} decorative />
+        )}
+        <Text variant="bodyMedium">{value}</Text>
+      </View>
     </View>
   );
 }

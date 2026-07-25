@@ -92,6 +92,20 @@ const ICON_NAMES: IconName[] = [
   'shield',
   'sparkle',
   'history',
+  'help',
+  'elements',
+  'globe',
+  'document',
+  'settings',
+  'info',
+  'torch',
+  // U0.T5 additions (Audit-4 CO-7/CO-8) — the six icons that retired the text glyphs.
+  'today',
+  'compass',
+  'logout',
+  'warning',
+  'apple',
+  'google',
 ];
 
 function PanelBody({ scheme }: { scheme: ColorScheme }) {

@@ -97,16 +97,21 @@ export function almanacDate(date: Date, locale: string | undefined = deviceLocal
   };
 }
 
-/** Compass glyph for a lucky direction (the eight compass points). */
-export const DIRECTION_ARROW: Record<string, string> = {
-  North: '↑',
-  Northeast: '↗',
-  East: '→',
-  Southeast: '↘',
-  South: '↓',
-  Southwest: '↙',
-  West: '←',
-  Northwest: '↖',
+/**
+ * Clockwise bearing in degrees for each lucky direction, applied to the `compass` icon's `rotate`
+ * (the icon is drawn pointing North). Replaces the old ↑↗→↘↓↙←↖ text-glyph map — and with it the
+ * leading-space bug, where an unmapped direction rendered as `' Southeast'` (Audit-4 CO-8).
+ * An unmapped value returns `undefined`, and the call site renders the label with no icon.
+ */
+export const DIRECTION_BEARING: Record<string, number> = {
+  North: 0,
+  Northeast: 45,
+  East: 90,
+  Southeast: 135,
+  South: 180,
+  Southwest: 225,
+  West: 270,
+  Northwest: 315,
 };
 
 export const PREVIEW_FORTUNE: Fortune = {

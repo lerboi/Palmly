@@ -138,7 +138,7 @@ export function AccountSheet({ reason, mandatory = false, inviterName, onClose, 
               marginBottom: theme.spacing.md,
             }}
           >
-            <Icon name="info" size={18} color={theme.colors.danger} decorative />
+            <Icon name="warning" size={18} color={theme.colors.danger} decorative />
             <Text variant="caption" color={theme.colors.danger} style={{ flex: 1 }}>
               {warm}
             </Text>

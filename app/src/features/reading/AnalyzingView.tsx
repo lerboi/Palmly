@@ -96,7 +96,7 @@ export function AnalyzingView({
                 justifyContent: 'center',
               }}
             >
-              <Icon name="camera" size={40} color={theme.colors.danger} decorative />
+              <Icon name="warning" size={40} color={theme.colors.danger} decorative />
             </View>
             <Text variant="title" style={{ textAlign: 'center' }}>
               {FAILURE_TITLE}

@@ -23,7 +23,9 @@ export function PrivacyCenter({ defaultConfirm = false }: { defaultConfirm?: boo
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
   const [keepPhoto, setKeepPhoto] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(defaultConfirm);
-  const [scans, setScans] = useState<{ busy: boolean; message: string | null }>({ busy: false, message: null });
+  // `ok` is carried, not inferred: the success tone used to be decided by sniffing the message for
+  // a ✓ glyph, which broke the moment the glyph left the copy (Audit-4 CO-8).
+  const [scans, setScans] = useState<{ busy: boolean; message: string | null; ok: boolean }>({ busy: false, message: null, ok: false });
   const [accountBusy, setAccountBusy] = useState(false);
 
   useEffect(() => {
@@ -40,10 +42,10 @@ export function PrivacyCenter({ defaultConfirm = false }: { defaultConfirm?: boo
   };
 
   const deleteScans = () => {
-    setScans({ busy: true, message: null });
+    setScans({ busy: true, message: null, ok: false });
     void deleteScanPhotos().then((r) => {
       if (r.ok) track('scans_deleted', {});
-      setScans({ busy: false, message: r.message });
+      setScans({ busy: false, message: r.message, ok: r.ok });
     });
   };
 
@@ -55,7 +57,7 @@ export function PrivacyCenter({ defaultConfirm = false }: { defaultConfirm?: boo
         router.replace('/' as Href); // signed out → the launcher
       } else {
         setAccountBusy(false);
-        setScans({ busy: false, message: r.message });
+        setScans({ busy: false, message: r.message, ok: false });
       }
     });
   };
@@ -86,8 +88,9 @@ export function PrivacyCenter({ defaultConfirm = false }: { defaultConfirm?: boo
 
       <View style={{ marginBottom: theme.spacing.xl, gap: theme.spacing.sm }}>
         <Button label={scans.busy ? 'Deleting…' : 'Delete my scan photos now'} variant="secondary" loading={scans.busy} onPress={deleteScans} />
+        {/* Tone follows the result's own `ok` flag — it used to sniff the message for a check glyph. */}
         {scans.message ? (
-          <Text variant="caption" tone={scans.message.includes('✓') ? 'success' : 'secondary'} style={{ textAlign: 'center' }}>
+          <Text variant="caption" tone={scans.ok ? 'success' : 'secondary'} style={{ textAlign: 'center' }}>
             {scans.message}
           </Text>
         ) : null}
