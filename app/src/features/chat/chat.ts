@@ -4,7 +4,8 @@
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  /** `system` is the app speaking about itself — a failure, never a reading (Audit-4 SH-6). */
+  role: 'user' | 'assistant' | 'system';
   text: string;
   citations?: string[]; // feature_keys the answer draws on (e.g. 'heart_line.depth.deep')
 }
@@ -59,3 +60,23 @@ export const PREVIEW_THREAD: ChatMessage[] = [
     citations: ['head_line.slope.moon', 'heart_line.depth.deep'],
   },
 ];
+
+/**
+ * A failure notice, authored by the APP (Audit-4 SH-6). Built here rather than inline at the call
+ * site so the role can never drift back to `assistant` — which is exactly how a network error came
+ * to be spoken by the reader, avatar and all.
+ */
+export function systemMessage(id: string, text: string): ChatMessage {
+  return { id, role: 'system', text };
+}
+
+/** The last thing the USER actually asked — what a retry re-sends. */
+export function lastUserText(messages: readonly ChatMessage[]): string | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === 'user') return messages[i].text;
+  return undefined;
+}
+
+/** Drop failure notices — a retry replaces them rather than stacking them up. */
+export function withoutSystem(messages: readonly ChatMessage[]): ChatMessage[] {
+  return messages.filter((m) => m.role !== 'system');
+}

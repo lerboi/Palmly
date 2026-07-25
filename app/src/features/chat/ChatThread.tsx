@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
@@ -28,6 +28,8 @@ export interface ChatThreadProps {
   onSend?: (text: string) => void;
   /** Pre-fill the input (the fortune→chat bridge chip passes today's question, F1.10). */
   initialInput?: string;
+  /** Re-send the last question after a failure — the system row's own action (Audit-4 SH-6). */
+  onRetry?: () => void;
   onBack?: () => void;
 }
 
@@ -38,7 +40,7 @@ export interface ChatThreadProps {
  * crossfades to the answer, and the chips / send / input have micro-interactions. Non-premium sees the
  * unlock gate. English-first, no CJK. The SSE stream is device-gated; here it's the thread + typing.
  */
-export function ChatThread({ premium, messages, chips, typing = false, onSend, initialInput, onBack }: ChatThreadProps) {
+export function ChatThread({ premium, messages, chips, typing = false, onSend, initialInput, onRetry, onBack }: ChatThreadProps) {
   const theme = useTheme();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -49,6 +51,11 @@ export function ChatThread({ premium, messages, chips, typing = false, onSend, i
   // `onBack`.
   const back = onBack;
   const empty = messages.length === 0;
+  // Auto-scroll target (CO-14).
+  const scrollRef = useRef<ScrollView>(null);
+  // The chip row's real height, measured — the fade used to be hardcoded 44 and slid off the row
+  // the moment Dynamic Type grew a chip (CO-14).
+  const [chipRowHeight, setChipRowHeight] = useState(44);
   // Composed question (F1.10). Declared before the early return (rules-of-hooks). A chip taps into it;
   // the fortune bridge seeds it via `initialInput`.
   const [input, setInput] = useState(initialInput ?? '');
@@ -83,22 +90,39 @@ export function ChatThread({ premium, messages, chips, typing = false, onSend, i
 
   return (
     <Screen padded={false}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Android had NO keyboard avoidance at all (CO-14) — `undefined` behavior means the composer
+          sits under the keyboard. `height` is the Android-correct mode; the header offset keeps the
+          thread from jumping. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : theme.spacing.sm}
+      >
         <View style={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.sm }}>
           <AppHeader title="Ask about your reading" onBack={back} showDivider />
         </View>
         <View style={{ flex: 1 }}>
           <ScrollView
+            ref={scrollRef}
             style={{ flex: 1 }}
             contentContainerStyle={{ flexGrow: 1, padding: theme.spacing.lg, gap: theme.spacing.md }}
+            // The first-order chat bug (CO-14): nothing scrolled, so every new message — the user's
+            // own, the reply, even the typing indicator — landed below the fold.
+            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: shouldAnimate })}
           >
-            {/* A flex spacer bottom-aligns a short conversation near the input (chat-standard);
-                it collapses to 0 once the thread overflows and scrolls. */}
-            {empty ? null : <View style={{ flex: 1 }} />}
+            {/* A flex spacer bottom-aligns the thread near the input (chat-standard) — for the EMPTY
+                state too (CO-14: it was top-aligned, so the screen re-anchored on the first send). */}
+            <View style={{ flex: 1 }} />
             {empty ? (
               <ChatEmptyState />
             ) : (
-              messages.map((m, i) => <Bubble key={m.id} message={m} index={i} shouldAnimate={shouldAnimate} />)
+              messages.map((m, i) =>
+                m.role === 'system' ? (
+                  <SystemRow key={m.id} message={m} onRetry={onRetry} />
+                ) : (
+                  <Bubble key={m.id} message={m} index={i} shouldAnimate={shouldAnimate} />
+                ),
+              )
             )}
             {typing ? <TypingBubble shouldAnimate={shouldAnimate} /> : null}
           </ScrollView>
@@ -109,21 +133,23 @@ export function ChatThread({ premium, messages, chips, typing = false, onSend, i
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              onLayout={(e) => setChipRowHeight(e.nativeEvent.layout.height)}
               contentContainerStyle={{ alignItems: 'center', paddingLeft: theme.spacing.lg, paddingRight: theme.spacing.xxl, gap: theme.spacing.sm, paddingBottom: theme.spacing.sm }}
             >
+              {/* `key={c}` collided whenever the model repeated a chip (CO-14) — index-qualified. */}
               {chips.map((c, i) => (
-                <Chip key={c} label={c} index={i} shouldAnimate={shouldAnimate} onInject={() => setInput(c)} />
+                <Chip key={`${i}-${c}`} label={c} index={i} shouldAnimate={shouldAnimate} onInject={() => setInput(c)} />
               ))}
             </ScrollView>
-            <View pointerEvents="none" style={{ position: 'absolute', right: 0, top: 0, height: 44, width: theme.spacing.xxl }}>
-              <Svg width={theme.spacing.xxl} height={44}>
+            <View pointerEvents="none" style={{ position: 'absolute', right: 0, top: 0, height: chipRowHeight, width: theme.spacing.xxl }}>
+              <Svg width={theme.spacing.xxl} height={chipRowHeight}>
                 <Defs>
                   <LinearGradient id="chipFade" x1="0" y1="0" x2="1" y2="0">
                     <Stop offset="0" stopColor={theme.colors.bg} stopOpacity={0} />
                     <Stop offset="1" stopColor={theme.colors.bg} stopOpacity={1} />
                   </LinearGradient>
                 </Defs>
-                <Rect width={theme.spacing.xxl} height={44} fill="url(#chipFade)" />
+                <Rect width={theme.spacing.xxl} height={chipRowHeight} fill="url(#chipFade)" />
               </Svg>
             </View>
           </View>
@@ -179,6 +205,43 @@ function ChatEmptyState() {
       <Text variant="body" tone="secondary" style={{ textAlign: 'center', maxWidth: 300 }}>
         Every answer is grounded in your own lines. Try a suggestion below to begin.
       </Text>
+    </View>
+  );
+}
+
+/**
+ * A failure, said by the APP (Audit-4 SH-6). A network error used to arrive as an assistant bubble
+ * wearing the Palmly avatar — the reader appearing to say "that didn't go through", which is both a
+ * lie about who spoke and a dent in the one voice the product sells. This is a centred, tinted row
+ * with a `warning` mark and its own retry; it can never be mistaken for a reading.
+ */
+function SystemRow({ message, onRetry }: { message: ChatMessage; onRetry?: () => void }) {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        alignSelf: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.sm,
+        backgroundColor: theme.colors.surfaceSunken,
+        borderRadius: theme.radii.lg,
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: theme.spacing.sm,
+        maxWidth: '90%',
+      }}
+    >
+      <Icon name="warning" size={16} color={theme.colors.danger} decorative />
+      <Text variant="caption" tone="secondary" style={{ flexShrink: 1 }}>
+        {message.text}
+      </Text>
+      {onRetry ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Try again" onPress={onRetry} hitSlop={8}>
+          <Text variant="caption" color={theme.colors.accentPressed}>
+            Try again
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -388,7 +451,8 @@ function InputBar({ value, onChangeText, onSubmit, autoFocus = false }: { value:
           backgroundColor: theme.colors.surfaceSunken,
           borderRadius: theme.radii.lg,
           borderWidth: theme.strokes.hairline,
-          borderColor: focused ? theme.colors.accent : 'transparent',
+          // Unfocused was `transparent` on a 1.03:1 fill — an edgeless field (Audit-4 CC-8).
+          borderColor: focused ? theme.colors.accent : theme.colors.border,
           paddingHorizontal: theme.spacing.md,
           paddingVertical: theme.spacing.md,
         }}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { ChatThread } from '@/features/chat/ChatThread';
-import { STARTER_CHIPS, type ChatMessage } from '@/features/chat/chat';
+import { STARTER_CHIPS, type ChatMessage, lastUserText, systemMessage, withoutSystem } from '@/features/chat/chat';
 import { assistantMessage, sendChat } from '@/features/chat/chatSend';
 import { useEntitlement } from '@/lib/entitlements';
 import { loadHistory } from '@/lib/readings';
@@ -55,9 +55,11 @@ export default function Chat() {
         if (out.gated) {
           router.push('/paywall?trigger=chat_entry' as Href);
         } else {
+          // SH-6: the app says this, not the reader. A `system` row renders as a tinted notice with
+          // its own retry — never an assistant bubble wearing the Palmly avatar.
           setMessages((prev) => [
             ...prev,
-            { id: `e-${n}`, role: 'assistant', text: 'That didn’t go through — check your connection and try again.' },
+            systemMessage(`e-${n}`, 'That didn’t go through — check your connection and try again.'),
           ]);
         }
         return;
@@ -69,5 +71,23 @@ export default function Chat() {
     });
   };
 
-  return <ChatThread premium={premium} messages={messages} chips={chips} typing={typing} onSend={onSend} initialInput={typeof q === 'string' ? q : undefined} />;
+  // Retry re-sends the last question the user actually asked, and drops the failure notice with it.
+  const onRetry = () => {
+    const text = lastUserText(messages);
+    if (!text) return;
+    setMessages(withoutSystem);
+    onSend(text);
+  };
+
+  return (
+    <ChatThread
+      premium={premium}
+      messages={messages}
+      chips={chips}
+      typing={typing}
+      onSend={onSend}
+      onRetry={onRetry}
+      initialInput={typeof q === 'string' ? q : undefined}
+    />
+  );
 }
