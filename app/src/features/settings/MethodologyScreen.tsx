@@ -124,7 +124,7 @@ function TimelineStep({ step, index, last, shouldAnimate }: { step: StepDef; ind
 
       <View style={{ flex: 1, paddingBottom: last ? 0 : theme.spacing.xl }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, minHeight: node }}>
-          <Icon name={step.icon} size={18} color={theme.colors.accent} decorative />
+          <Icon name={step.icon} size={18} color={theme.colors.textSecondary} decorative />
           <Text variant="heading" style={{ flex: 1 }}>
             {step.title}
           </Text>

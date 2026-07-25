@@ -245,7 +245,7 @@ export function ShareView({
           accessibilityState={{ checked: showName }}
           style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingVertical: theme.spacing.md }}
         >
-          <Icon name="shield" size={22} color={theme.colors.heritageAccent} decorative />
+          <Icon name="shield" size={22} color={theme.colors.textSecondary} decorative />
           <Text variant="body" style={{ flex: 1 }}>
             Show my name on the card
           </Text>
@@ -424,15 +424,15 @@ function ChannelButton({ icon, mono, label, onPress }: { icon?: IconName; mono?:
             width: 56,
             height: 56,
             borderRadius: 28,
-            backgroundColor: theme.colors.accentMuted,
+            backgroundColor: theme.colors.surfaceSunken,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
           {icon ? (
-            <Icon name={icon} size={24} color={theme.colors.accent} decorative />
+            <Icon name={icon} size={24} color={theme.colors.textSecondary} decorative />
           ) : (
-            <Text variant="bodyMedium" color={theme.colors.accentPressed} style={{ fontWeight: '700' }}>
+            <Text variant="bodyMedium" color={theme.colors.textPrimary} style={{ fontWeight: '700' }}>
               {mono}
             </Text>
           )}
@@ -599,13 +599,13 @@ function CompatPreview({
           <View
             key={chip}
             style={{
-              backgroundColor: theme.colors.accentMuted,
+              backgroundColor: theme.colors.surfaceSunken,
               paddingHorizontal: theme.spacing.md,
               paddingVertical: theme.spacing.xs,
               borderRadius: theme.radii.pill,
             }}
           >
-            <Text variant="caption" color={theme.colors.accentPressed}>
+            <Text variant="caption" color={theme.colors.textPrimary}>
               {chip}
             </Text>
           </View>

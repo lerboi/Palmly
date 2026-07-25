@@ -103,14 +103,14 @@ function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: num
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 4,
-                backgroundColor: theme.colors.accentMuted,
+                backgroundColor: theme.colors.surfaceSunken,
                 borderRadius: theme.radii.pill,
                 paddingHorizontal: theme.spacing.sm,
                 paddingVertical: 2,
               }}
             >
-              <Icon name={isPalm ? 'palm' : 'face'} size={13} color={theme.colors.accent} decorative />
-              <Text variant="caption" color={theme.colors.accentPressed}>
+              <Icon name={isPalm ? 'palm' : 'face'} size={13} color={theme.colors.textSecondary} decorative />
+              <Text variant="caption" color={theme.colors.textPrimary}>
                 {isPalm ? 'Palm' : 'Face'}
               </Text>
             </View>
@@ -155,7 +155,7 @@ function ClaimAccountBanner() {
       style={{ marginBottom: theme.spacing.md }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-        <Icon name="sparkle" size={22} color={theme.colors.accent} decorative />
+        <Icon name="sparkle" size={22} color={theme.colors.textSecondary} decorative />
         <View style={{ flex: 1 }}>
           <Text variant="bodyMedium">Keep your readings forever</Text>
           <Text variant="caption" tone="secondary" style={{ marginTop: 2 }}>
@@ -183,7 +183,7 @@ function UnchangedBanner() {
         <Text variant="heading" color={theme.colors.success} style={{ flex: 1 }}>
           Your palm is unchanged
         </Text>
-        <Icon name="thread" size={22} color={theme.colors.heritageAccent} decorative />
+        <Icon name="thread" size={22} color={theme.colors.textSecondary} decorative />
       </View>
       <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.xs }}>
         Your reading stands — same palm, same reading. Your lines don&apos;t lie.

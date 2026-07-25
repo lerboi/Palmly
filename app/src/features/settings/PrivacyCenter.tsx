@@ -77,7 +77,7 @@ export function PrivacyCenter({ defaultConfirm = false }: { defaultConfirm?: boo
           first
           leadingIcon="camera"
           label="Keep my scan photo"
-          right={<Switch value={keepPhoto} onValueChange={onKeepPhoto} accessibilityLabel="Keep my scan photo" trackColor={{ true: theme.colors.accent, false: theme.colors.border }} thumbColor={theme.colors.surface} activeThumbColor={theme.colors.surface} />}
+          right={<Switch value={keepPhoto} onValueChange={onKeepPhoto} accessibilityLabel="Keep my scan photo" trackColor={{ true: theme.colors.accent, false: theme.colors.trackOff }} thumbColor={theme.colors.surface} activeThumbColor={theme.colors.surface} />}
         />
       </SettingGroup>
       <Text variant="caption" tone="secondary" style={{ marginHorizontal: theme.spacing.xs, marginBottom: theme.spacing.lg }}>

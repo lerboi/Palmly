@@ -137,12 +137,12 @@ function IconTile() {
         width: 88,
         height: 88,
         borderRadius: theme.radii.xl,
-        backgroundColor: theme.colors.accentMuted,
+        backgroundColor: theme.colors.surfaceSunken,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Icon name="chat" size={40} color={theme.colors.accent} decorative />
+      <Icon name="chat" size={40} color={theme.colors.textSecondary} decorative />
     </View>
   );
 }
@@ -235,7 +235,7 @@ function Bubble({ message, index, shouldAnimate }: { message: ChatMessage; index
         {bubble}
         {message.citations && message.citations.length > 0 ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.xs, marginLeft: theme.spacing.xs }}>
-            <Icon name="palm" size={13} color={theme.colors.accent} decorative />
+            <Icon name="palm" size={13} color={theme.colors.textSecondary} decorative />
             <Text variant="caption" color={theme.colors.accentPressed}>
               {citationLabel(message.citations)}
             </Text>
@@ -332,13 +332,13 @@ function Chip({ label, index, shouldAnimate, onInject }: { label: string; index:
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         style={{
-          backgroundColor: theme.colors.accentMuted,
+          backgroundColor: theme.colors.surfaceSunken,
           borderRadius: theme.radii.pill,
           paddingHorizontal: theme.spacing.md,
           paddingVertical: theme.spacing.sm,
         }}
       >
-        <Text variant="small" color={theme.colors.accentPressed}>
+        <Text variant="small" color={theme.colors.textPrimary}>
           {label}
         </Text>
       </Pressable>

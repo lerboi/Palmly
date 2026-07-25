@@ -164,7 +164,7 @@ export function AnalyzingView({
               borderRadius: theme.radii.pill,
             }}
           >
-            <Icon name="sparkle" size={13} color={theme.colors.accent} decorative />
+            <Icon name="sparkle" size={13} color={theme.colors.textSecondary} decorative />
             <Text variant="caption" tone="secondary">
               {proof}
             </Text>
@@ -294,7 +294,7 @@ function Dot({ filled, isActive }: { filled: boolean; isActive: boolean }) {
   return (
     <Animated.View
       style={[
-        { height: 8, borderRadius: 4, backgroundColor: filled ? theme.colors.accent : theme.colors.border },
+        { height: 8, borderRadius: 4, backgroundColor: filled ? theme.colors.textSecondary : theme.colors.border },
         style,
       ]}
     />

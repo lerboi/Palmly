@@ -128,12 +128,12 @@ export function PaywallView({
                   width: 36,
                   height: 36,
                   borderRadius: theme.radii.sm,
-                  backgroundColor: theme.colors.accentMuted,
+                  backgroundColor: theme.colors.surfaceSunken,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Icon name={item.icon} size={20} color={theme.colors.accent} decorative />
+                <Icon name={item.icon} size={20} color={theme.colors.textSecondary} decorative />
               </View>
               <Text variant="body" style={{ flex: 1 }}>
                 {item.text}

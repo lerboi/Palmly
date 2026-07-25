@@ -33,12 +33,12 @@ export function BirthDateSheet({ onSave, onSkip, busy }: BirthDateSheetProps) {
               width: 72,
               height: 72,
               borderRadius: theme.radii.xl,
-              backgroundColor: theme.colors.accentMuted,
+              backgroundColor: theme.colors.surfaceSunken,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Icon name="sparkle" size={34} color={theme.colors.accent} decorative />
+            <Icon name="sparkle" size={34} color={theme.colors.textSecondary} decorative />
           </View>
           <Text variant="title" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
             When were you born?

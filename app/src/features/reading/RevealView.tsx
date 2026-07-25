@@ -288,25 +288,29 @@ function ErrorReveal({
 }
 
 /** A rounded tinted tile holding a feature icon — the section marker (echoes the section's line). */
+/**
+ * A section/offer thumbnail glyph on a tile. **Ink by default** (Audit-4 CC-1 / Direction §1 P1):
+ * these are decorative markers, not actions, and a page of them was the reveal's biggest source of
+ * accent noise. `heritage` is the red-thread motif's sanctioned home; `premiumInk` marks locked
+ * chapters (the champagne FILL sits at 2.08:1 on this tile, under a glyph's 3:1 floor — CC-4).
+ */
 function FeatureIcon({
   icon,
-  tone = 'accent',
+  tone = 'ink',
   size = 44,
 }: {
   icon: IconName;
-  tone?: 'accent' | 'heritage' | 'premiumInk';
+  tone?: 'ink' | 'heritage' | 'premiumInk';
   size?: number;
 }) {
   const theme = useTheme();
-  // The premium tone is the INK, not the fill: the champagne sits at 2.08:1 on the sunken tile
-  // this icon renders on, well under the 3:1 floor a glyph needs (Audit-4 CC-4).
   const color =
     tone === 'heritage'
       ? theme.colors.heritageAccent
       : tone === 'premiumInk'
         ? theme.colors.premiumInk
-        : theme.colors.accent;
-  const bg = tone === 'accent' ? theme.colors.accentMuted : theme.colors.surfaceSunken;
+        : theme.colors.textSecondary;
+  const bg = theme.colors.surfaceSunken;
   return (
     <View
       style={{
@@ -434,7 +438,7 @@ function SecondHandOfferCard({ onPress }: { onPress: () => void }) {
   return (
     <Card elevation="sm" style={{ marginBottom: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', gap: theme.spacing.md, alignItems: 'center' }}>
-        <FeatureIcon icon="palm" tone="heritage" />
+        <FeatureIcon icon="palm" />
         <Text variant="heading" style={{ flex: 1 }}>
           Add your other hand
         </Text>
@@ -476,12 +480,12 @@ function FaceHero() {
         width: 220,
         height: 220,
         borderRadius: theme.radii.pill,
-        backgroundColor: theme.colors.accentMuted,
+        backgroundColor: theme.colors.surfaceSunken,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Icon name="face" size={112} color={theme.colors.accent} decorative />
+      <Icon name="face" size={112} color={theme.colors.textSecondary} decorative />
     </View>
   );
 }
@@ -493,7 +497,7 @@ function PalmOfferCard({ onPress }: { onPress: () => void }) {
   return (
     <Card elevation="sm" style={{ marginBottom: theme.spacing.xl }}>
       <View style={{ flexDirection: 'row', gap: theme.spacing.md, alignItems: 'center' }}>
-        <FeatureIcon icon="palm" tone="heritage" />
+        <FeatureIcon icon="palm" />
         <Text variant="heading" style={{ flex: 1 }}>
           Your palm tells the other half
         </Text>
@@ -518,7 +522,7 @@ function ConsistencySurvey({ readingId }: { readingId: string }) {
   return (
     <Card elevation="sm" style={{ marginBottom: theme.spacing.md, gap: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-        <FeatureIcon icon="check" tone="heritage" size={40} />
+        <FeatureIcon icon="check" size={40} />
         <View style={{ flex: 1 }}>
           <Text variant="heading">You&apos;ve scanned this before</Text>
           <Text variant="caption" tone="secondary">

@@ -24,12 +24,12 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 | Field | Value |
 |---|---|
 | Current phase | U0 — foundations |
-| Next task | U0.T3 |
+| Next task | U0.T4 |
 | Blocked on | — |
 | Waiting on human | — |
 | Last run | 2026-07-25 |
-| Last completed task | U0.T2 |
-| Notes for next run | **The AA matrix in `theme/__tests__/tokens.test.ts` is now the contrast contract — extend it, never route around it.** Two rules it encodes that later tasks must follow: sunken chip/pill labels use `textPrimary` (`textSecondary` on `surfaceSunken` is 4.25:1 and is deliberately NOT in the matrix as a text pairing), and accent TEXT is `accentPressed` while `accent` stays fills/lines/selected. **U0.T3 inherits the other half of CC-1/CC-4:** the `colors.accent` **Icon** call sites (~16 in `src/features`) were left untouched by U0.T2 by design — they are U0.T3's ink sweep. Screenshot recipe erratum: this host's headless Chrome renders **dark** by default, and metro caches the inlined env var — light shots need `EXPO_PUBLIC_FORCE_SCHEME=light npx expo export --platform web` plus `--clear` whenever the flag's value changes. |
+| Last completed task | U0.T3 |
+| Notes for next run | **Three contracts U0.T1–T3 established — extend them, never route around them.** (1) The AA matrix in `theme/__tests__/tokens.test.ts` is the contrast contract; adding a role means adding its used pairings. Sunken chip/pill labels are `textPrimary` (`textSecondary` on `surfaceSunken` is 4.25:1 and is deliberately absent from the matrix as a text pairing). (2) Accent TEXT is `accentPressed`; `accent` is fills / selected / palm-line only; premium TEXT is `premiumInk`, `premium` is fill only. (3) Decorative glyphs are `textSecondary` on a `surfaceSunken` well — `accentMuted` wells now mean "selected". Screenshot recipe erratum: this host's headless Chrome renders **dark** by default, and metro caches the inlined env var — light shots need `EXPO_PUBLIC_FORCE_SCHEME=light npx expo export --platform web` plus `--clear` whenever the flag's value changes. |
 
 ---
 
@@ -98,6 +98,10 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 | D3 | 2026-07-25 | **Light screenshots are baked with `EXPO_PUBLIC_FORCE_SCHEME=light`, not left to the harness default.** The host Chrome reports the OS dark preference, so "no flag" is not "light" here. Explicit on both schemes = reproducible on any host. |
 | D4 | 2026-07-25 | **`premiumInk` light is `#875F04`, not the Direction's `#8A6A1F`.** §2 tuned only against white; premium captions also render on `bg` and on a `surfaceSunken` card (`LegalScreen`), where `#8A6A1F` falls to 4.48/4.05. `#875F04` clears AA on all four surfaces it lands on (5.72 / 5.08 / 4.60 / 4.81) and stays in the same champagne-bronze family. |
 | D5 | 2026-07-25 | **Accent TEXT resolves to `accentPressed`; `accent` stays the fill/line/selected color.** Beyond the task's literal scope, but forced by it: U0.T1's deeper `bg` dropped `accent`-on-`bg` to 4.27:1 (it was 4.57 before), and CC-6's chip failure is the same root. This is the exact `premium`/`premiumInk` split one level over — `accentPressed` clears AA on every surface in both schemes (4.74–5.91 light, 7.04–8.52 dark) and reads as the same red. Applied in `Text`'s tone map, `Button`'s tonal/secondary/ghost labels, and the 7 direct `color={colors.accent}` **Text** sites in `src/features` (Icon sites are U0.T3's sweep). |
+| D7 | 2026-07-25 | **The share invite row's `thread` icon KEEPS its claret** — the ledger lists `ShareView.tsx:272` as a violation, but Direction §4.7 is explicit and more specific ("thread toggle icon keeps claret ONLY on the compat-invite row (its motif home)"). The icon literally *is* the red thread. The sibling at `:248` (a `shield`) had no such claim and went ink. Direction supersedes the ledger on color-quantity per the loop's own precedence rule. |
+| D8 | 2026-07-25 | **`FeatureIcon`'s default tone is now `ink`, not `accent`** (union `'ink' \| 'heritage' \| 'premiumInk'`, tile always `surfaceSunken`). The reveal renders 6–8 of these per screen; leaving the default accent would have made the ≤2 litmus unreachable no matter what else changed. Two call sites also lost a claret they never earned (`palm` ×2, `check`) — heritage is the thread + seal only. |
+| D9 | 2026-07-25 | **The chat assistant's `Logomark` avatar keeps its accent tone.** It is the brand mark (the audit's §6 "do not regress" list names the two-tone mark), not decoration — the same standing as the corner seal. Chat is also not one of the three screens the litmus counts. Revisit if U6.T3's shots read hot. |
+| D10 | 2026-07-25 | **Sub-score bars are all-ink**, taking Direction §4.6's second option rather than "accent on the strongest dimension" — the litmus is the tiebreak the direction itself names, and a per-row accent would put 1–4 non-interactive accents on the pair screen. |
 | D6 | 2026-07-25 | **CC-4's score numeral was fixed here, not deferred to U5.T3.** The AA matrix carries a "≥24px premium numeral" row; leaving `ShareView`'s ring on `colors.premium` (2.59:1, under even the 3:1 large-text floor) would have made that row describe an intent the code didn't meet. The arc moved with the numeral so ring and value still match. U5.T3 keeps the pair-screen composition work. |
 
 ## OUT OF SCOPE (do not execute here — report, never build)
@@ -131,7 +135,7 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
     no remaining `tone="premium"` on 13px text over white (call sites move in U2–U6; this task
     fixes the primitives: `Text` tone map gains `premiumInk`, `Button` tonal label, share
     `Toggle` track, chat send disabled state).
-- [ ] **U0.T3** 🤖 Icon-color discipline sweep (CC-1, Direction §1 P1): default
+- [x] **U0.T3** 🤖 Icon-color discipline sweep (CC-1, Direction §1 P1): default
   decorative/leading icons to ink across post-capture surfaces — FortuneHome rows/streak,
   FortuneCard chip, share channel tiles + monograms, analyzing step dots + proof chip,
   sub-score bars/icons, settings tiles. Accent remains ONLY on: primary CTA, selected/active,
@@ -415,5 +419,6 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 
 | Date | Task | One-line result |
 |---|---|---|
+| 2026-07-25 | U0.T3 | Ink sweep over 13 files: FortuneHome streak flame + all 7 dots + notify bell + row icons, FortuneCard eyebrow chip, chat gate tile + chips, analyzing proof chip + step dots, pair dimension glyphs + sub-score bars, history type chip + claim sparkle, paywall inclusion icons, share channel tiles + dimension chips, methodology steps, reveal face illustration — all `accent` → `textSecondary`, and every `accentMuted` well that held one → `surfaceSunken`. `FeatureIcon` defaults to ink (D8); 3 unearned claret icons + a `shield` fixed; the 2 RN `<Switch>`es picked up `trackOff`. **Accent litmus (light, 390pt): Today 0 · reveal-ready 0 · share 0** non-interactive accent occurrences (CC-1 measured ~12 on Today alone). Accent now survives only on CTAs, selected segment/pill/toggle, the palm-line highlight, and links; claret only on thread + seal. Gates green, 77 tests. |
 | 2026-07-25 | U0.T2 | New `premiumInk` (`#875F04`/`#D9B25A`) + `trackOff` (`#CFC9BD`/`#454A57`) roles across all 3 skins; accent TEXT → `accentPressed` (`Text` tone map, `Button` tonal/secondary/ghost, 7 feature call sites); off-toggle track 1.15→1.65:1; disabled send icon 1.30→2.25:1; score ring numeral+arc 2.59→5.72:1. `tokens.test.ts` gains a 25-pairing AA matrix run over BOTH schemes plus a banned-pairing guard — it immediately caught a live regression U0.T1 had introduced (`accent` on the new `bg` = 4.27:1), which is what drove D5. `grep tone="premium"` → 0. Tests 73 → 77. |
 | 2026-07-25 | U0.T1 | Light `bg #FAF9F7→#F4F1EB`, `surfaceSunken #F2F0EC→#EAE6DE`, `Card` border scheme-aware (light borders at every elevation); card/page separation 1.052→1.127:1 and a real hairline now renders — pixel probe of the u0 before/after shots reads `ffffff → e7e3dc e7e3dc → f4f1eb` where before it read `ffffff → (shadow AA) → faf9f7`; the 4 raw `shadow.sm` sites all already carry hairlines (none shadow-only); tokens test +1 (73). |

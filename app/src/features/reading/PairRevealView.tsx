@@ -166,7 +166,7 @@ function SubScoreBar({ label, value, index }: { label: string; value: number; in
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-      <Icon name={DIM_ICON[label] ?? 'sparkle'} size={18} color={theme.colors.accent} decorative />
+      <Icon name={DIM_ICON[label] ?? 'sparkle'} size={18} color={theme.colors.textSecondary} decorative />
       <Text variant="bodyMedium" style={{ width: 72 }}>
         {label}
       </Text>
@@ -180,7 +180,7 @@ function SubScoreBar({ label, value, index }: { label: string; value: number; in
         }}
       >
         <Animated.View
-          style={[{ height: 8, borderRadius: 4, backgroundColor: theme.colors.accent }, fillStyle]}
+          style={[{ height: 8, borderRadius: 4, backgroundColor: theme.colors.textSecondary }, fillStyle]}
         />
       </View>
       <Text variant="caption" tone="secondary" style={{ width: 28, textAlign: 'right' }}>

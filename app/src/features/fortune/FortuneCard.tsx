@@ -27,12 +27,12 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
             width: 32,
             height: 32,
             borderRadius: theme.radii.sm,
-            backgroundColor: theme.colors.accentMuted,
+            backgroundColor: theme.colors.surfaceSunken,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Icon name="sparkle" size={18} color={theme.colors.accent} decorative />
+          <Icon name="sparkle" size={18} color={theme.colors.textSecondary} decorative />
         </View>
         <Text variant="caption" tone="tertiary" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>
           Today&apos;s fortune
@@ -82,7 +82,7 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
                 label="Ask about today"
                 variant="ghost"
                 size="md"
-                icon={<Icon name="chat" size={16} color={theme.colors.accent} decorative />}
+                icon={<Icon name="chat" size={16} color={theme.colors.accentPressed} decorative />}
                 onPress={() => onAsk(`Why is ${fortune.lucky_direction} my lucky direction today?`)}
               />
             </Animated.View>

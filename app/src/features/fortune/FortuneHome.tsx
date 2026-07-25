@@ -151,7 +151,8 @@ function FirstRunState({ onScan }: { onScan: () => void }) {
   );
 }
 
-/** A branded streak strip — an accent flame (streak IS accent, §3.2) that gently breathes, the
+/** A streak strip — an INK flame (Audit-4 CC-1: the flame and all seven dots were accent, which
+ *  is most of what made Today read alarming) that gently breathes, the
  *  day-dot run, and a spoken label. */
 function StreakStrip({ streak }: { streak: number }) {
   const theme = useTheme();
@@ -185,7 +186,7 @@ function StreakStrip({ streak }: { streak: number }) {
       }}
     >
       <Animated.View style={flameStyle}>
-        <Icon name="streak" size={18} color={theme.colors.accent} decorative />
+        <Icon name="streak" size={18} color={theme.colors.textSecondary} decorative />
       </Animated.View>
       <Text variant="bodyMedium">{streak}-day streak</Text>
       <View style={{ flexDirection: 'row', gap: 6, marginLeft: 'auto' }}>
@@ -196,7 +197,7 @@ function StreakStrip({ streak }: { streak: number }) {
               width: 10,
               height: 10,
               borderRadius: 5,
-              backgroundColor: i < Math.min(streak, 7) ? theme.colors.accent : theme.colors.border,
+              backgroundColor: i < Math.min(streak, 7) ? theme.colors.textSecondary : theme.colors.border,
             }}
           />
         ))}
@@ -234,7 +235,7 @@ function NotifyOptInCard({ onEnable, onDismiss }: { onEnable: () => void; onDism
   return (
     <Card elevation="sm" style={{ marginBottom: theme.spacing.md, gap: theme.spacing.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-        <Icon name="bell" size={22} color={theme.colors.accent} decorative />
+        <Icon name="bell" size={22} color={theme.colors.textSecondary} decorative />
         <View style={{ flex: 1 }}>
           <Text variant="bodyMedium">Get your fortune each morning</Text>
           <Text variant="caption" tone="secondary">
@@ -273,7 +274,7 @@ function RowLink({
       entranceIndex={index}
       style={{ marginBottom: theme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}
     >
-      <Icon name={icon} size={22} color={theme.colors.accent} decorative />
+      <Icon name={icon} size={22} color={theme.colors.textSecondary} decorative />
       <Text variant="bodyMedium" style={{ flex: 1 }}>
         {label}
       </Text>

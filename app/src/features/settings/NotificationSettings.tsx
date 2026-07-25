@@ -47,7 +47,7 @@ export function NotificationSettings() {
       value={value}
       onValueChange={onValueChange}
       accessibilityLabel={label}
-      trackColor={{ true: theme.colors.accent, false: theme.colors.border }}
+      trackColor={{ true: theme.colors.accent, false: theme.colors.trackOff }}
       thumbColor={theme.colors.surface}
       activeThumbColor={theme.colors.surface}
     />
