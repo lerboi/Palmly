@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import { Button, Card, HeaderIconButton, Icon, Screen, Skeleton, Text } from '@/components/ui';
@@ -14,13 +14,17 @@ import { dismissFortuneOptIn, fortuneOptInDismissed, getPushPermission, requestP
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 import { FortuneCard } from './FortuneCard';
 import { type Fortune, almanacDate, homeState } from './fortune';
+import { streakRun, weekCells, type DayCell } from './openHistory';
 
 export interface FortuneHomeProps {
   /** Today's fortune. Absent while it loads / before the day's row is generated → the first-run state. */
   fortune?: Fortune | null;
   premium: boolean;
-  /** Real consecutive-day streak; 0 (the honest default until retention wires it) hides the strip. */
-  streak?: number;
+  /**
+   * Local dates (`YYYY-MM-DD`) on which the user opened their fortune — drives the week strip and
+   * the streak run. Empty is honest: an empty week renders dots with no streak claim (SH-9).
+   */
+  openedDates?: readonly string[];
   /** Pending compatibility partner (the red-thread row), if any. */
   partnerName?: string | null;
   /**
@@ -41,11 +45,12 @@ export interface FortuneHomeProps {
 
 /**
  * Returning-user home (UIUX §2.11, redesign R18 / v2 V17) — weekday + date header with the ganzhi
- * day-pillar surfaced as an English whisper ("Wood Rat"), a branded animated streak strip, today's
+ * day-pillar surfaced as an English whisper ("Wood Rat") behind a tap-to-learn pill, a real week
+ * strip, today's
  * fortune hero card (free/premium), a pending-compatibility red-thread row, and entries to the
  * readings shelf and chat. English-first, no CJK. A first-run user sees a traced-palm hero.
  */
-export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRun, loading, entitlementLoading, error, onRetry, now }: FortuneHomeProps) {
+export function FortuneHome({ fortune, premium, openedDates = [], partnerName, firstRun, loading, entitlementLoading, error, onRetry, now }: FortuneHomeProps) {
   const theme = useTheme();
   const router = useRouter();
   const { isAnonymous, loading: identityLoading } = useAccountIdentity();
@@ -135,7 +140,7 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
         <FirstRunState onScan={() => router.push('/primer')} />
       ) : (
         <>
-          {streak > 0 ? <StreakStrip streak={streak} /> : null}
+          <WeekStrip cells={weekCells(new Date(ts), openedDates)} streak={streakRun(new Date(ts), openedDates)} />
           {/* `homeState` only returns 'ready' with a fortune in hand, so this guard is unreachable —
               it is here to prove that to the type system rather than to assert it with a `!`. */}
           {fortune ? (
@@ -267,61 +272,6 @@ function FortuneError({ onRetry }: { onRetry?: () => void }) {
   );
 }
 
-/** A streak strip — an INK flame (Audit-4 CC-1: the flame and all seven dots were accent, which
- *  is most of what made Today read alarming) that gently breathes, the
- *  day-dot run, and a spoken label. */
-function StreakStrip({ streak }: { streak: number }) {
-  const theme = useTheme();
-  const reduceMotion = useReducedMotion();
-  const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  const days = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6'];
-
-  const pulse = useSharedValue(1);
-  const breath = theme.motion.duration.breath;
-  useEffect(() => {
-    if (!shouldAnimate) {
-      pulse.value = 1;
-      return;
-    }
-    pulse.value = withRepeat(withTiming(1.15, { duration: breath, easing: Easing.inOut(Easing.ease) }), -1, true);
-  }, [shouldAnimate, pulse, breath]);
-  const flameStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
-
-  return (
-    <View
-      accessibilityRole="text"
-      accessibilityLabel={`${streak}-day fortune streak`}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.spacing.sm,
-        backgroundColor: theme.colors.surfaceSunken,
-        borderRadius: theme.radii.pill,
-        paddingHorizontal: theme.spacing.md,
-        paddingVertical: theme.spacing.sm,
-        marginBottom: theme.spacing.md,
-      }}
-    >
-      <Animated.View style={flameStyle}>
-        <Icon name="streak" size={18} color={theme.colors.textSecondary} decorative />
-      </Animated.View>
-      <Text variant="bodyMedium">{streak}-day streak</Text>
-      <View style={{ flexDirection: 'row', gap: 6, marginLeft: 'auto' }}>
-        {days.map((id, i) => (
-          <View
-            key={id}
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: i < Math.min(streak, 7) ? theme.colors.textSecondary : theme.colors.border,
-            }}
-          />
-        ))}
-      </View>
-    </View>
-  );
-}
 
 function RedThreadRow({ name, elapsed, onPress, index }: { name: string; elapsed?: string; onPress: () => void; index?: number }) {
   const theme = useTheme();
@@ -338,11 +288,82 @@ function RedThreadRow({ name, elapsed, onPress, index }: { name: string; elapsed
       <View style={{ flex: 1 }}>
         <Text variant="bodyMedium">Waiting for {name}</Text>
         <Text variant="caption" tone="secondary">
-          {elapsed ? `Sent ${elapsed} — tap to nudge them again.` : 'Your thread is tied — nudge them to compare palms.'}
+          {elapsed ? `Sent ${elapsed} â€” tap to nudge them again.` : 'Your thread is tied â€” nudge them to compare palms.'}
         </Text>
       </View>
       <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
     </Card>
+  );
+}
+
+/** Daily-fortune push opt-in (F1.T10 sanctioned moment) â€” a calm, dismissible in-context ask. */
+
+/**
+ * The week rhythm Today never had (Audit-4 SH-9, Direction §4.1). Seven trailing days: weekday
+ * initial over a dot — opened days are ink-filled, today wears an accent ring (the ONE ambient
+ * accent this screen is allowed beyond its CTA), and days you missed stay a hairline.
+ *
+ * What it replaces: a strip whose seven dots were keyed `d0..d6` and carried no weekday or "today"
+ * meaning, clamped at `Math.min(streak, 7)` so a month-long habit looked like a week, pulsed a
+ * flame forever, and — because the `streak` prop was never passed — never rendered in production
+ * at all.
+ */
+function WeekStrip({ cells, streak }: { cells: DayCell[]; streak: number }) {
+  const theme = useTheme();
+  return (
+    <View style={{ marginBottom: theme.spacing.md }}>
+      <View
+        accessibilityRole="text"
+        accessibilityLabel={
+          streak >= 2
+            ? `Fortune opened ${streak} days in a row`
+            : `This week: opened on ${cells.filter((c) => c.opened).length} of 7 days`
+        }
+        style={{ flexDirection: 'row', justifyContent: 'space-between' }}
+      >
+        {cells.map((cell) => (
+          <View key={cell.key} style={{ alignItems: 'center', gap: theme.spacing.xs, flex: 1 }}>
+            <Text variant="caption" tone="secondary">
+              {cell.initial}
+            </Text>
+            <View
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: theme.radii.pill,
+                backgroundColor: cell.opened ? theme.colors.textSecondary : 'transparent',
+                borderWidth: cell.opened ? 0 : theme.strokes.hairline,
+                borderColor: theme.colors.border,
+              }}
+            />
+            {/* Today's ring sits UNDER the dot as a halo, so the fill still reads on an opened day. */}
+            {cell.isToday ? (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  bottom: -3,
+                  width: 16,
+                  height: 16,
+                  borderRadius: theme.radii.pill,
+                  borderWidth: theme.strokes.hairline,
+                  borderColor: theme.colors.accent,
+                }}
+              />
+            ) : null}
+          </View>
+        ))}
+      </View>
+      {/* Only a REAL run of 2+ earns a line. No run, no claim (SH-9). */}
+      {streak >= 2 ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.sm }}>
+          <Icon name="streak" size={14} color={theme.colors.textSecondary} decorative />
+          <Text variant="caption" tone="secondary">
+            {streak}-day streak
+          </Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 

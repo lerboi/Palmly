@@ -5,6 +5,8 @@ import type { Fortune } from '@/features/fortune/fortune';
 import { loadFortuneContext, loadTodayFortune, saveBirthDate, type FortuneContext } from '@/lib/fortuneData';
 import { useEntitlement } from '@/lib/entitlements';
 import { hasFirstReadingComplete } from '@/lib/session';
+import { markFortuneOpened } from '@/lib/fortuneOpens';
+import { streakRun } from '@/features/fortune/openHistory';
 import { track } from '@/lib/analytics';
 
 /**
@@ -24,14 +26,28 @@ export default function FortuneScreen() {
   // Is this user genuinely new? Answered by the session's first-reading flag, NOT by the absence
   // of a fortune row — that is the whole of SH-1.
   const [firstRun, setFirstRun] = useState<boolean | undefined>(undefined);
+  // The days this user opened their fortune — drives the week strip and the REAL streak (SH-9).
+  const [openedDates, setOpenedDates] = useState<string[]>([]);
   const [ctx, setCtx] = useState<FortuneContext | null>(null); // null → still loading the context
   const [showBirthSheet, setShowBirthSheet] = useState(false);
   const [savingBirth, setSavingBirth] = useState(false);
 
   useEffect(() => {
-    // Retention signal (D1/D7/D30) — the user opened the daily fortune. Streak is the honest 0 until
-    // real retention data lands (F1.T11); premium reflects the entitlement at open time.
-    track('fortune_opened', { date: new Date().toISOString().slice(0, 10), premium, streak: 0 });
+    // Retention signal (D1/D7/D30). Recording the open and reporting the streak are the same act:
+    // `streak` was hardcoded 0 before (SH-9), so the funnel could never see a habit forming.
+    let active = true;
+    void markFortuneOpened().then((dates) => {
+      if (!active) return;
+      setOpenedDates(dates);
+      track('fortune_opened', {
+        date: new Date().toISOString().slice(0, 10),
+        premium,
+        streak: streakRun(new Date(), dates),
+      });
+    });
+    return () => {
+      active = false;
+    };
   }, [premium]);
 
   // Resolve the caller's context (birth_date → bucket). No birth date yet → offer the sheet on first open.
@@ -92,6 +108,7 @@ export default function FortuneScreen() {
       entitlementLoading={entitlementLoading}
       error={failed}
       firstRun={firstRun}
+      openedDates={openedDates}
       onRetry={() => setReloads((n) => n + 1)}
     />
   );
