@@ -11,9 +11,9 @@ import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
 export interface Plan {
   id: string;
   name: string;
-  price: string; // billed price, e.g. '$35.88 billed yearly'
-  perMonth: string; // e.g. '$2.99 / mo'
-  badge?: string; // e.g. 'SAVE 40%'
+  price: string; // billing cadence — NO price until RevenueCat lands (Audit-4 SH-7)
+  perMonth: string; // the card's lead line — a price only once RevenueCat supplies one
+  badge?: string; // an optional seal, e.g. a real store-provided saving
 }
 
 export interface PaywallViewProps {
@@ -29,6 +29,12 @@ export interface PaywallViewProps {
   /** Hero copy matched to the tapped tease/trigger (audit F1.2). Defaults to the locked-line pitch. */
   heroTitle?: string;
   heroSubtitle?: string;
+  /** The hero geometry really is this reader's. False → the palm is an illustration, and the copy
+   *  drops the possessive (Audit-4 SH-7 — the paywall claimed "your fate line" over a fixture). */
+  ownGeometry?: boolean;
+  /** Real prices have not landed yet (RevenueCat, out of this ledger's scope): the CTA says so
+   *  instead of taking a tap that cannot buy anything (Direction §4.10). */
+  offersPending?: boolean;
   onClose?: () => void;
   onPurchase?: (planId: string) => void;
   onRestore?: () => void;
@@ -58,6 +64,8 @@ export function PaywallView({
   geometry,
   lockedLine = 'fate_line',
   lockedNames = ['deep-dive lines'],
+  ownGeometry = false,
+  offersPending = false,
   heroTitle,
   heroSubtitle,
   onClose,
@@ -107,10 +115,13 @@ export function PaywallView({
             </Text>
           </View>
           <Text variant="title" style={{ textAlign: 'center', marginTop: theme.spacing.sm }}>
-            {heroTitle ?? 'Your palm has more to say'}
+            {heroTitle ?? (ownGeometry ? 'Your palm has more to say' : 'There is more in a palm')}
           </Text>
           <Text variant="bodyLarge" tone="secondary" style={{ textAlign: 'center', marginTop: theme.spacing.sm, maxWidth: 320 }}>
-            {heroSubtitle ?? `Your ${joinNames(lockedNames)} are still hidden — unlock the full read.`}
+            {heroSubtitle ??
+              (ownGeometry
+                ? `Your ${joinNames(lockedNames)} are still hidden — unlock the full read.`
+                : `The ${joinNames(lockedNames)} stay hidden on the free read — unlock the full one.`)}
           </Text>
         </View>
 
@@ -169,12 +180,20 @@ export function PaywallView({
 
       {/* Footer — CTA, restore, then the App-Review-required Terms · Privacy line. */}
       <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm, marginBottom: theme.spacing.md }}>
+        {/* No prices, so no purchase (Direction §4.10, SH-7): the CTA used to LOOK buyable and
+            merely close the modal, under invented prices. It states the truth until offerings land. */}
         <Button
-          label="Unlock Palmly Premium"
+          label={offersPending ? 'Pricing coming soon' : 'Unlock Palmly Premium'}
           variant="primary"
           fullWidth
+          disabled={offersPending}
           onPress={() => selected && onPurchase?.(selected)}
         />
+        {offersPending ? (
+          <Text variant="small" tone="secondary" style={{ textAlign: 'center' }}>
+            Plans and prices arrive with the store release.
+          </Text>
+        ) : null}
         <View style={{ alignItems: 'center', gap: theme.spacing.xs }}>
           <HeaderTextButton onPress={() => onRestore?.()}>
             <Text variant="caption" color={theme.colors.accentPressed}>
@@ -221,7 +240,7 @@ function PlanCard({ plan, selected, onSelect }: { plan: Plan; selected: boolean;
         accessibilityLabel={`${plan.name} — ${plan.perMonth}, ${plan.price}`}
       >
         <Card
-          elevation={selected ? 'md' : 'sm'}
+          elevation={selected ? 'md' : 'none'}
           bordered
           style={{
             borderColor: selected ? theme.colors.accent : theme.colors.border,

@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { PaywallView, type Plan } from '@/features/paywall/PaywallView';
 import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import type { LineGeometry } from '@/components/palm-diagram/geometry';
+import { loadHistory, loadReading } from '@/lib/readings';
 import { restorePurchases } from '@/lib/revenuecat';
 import { setPaywallDeclined } from '@/lib/session';
 import { track, type AnalyticsEventMap } from '@/lib/analytics';
@@ -15,9 +17,17 @@ import { track, type AnalyticsEventMap } from '@/lib/analytics';
  * `paywall_dismissed`; "Restore" is honest (never the sales screen), Terms · Privacy link to /legal.
  * The real RevenueCat offerings + purchase/restore round-trip are device + H8 (`[~]`).
  */
-const PLANS: Plan[] = [
-  { id: 'annual', name: 'Annual', price: '$35.88 billed yearly', perMonth: '$2.99 / mo', badge: 'SAVE 40%' },
-  { id: 'monthly', name: 'Monthly', price: 'billed monthly', perMonth: '$4.99 / mo' },
+/**
+ * **PLACEHOLDER OFFERS — no prices, on purpose (Audit-4 SH-7, Direction §4.10).**
+ *
+ * These used to read "$35.88 billed yearly", "$2.99 / mo", "SAVE 40%" and "$4.99 / mo" — numbers
+ * nobody had set, on a screen whose CTA merely closed the modal. A user could read a price, tap
+ * buy, and get nothing. Real prices come from RevenueCat offerings (R1.T4/R4, out of scope for this
+ * ledger), so until then the cards carry SHAPE and no numbers, and the CTA says so.
+ */
+const PLACEHOLDER_OFFERS: Plan[] = [
+  { id: 'annual', name: 'Annual', price: 'Billed once a year', perMonth: 'Best value' },
+  { id: 'monthly', name: 'Monthly', price: 'Billed monthly', perMonth: 'Flexible' },
 ];
 
 type PaywallTrigger = AnalyticsEventMap['paywall_viewed']['trigger'];
@@ -88,15 +98,36 @@ export default function Paywall() {
     router.back();
   };
 
+  // SH-7: the hero drew PREVIEW_GEOMETRY under copy reading "your fate line" — a fixture presented
+  // as the reader's own hand. Their newest stored reading is the honest source; without one the
+  // palm is an illustration and the copy drops the possessive.
+  const [ownGeometry, setOwnGeometry] = useState<LineGeometry | null>(null);
+  useEffect(() => {
+    let active = true;
+    loadHistory()
+      .then((rows) => (rows[0] ? loadReading({ readingId: rows[0].id }) : null))
+      .then((res) => {
+        if (active && res) setOwnGeometry(res.geometry);
+      })
+      .catch(() => {
+        /* no stored reading → the abstract hero, which is the honest default */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const onRestore = () => {
     void restorePurchases().then((r) => Alert.alert('Restore purchases', r.message));
   };
 
   return (
     <PaywallView
-      plans={PLANS}
+      plans={PLACEHOLDER_OFFERS}
       defaultPlanId="annual"
-      geometry={PREVIEW_GEOMETRY}
+      geometry={ownGeometry ?? PREVIEW_GEOMETRY}
+      ownGeometry={ownGeometry != null}
+      offersPending
       lockedLine={hero.lockedLine}
       lockedNames={hero.lockedNames}
       heroTitle={hero.heroTitle}
