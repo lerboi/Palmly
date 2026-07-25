@@ -54,7 +54,8 @@ export function HistoryShelf({ readings, showUnchanged = false, now, onBack }: H
       ) : (
         <>
           <ClaimAccountBanner />
-          {readings.map((r, i) => <ReadingRow key={r.id} reading={r} now={nowTs} index={i} />)}
+          <NewReadingRow />
+          {readings.map((r, i) => <ReadingRow key={r.id} reading={r} now={nowTs} index={i + 1} />)}
         </>
       )}
     </Screen>
@@ -185,6 +186,31 @@ function UnchangedBanner() {
       <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.xs }}>
         Your reading stands — same palm, same reading. Your lines don&apos;t lie.
       </Text>
+    </Card>
+  );
+}
+
+/**
+ * The standing way back into capture (SN-4). "Read my palm" used to live ONLY in the first-run and
+ * empty states, so a returning user with readings had no new-scan entry anywhere. Flat and ink —
+ * it sits above the shelf as an action, not as another reading.
+ */
+function NewReadingRow() {
+  const theme = useTheme();
+  const router = useRouter();
+  return (
+    <Card
+      onPress={() => router.push('/primer')}
+      accessibilityLabel="New reading"
+      entranceIndex={0}
+      style={{ marginBottom: theme.spacing.md }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+        <Icon name="camera" size={22} color={theme.colors.textSecondary} decorative />
+        <Text variant="bodyMedium" style={{ flex: 1 }}>
+          New reading
+        </Text>
+      </View>
     </Card>
   );
 }

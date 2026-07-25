@@ -93,7 +93,10 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
             </Text>
           </View>
         </View>
-        <HeaderIconButton name="settings" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <HeaderIconButton name="camera" accessibilityLabel="New reading" onPress={() => router.push('/primer')} />
+          <HeaderIconButton name="settings" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
+        </View>
       </View>
 
       {showFirstRun ? (
