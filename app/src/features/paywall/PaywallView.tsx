@@ -4,7 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
-import { Button, Card, Icon, Logomark, Screen, Text } from '@/components/ui';
+import { Button, Card, HeaderIconButton, HeaderTextButton, Icon, Logomark, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { usePressSpring, useReducedMotion, useTheme } from '@/theme';
 
@@ -81,15 +81,14 @@ export function PaywallView({
     <Screen>
       {/* Header — close (top-left) + a small claret brand seal. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.sm }}>
-        <Pressable
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-          hitSlop={12}
-          style={{ padding: theme.spacing.xs, marginLeft: -theme.spacing.xs }}
-        >
-          <Icon name="close" size={24} color={theme.colors.textSecondary} decorative />
-        </Pressable>
+        {onClose ? (
+          <HeaderIconButton
+            name="close"
+            accessibilityLabel="Close"
+            onPress={onClose}
+            style={{ marginLeft: -theme.spacing.md }}
+          />
+        ) : null}
         <View style={{ flex: 1 }} />
         <Logomark size={28} variant="stamp" tone="heritage" accessibilityLabel="Palmly seal" />
       </View>
@@ -177,23 +176,23 @@ export function PaywallView({
           onPress={() => selected && onPurchase?.(selected)}
         />
         <View style={{ alignItems: 'center', gap: theme.spacing.xs }}>
-          <Pressable onPress={onRestore} accessibilityRole="button" hitSlop={12}>
+          <HeaderTextButton onPress={() => onRestore?.()}>
             <Text variant="caption" color={theme.colors.accentPressed}>
               Restore purchases
             </Text>
-          </Pressable>
+          </HeaderTextButton>
           <Text variant="caption" tone="tertiary">
             No trial · cancel anytime
           </Text>
           {/* Terms · Privacy — Apple requires these on an auto-renew purchase screen (audit F1.2). */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
-            <Pressable onPress={() => onLegal?.('terms')} accessibilityRole="link" hitSlop={8}>
+            <HeaderTextButton accessibilityRole="link" onPress={() => onLegal?.('terms')}>
               <Text variant="caption" tone="secondary">Terms</Text>
-            </Pressable>
+            </HeaderTextButton>
             <Text variant="caption" tone="tertiary">·</Text>
-            <Pressable onPress={() => onLegal?.('privacy')} accessibilityRole="link" hitSlop={8}>
+            <HeaderTextButton accessibilityRole="link" onPress={() => onLegal?.('privacy')}>
               <Text variant="caption" tone="secondary">Privacy</Text>
-            </Pressable>
+            </HeaderTextButton>
           </View>
         </View>
       </View>

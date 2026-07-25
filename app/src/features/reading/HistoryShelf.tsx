@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
-import { AppHeader, Button, Card, Icon, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
+import { AppHeader, Button, Card, HeaderIconButton, Icon, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { useAccountIdentity } from '@/lib/account';
 import { type ReadingSummary, relativeDate } from './history';
@@ -36,14 +36,7 @@ export function HistoryShelf({ readings, showUnchanged = false, now }: HistorySh
         title="Your readings"
         right={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-            <Pressable
-              onPress={() => router.push('/settings')}
-              accessibilityRole="button"
-              accessibilityLabel="Settings"
-              hitSlop={8}
-            >
-              <Icon name="settings" size={22} color={theme.colors.textSecondary} decorative />
-            </Pressable>
+            <HeaderIconButton name="settings" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
             <PrivacyBadge />
           </View>
         }
@@ -124,15 +117,12 @@ function ReadingRow({ reading, now, index }: { reading: ReadingSummary; now: num
         </View>
         {/* Loop re-entry (F2.8): a trailing share affordance so a past reading can re-enter the viral
             loop straight from history. Nested Pressable → its own tap wins over the row's open-reveal. */}
-        <Pressable
-          onPress={() => router.push(`/share?readingId=${reading.id}&source=home` as Href)}
-          hitSlop={8}
-          accessibilityRole="button"
+        <HeaderIconButton
+          name="share"
+          size={18}
           accessibilityLabel={`Share this ${isPalm ? 'palm' : 'face'} reading`}
-          style={{ padding: theme.spacing.xs }}
-        >
-          <Icon name="share" size={18} color={theme.colors.textSecondary} decorative />
-        </Pressable>
+          onPress={() => router.push(`/share?readingId=${reading.id}&source=home` as Href)}
+        />
         <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
       </View>
     </Card>

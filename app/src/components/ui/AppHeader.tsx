@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
-import { Pressable, View, type ViewStyle } from 'react-native';
-import Animated from 'react-native-reanimated';
-import { usePressSpring, useTheme } from '@/theme';
+import { View, type ViewStyle } from 'react-native';
+import { useTheme } from '@/theme';
+import { HeaderIconButton } from './HeaderIconButton';
 import { Icon } from './Icon';
 import { Text } from './Text';
 
@@ -10,6 +10,11 @@ export interface AppHeaderProps {
   title?: string;
   /** When provided, renders a back affordance that calls this. Omit on tab roots. */
   onBack?: () => void;
+  /**
+   * When provided, renders a **close ✕** instead of a back arrow. True modals dismiss, they don't
+   * go back (Audit-4 SN-9). Takes precedence over `onBack` if both are somehow passed.
+   */
+  onClose?: () => void;
   /** Optional trailing element (an action button / icon). */
   right?: ReactNode;
   /** Bottom hairline divider — turn on when the header sits above scrolled content. */
@@ -18,12 +23,14 @@ export interface AppHeaderProps {
 }
 
 /**
- * Shared screen header (redesign §9/R9, v2 V7) — a back affordance (the `Icon name="back"`, with a
- * reduce-motion-aware press spring) + an optional sans title + an optional trailing slot. Pass
- * `showDivider` to separate it from scrolled content. Screens stay `headerShown:false` and render
- * this at the top of their content.
+ * Shared screen header (redesign §9/R9, v2 V7) — a back OR close affordance + an optional sans
+ * title + an optional trailing slot. Pass `showDivider` to separate it from scrolled content.
+ * Screens stay `headerShown:false` and render this at the top of their content.
+ *
+ * Both affordances are `HeaderIconButton`s, so they carry the 44pt box, the press spring and the
+ * haptic tick that the hand-rolled back button was missing (Audit-4 CO-9).
  */
-export function AppHeader({ title, onBack, right, showDivider = false, style }: AppHeaderProps) {
+export function AppHeader({ title, onBack, onClose, right, showDivider = false, style }: AppHeaderProps) {
   const theme = useTheme();
   return (
     <View
@@ -41,7 +48,23 @@ export function AppHeader({ title, onBack, right, showDivider = false, style }: 
         style,
       ]}
     >
-      {onBack ? <BackButton onBack={onBack} /> : null}
+      {onClose ? (
+        <HeaderIconButton
+          name="close"
+          onPress={onClose}
+          accessibilityLabel="Close"
+          color={theme.colors.textPrimary}
+          style={{ marginLeft: -theme.spacing.md }}
+        />
+      ) : onBack ? (
+        <HeaderIconButton
+          name="back"
+          onPress={onBack}
+          accessibilityLabel="Back"
+          color={theme.colors.textPrimary}
+          style={{ marginLeft: -theme.spacing.md }}
+        />
+      ) : null}
       {title ? (
         <Text variant="heading" style={{ flex: 1 }} numberOfLines={1}>
           {title}
@@ -51,27 +74,6 @@ export function AppHeader({ title, onBack, right, showDivider = false, style }: 
       )}
       {right}
     </View>
-  );
-}
-
-/** Back affordance — a spring press-scale on the icon (native only; reduce-motion / web → static). */
-function BackButton({ onBack }: { onBack: () => void }) {
-  const theme = useTheme();
-  const { scaleStyle, onPressIn, onPressOut } = usePressSpring(0.9);
-  return (
-    <Pressable
-      onPress={onBack}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      accessibilityRole="button"
-      accessibilityLabel="Back"
-      hitSlop={8}
-      style={{ marginLeft: -theme.spacing.xs, padding: theme.spacing.xs }}
-    >
-      <Animated.View style={scaleStyle}>
-        <Icon name="back" size={24} color={theme.colors.textPrimary} decorative />
-      </Animated.View>
-    </Pressable>
   );
 }
 

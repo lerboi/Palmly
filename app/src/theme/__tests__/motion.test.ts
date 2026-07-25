@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { motion } from '../tokens';
+import { controlHeight, motion } from '../tokens';
 import { lightTheme, darkTheme } from '../theme';
 
 /**
@@ -55,6 +55,16 @@ describe('motion tokens — animation foundation (redesign v2 §4.1)', () => {
   it('defines per-index stagger deltas (ms)', () => {
     expect(motion.stagger.list).toBe(60);
     expect(motion.stagger.reveal).toBe(90);
+  });
+
+  it('floors every header/chrome tap target at 44pt (Audit-4 CO-9)', () => {
+    // These shipped at 38-42pt, or as a bare Pressable sized by its glyph. `HeaderIconButton`
+    // sizes its box from `controlHeight.md` (re-exported as HEADER_ICON_BUTTON_SIZE), so guarding
+    // the token guards every adopter. Asserting the RENDERED box would need
+    // @testing-library/react-native, which this ledger's dependency rule forbids adding — the
+    // 44pt box is otherwise confirmed in the checkpoint screenshots.
+    expect(controlHeight.md).toBeGreaterThanOrEqual(44);
+    expect(controlHeight.lg).toBeGreaterThanOrEqual(controlHeight.md);
   });
 
   it('surfaces the same motion group on both themes', () => {

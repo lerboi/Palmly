@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
-import { Button, Card, Icon, Screen, Text } from '@/components/ui';
+import { Button, Card, HeaderIconButton, Icon, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { useAccountIdentity } from '@/lib/account';
@@ -93,14 +93,7 @@ export function FortuneHome({ fortune, premium, streak = 0, partnerName, firstRu
             </Text>
           </View>
         </View>
-        <Pressable
-          onPress={() => router.push('/settings')}
-          accessibilityRole="button"
-          accessibilityLabel="Settings"
-          hitSlop={8}
-        >
-          <Icon name="settings" size={24} color={theme.colors.textSecondary} decorative />
-        </Pressable>
+        <HeaderIconButton name="settings" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
       </View>
 
       {showFirstRun ? (

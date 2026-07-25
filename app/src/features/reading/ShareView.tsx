@@ -219,7 +219,7 @@ export function ShareView({
     // what flex could give it on a 844pt device, and Yoga doesn't clip, so the card painted over the
     // toggles, the framing picker and the channel row beneath it.
     <Screen scroll>
-      <AppHeader title="Share your reading" onBack={onClose} />
+      <AppHeader title="Share your reading" onClose={onClose} />
 
       <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
         <SelectPill label="My reading" role="tab" active={variant === 'solo'} onPress={() => setVariant('solo')} />
