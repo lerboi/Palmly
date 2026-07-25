@@ -1,5 +1,5 @@
 import { RevealView } from '@/features/reading/RevealView';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import { PREVIEW_ALL_SECTIONS_READING } from './fixtures';
 
 /**
@@ -9,5 +9,5 @@ import { PREVIEW_ALL_SECTIONS_READING } from './fixtures';
  * rendering the same grey palm as each other. Not shipped in production builds.
  */
 export default function RevealSectionsPreview() {
-  return <RevealView reading={PREVIEW_ALL_SECTIONS_READING} geometry={PREVIEW_GEOMETRY} state="ready" />;
+  return <RevealView reading={PREVIEW_ALL_SECTIONS_READING} geometry={ABSTRACT_GEOMETRY} state="ready" />;
 }

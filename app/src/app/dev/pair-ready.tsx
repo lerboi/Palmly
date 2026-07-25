@@ -1,5 +1,5 @@
 import { PairRevealView } from '@/features/reading/PairRevealView';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import { PREVIEW_PAIR } from './fixtures';
 
 /**
@@ -11,7 +11,7 @@ export default function PairReadyPreview() {
   return (
     <PairRevealView
       data={PREVIEW_PAIR}
-      geometry={PREVIEW_GEOMETRY}
+      geometry={ABSTRACT_GEOMETRY}
       pairId="dev-pair"
       onBack={() => {}}
       onDone={() => {}}

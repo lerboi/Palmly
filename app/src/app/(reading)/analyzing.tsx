@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { AnalyzingView } from '@/features/reading/AnalyzingView';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { loadHistory, loadReading } from '@/lib/readings';
 import { useScanStatus } from '@/lib/useScanStatus';
@@ -91,7 +91,7 @@ export default function Analyzing() {
 
   return (
     <AnalyzingView
-      geometry={own ?? PREVIEW_GEOMETRY}
+      geometry={own ?? ABSTRACT_GEOMETRY}
       ownGeometry={own != null}
       status={status}
       elapsedMs={elapsedMs}

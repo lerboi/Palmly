@@ -2,7 +2,7 @@ import { Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { PaywallView, type Plan } from '@/features/paywall/PaywallView';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { loadHistory, loadReading } from '@/lib/readings';
 import { restorePurchases } from '@/lib/revenuecat';
@@ -98,7 +98,7 @@ export default function Paywall() {
     router.back();
   };
 
-  // SH-7: the hero drew PREVIEW_GEOMETRY under copy reading "your fate line" — a fixture presented
+  // SH-7: the hero drew ABSTRACT_GEOMETRY under copy reading "your fate line" — a fixture presented
   // as the reader's own hand. Their newest stored reading is the honest source; without one the
   // palm is an illustration and the copy drops the possessive.
   const [ownGeometry, setOwnGeometry] = useState<LineGeometry | null>(null);
@@ -125,7 +125,7 @@ export default function Paywall() {
     <PaywallView
       plans={PLACEHOLDER_OFFERS}
       defaultPlanId="annual"
-      geometry={ownGeometry ?? PREVIEW_GEOMETRY}
+      geometry={ownGeometry ?? ABSTRACT_GEOMETRY}
       ownGeometry={ownGeometry != null}
       offersPending
       lockedLine={hero.lockedLine}

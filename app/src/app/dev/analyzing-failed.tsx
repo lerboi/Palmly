@@ -1,5 +1,5 @@
 import { AnalyzingView } from '@/features/reading/AnalyzingView';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 
 /**
  * /dev preview — the Analyzing loader's failed/retry state (redesign R14). The real route drives
@@ -9,7 +9,7 @@ import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
 export default function AnalyzingFailedPreview() {
   return (
     <AnalyzingView
-      geometry={PREVIEW_GEOMETRY}
+      geometry={ABSTRACT_GEOMETRY}
       status="failed"
       elapsedMs={0}
       failureReason="not_a_hand"

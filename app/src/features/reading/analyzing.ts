@@ -20,7 +20,7 @@ export const STAGES: AnalyzingStage[] = [
 /**
  * The stage line, possessive ONLY when it is true (Audit-4 SH-7, Direction §4.5).
  *
- * The loader traces `PREVIEW_GEOMETRY` — a fixture — while telling the user "Tracing **your** heart
+ * The loader traces `ABSTRACT_GEOMETRY` — a fixture — while telling the user "Tracing **your** heart
  * line…" and labelling it "Your palm line diagram". The user's real geometry does not exist until
  * extraction finishes, so for a first scan every one of those words is false. On a rescan a stored
  * geometry DOES exist, the route passes it, and the possessive becomes honest.

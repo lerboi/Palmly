@@ -4,7 +4,7 @@ import { router, useLocalSearchParams, type Href } from 'expo-router';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { Button, Logomark, PrivacyBadge, Screen, Text } from '@/components/ui';
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import { RedThread } from '@/features/reading/ShareView';
 import { useReducedMotion, useTheme } from '@/theme';
 import { ClaimError, claimInvite, loadClaimContext, normalizeCode, saveClaimContext, type ClaimContext } from '@/lib/claim';
@@ -242,7 +242,7 @@ function PairTease() {
         ]}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
-          <PalmDiagram geometry={PREVIEW_GEOMETRY} size={52} animate={false} />
+          <PalmDiagram geometry={ABSTRACT_GEOMETRY} size={52} animate={false} />
           <View
             style={{
               width: 44,
@@ -259,7 +259,7 @@ function PairTease() {
             </Text>
           </View>
           <PalmDiagram
-            geometry={PREVIEW_GEOMETRY}
+            geometry={ABSTRACT_GEOMETRY}
             size={52}
             animate={false}
             style={{ transform: [{ scaleX: -1 }] }}

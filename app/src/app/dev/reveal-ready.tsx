@@ -1,5 +1,5 @@
 import { RevealView } from '@/features/reading/RevealView';
-import { PREVIEW_GEOMETRY, PREVIEW_READING } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY, PREVIEW_READING } from '@/features/reading/reveal';
 
 /**
  * /dev preview — the PALM Reveal's READY state, device-free (audit F1.6 / F1.T7). With
@@ -7,5 +7,5 @@ import { PREVIEW_GEOMETRY, PREVIEW_READING } from '@/features/reading/reveal';
  * `/dev/reveal-face` is the face counterpart. Not shipped in production builds.
  */
 export default function RevealReadyPreview() {
-  return <RevealView reading={PREVIEW_READING} geometry={PREVIEW_GEOMETRY} state="ready" />;
+  return <RevealView reading={PREVIEW_READING} geometry={ABSTRACT_GEOMETRY} state="ready" />;
 }

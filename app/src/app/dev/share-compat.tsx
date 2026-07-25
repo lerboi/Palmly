@@ -1,5 +1,5 @@
 import { ShareView } from '@/features/reading/ShareView';
-import { PREVIEW_GEOMETRY, PREVIEW_READING } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY, PREVIEW_READING } from '@/features/reading/reveal';
 import { PREVIEW_COMPAT_SHARE } from './fixtures';
 
 /**
@@ -10,7 +10,7 @@ import { PREVIEW_COMPAT_SHARE } from './fixtures';
 export default function ShareCompatPreview() {
   return (
     <ShareView
-      geometry={PREVIEW_GEOMETRY}
+      geometry={ABSTRACT_GEOMETRY}
       headline={PREVIEW_READING.headline}
       pair={PREVIEW_COMPAT_SHARE}
       initialVariant="compat"

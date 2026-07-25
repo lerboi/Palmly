@@ -1,7 +1,7 @@
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { FACE_READING_ENABLED } from '@/lib/capabilities';
 import { deviceLocale } from '@/lib/locale';
-import { PREVIEW_GEOMETRY } from './reveal';
+import { ABSTRACT_GEOMETRY } from './reveal';
 
 /** A row in the readings shelf (UIUX §2.11 — palm/face cards, re-openable). */
 export interface ReadingSummary {
@@ -40,9 +40,9 @@ export function relativeDate(iso: string, now: number): string {
 // ── Preview shelf for device-free web-screenshot verification (P6.T4). ──
 
 export const PREVIEW_HISTORY: ReadingSummary[] = [
-  { id: 'r1', kind: 'palm', headline: 'A Water hand — feeling runs deep in you.', createdAt: '2026-07-14T02:00:00Z', geometry: PREVIEW_GEOMETRY },
+  { id: 'r1', kind: 'palm', headline: 'A Water hand — feeling runs deep in you.', createdAt: '2026-07-14T02:00:00Z', geometry: ABSTRACT_GEOMETRY },
   { id: 'r2', kind: 'face', headline: 'Balanced three courts — steady judgement.', createdAt: '2026-07-13T02:00:00Z' },
-  { id: 'r3', kind: 'palm', headline: 'A long fate line — a path you set yourself.', createdAt: '2026-07-08T02:00:00Z', geometry: PREVIEW_GEOMETRY },
+  { id: 'r3', kind: 'palm', headline: 'A long fate line — a path you set yourself.', createdAt: '2026-07-08T02:00:00Z', geometry: ABSTRACT_GEOMETRY },
 ];
 
 /**

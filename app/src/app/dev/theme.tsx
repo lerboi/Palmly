@@ -2,7 +2,7 @@ import { View, ScrollView, StyleSheet } from 'react-native';
 import { AppHeader, Button, Card, Icon, Logomark, PrivacyBadge, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import {
   ThemeProvider,
   useTheme,
@@ -384,9 +384,9 @@ function PanelBody({ scheme }: { scheme: ColorScheme }) {
       {/* PalmDiagram — the traced-palm hero (labels off / on / draw-on end-state) */}
       <Text variant="heading">Palm diagram</Text>
       <View style={styles.brandRow}>
-        <PalmDiagram geometry={PREVIEW_GEOMETRY} size={120} animate={false} signatureLines={['heart_line', 'fate_line']} />
-        <PalmDiagram geometry={PREVIEW_GEOMETRY} size={120} animate={false} showLabels highlightedLine="heart_line" />
-        <PalmDiagram geometry={PREVIEW_GEOMETRY} size={120} animate showLabels signatureLines={['heart_line', 'fate_line']} />
+        <PalmDiagram geometry={ABSTRACT_GEOMETRY} size={120} animate={false} signatureLines={['heart_line', 'fate_line']} />
+        <PalmDiagram geometry={ABSTRACT_GEOMETRY} size={120} animate={false} showLabels highlightedLine="heart_line" />
+        <PalmDiagram geometry={ABSTRACT_GEOMETRY} size={120} animate showLabels signatureLines={['heart_line', 'fate_line']} />
       </View>
       <Text variant="caption" tone="secondary">
         ↑ signature · labeled · draw-on end-state (stagger + bloom render live on device)

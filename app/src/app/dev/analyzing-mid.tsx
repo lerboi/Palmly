@@ -1,5 +1,5 @@
 import { AnalyzingView } from '@/features/reading/AnalyzingView';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 
 /**
  * /dev preview — the Analyzing loader mid-pipeline (20s in), where the old ring parked at 75% and
@@ -14,7 +14,7 @@ const PLACEHOLDER_CROP =
 export default function AnalyzingMidPreview() {
   return (
     <AnalyzingView
-      geometry={PREVIEW_GEOMETRY}
+      geometry={ABSTRACT_GEOMETRY}
       status="extracting"
       elapsedMs={20_000}
       capturedImageUri={PLACEHOLDER_CROP}

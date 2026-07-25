@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { PairNotice, PairRevealView, PairWaiting } from '@/features/reading/PairRevealView';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { Screen } from '@/components/ui';
 import { useCompatStatus } from '@/lib/useCompatStatus';
@@ -101,7 +101,7 @@ export default function Pair() {
     return (
       <PairRevealView
         data={toPairData(result, partnerName)}
-        geometry={ownGeometry ?? PREVIEW_GEOMETRY}
+        geometry={ownGeometry ?? ABSTRACT_GEOMETRY}
         pairId={pairId}
         onBack={() => router.back()}
         onDone={() => router.replace('/fortune')}

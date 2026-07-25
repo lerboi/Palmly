@@ -5,7 +5,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AppHeader, Icon, Logomark, Screen, Text } from '@/components/ui';
 import type { IconName } from '@/components/ui';
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import { useReducedMotion, useTheme } from '@/theme';
 import { CANONICAL_DELETION_PROMISE, DISCLAIMER_FULL } from '@/lib/trustCopy';
 import { PrivacyTrustCard } from './settingsUi';
@@ -133,11 +133,11 @@ function TimelineStep({ step, index, last, shouldAnimate }: { step: StepDef; ind
           {step.body}
         </Text>
         {/* F2.T3 §5.8: the trace step DEMONSTRATES — the diagram self-draws (settled under reduce-motion
-            / web). PREVIEW_GEOMETRY is correct here: this page is about the method, not the user's data. */}
+            / web). ABSTRACT_GEOMETRY is correct here: this page is about the method, not the user's data. */}
         {step.diagram ? (
           <View style={{ alignItems: 'center', marginTop: theme.spacing.md }}>
             <PalmDiagram
-              geometry={PREVIEW_GEOMETRY}
+              geometry={ABSTRACT_GEOMETRY}
               size={180}
               animate={shouldAnimate}
               signatureLines={['heart_line', 'fate_line']}

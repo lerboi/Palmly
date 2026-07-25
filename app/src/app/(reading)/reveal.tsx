@@ -11,7 +11,7 @@ import { track } from '@/lib/analytics';
  * keyed on `readingId` (from history) or `scanId` (from the analyzing hand-off) — and renders it
  * through {@link RevealView}'s built-in pending / error / ready states. No fixtures: an unreadable
  * or missing reading falls to the honest error state, not fake content. The traced-palm geometry
- * comes from the reading's own `feature_sets.features.line_geometry`; PREVIEW_GEOMETRY is only the
+ * comes from the reading's own `feature_sets.features.line_geometry`; ABSTRACT_GEOMETRY is only the
  * decorative shape shown while loading/failed.
  */
 export default function Reveal() {

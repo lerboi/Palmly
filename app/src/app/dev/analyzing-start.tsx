@@ -1,5 +1,5 @@
 import { AnalyzingView } from '@/features/reading/AnalyzingView';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 
 /**
  * /dev preview — the Analyzing loader at **0 elapsed**: the first stage, the ring at its opening
@@ -8,5 +8,5 @@ import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
  */
 export default function AnalyzingStartPreview() {
   // `onBack`/`onHome` are wired to no-ops so the SN-7 leave-confirm sheet is reachable device-free.
-  return <AnalyzingView geometry={PREVIEW_GEOMETRY} status="extracting" elapsedMs={0} onBack={() => {}} onHome={() => {}} />;
+  return <AnalyzingView geometry={ABSTRACT_GEOMETRY} status="extracting" elapsedMs={0} onBack={() => {}} onHome={() => {}} />;
 }

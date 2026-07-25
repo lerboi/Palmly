@@ -10,7 +10,7 @@ import { useAccountIdentity } from '@/lib/account';
 import { loadPendingCompat, type PendingCompat } from '@/lib/pendingCompat';
 import { elapsedLabel } from '@/lib/compatCopy';
 import { dismissFortuneOptIn, fortuneOptInDismissed, getPushPermission, requestPushPermission } from '@/lib/notifications';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import { FortuneCard } from './FortuneCard';
 import { type Fortune, almanacDate, homeState } from './fortune';
 import { streakRun, weekCells, type DayCell } from './openHistory';
@@ -187,7 +187,7 @@ function FirstRunState({ onScan }: { onScan: () => void }) {
   const theme = useTheme();
   return (
     <Card elevation="md" style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-      <PalmDiagram geometry={PREVIEW_GEOMETRY} size={160} signatureLines={['heart_line', 'fate_line']} animate />
+      <PalmDiagram geometry={ABSTRACT_GEOMETRY} size={160} signatureLines={['heart_line', 'fate_line']} animate />
       <Text variant="title" style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
         Your daily fortune starts here
       </Text>

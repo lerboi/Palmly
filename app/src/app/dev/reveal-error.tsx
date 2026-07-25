@@ -1,5 +1,5 @@
 import { RevealView } from '@/features/reading/RevealView';
-import { PREVIEW_GEOMETRY, PREVIEW_READING } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY, PREVIEW_READING } from '@/features/reading/reveal';
 
 /**
  * /dev preview — the Reveal screen's error state (redesign v2 V13). Screenshot-verifiable
@@ -9,7 +9,7 @@ export default function RevealErrorPreview() {
   return (
     <RevealView
       reading={PREVIEW_READING}
-      geometry={PREVIEW_GEOMETRY}
+      geometry={ABSTRACT_GEOMETRY}
       state="error"
       onRetry={() => {}}
     />

@@ -53,21 +53,6 @@ export const SECTION_ICON: Record<string, IconName> = {
   markings: 'sparkle',
 };
 
-/**
- * The CJK marker for each section (heart/head/life/fate …). Redesign §2: **NOT rendered in the
- * default UI** — RevealView uses the English feature line-icons (`SECTION_ICON`). Retained as data
- * for the optional zh "traditional view" only.
- */
-export const SECTION_GLYPH: Record<string, string> = {
-  hand_shape: '掌',
-  heart: '心',
-  head: '智',
-  life: '命',
-  fate: '运',
-  mounts: '丘',
-  markings: '纹',
-};
-
 export const freeSections = (r: Reading): ReadingSection[] => r.sections.filter((s) => s.depth_level <= 1);
 export const lockedSections = (r: Reading): ReadingSection[] => r.sections.filter((s) => s.depth_level >= 2);
 
@@ -194,7 +179,7 @@ export function initialRevealLoad(): RevealLoad {
   return {
     state: 'pending',
     reading: undefined,
-    geometry: PREVIEW_GEOMETRY,
+    geometry: ABSTRACT_GEOMETRY,
     loadedId: undefined,
     kind: 'palm',
     photoDeletedAt: null,
@@ -223,7 +208,7 @@ export function loadedRevealLoad(res: {
 }
 
 // ── A representative reading + palm for previews / device-free web-screenshot verification (P6.T3). ──
-export const PREVIEW_GEOMETRY: LineGeometry = {
+export const ABSTRACT_GEOMETRY: LineGeometry = {
   heart_line: [
     [120, 300],
     [400, 270],

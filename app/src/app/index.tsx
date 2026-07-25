@@ -5,7 +5,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import { Button, Logomark, Screen, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import { loadClaimContext } from '@/lib/claim';
 import { hasFirstReadingComplete } from '@/lib/session';
 
@@ -76,7 +76,7 @@ export default function Index() {
       {/* Faint ghost-hand brand background — echoes the welcome hero so the landing isn't blank. */}
       <View style={styles.ghost} pointerEvents="none">
         <PalmDiagram
-          geometry={PREVIEW_GEOMETRY}
+          geometry={ABSTRACT_GEOMETRY}
           size={380}
           animate={false}
           accessibilityLabel=""

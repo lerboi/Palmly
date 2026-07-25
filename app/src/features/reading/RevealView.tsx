@@ -144,6 +144,9 @@ export function RevealView({ reading, geometry, state = 'ready', kind = 'palm', 
       <Screen
         scroll
         onScroll={onScroll}
+        // The depth funnel fires four thresholds ONCE each — it does not need a 60fps callback
+        // (U7.T2). 100ms keeps every threshold and stops running JS on every frame of a scroll.
+        scrollEventThrottle={100}
         contentStyle={{
           // Clear the floating share pill: its height plus the gap it holds off the edge.
           paddingBottom: theme.spacing.xxl + controlHeight.md,

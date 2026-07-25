@@ -1,8 +1,7 @@
 import {
   FACE_SECTION_ICON,
-  PREVIEW_GEOMETRY,
+  ABSTRACT_GEOMETRY,
   PREVIEW_READING,
-  SECTION_GLYPH,
   SECTION_ICON,
   SECTION_LINE,
   deletedLabel,
@@ -45,10 +44,6 @@ describe('reveal reading model (P6.T3)', () => {
     expect(free.length + locked.length).toBe(PREVIEW_READING.sections.length);
     expect(free.length).toBeGreaterThan(0);
     expect(locked.length).toBeGreaterThan(0);
-  });
-
-  it('has a CJK marker for every preview section', () => {
-    for (const s of PREVIEW_READING.sections) expect(SECTION_GLYPH[s.key]).toBeTruthy();
   });
 
   it('derives a tradition footnote from the grounding tag', () => {
@@ -123,7 +118,7 @@ describe('reveal load state (Audit-4 SH-16)', () => {
   it('starts pending, with the decorative geometry and nothing from any reading', () => {
     const init = initialRevealLoad();
     expect(init.state).toBe('pending');
-    expect(init.geometry).toBe(PREVIEW_GEOMETRY);
+    expect(init.geometry).toBe(ABSTRACT_GEOMETRY);
     expect(init.reading).toBeUndefined();
     expect(init.loadedId).toBeUndefined();
     expect(init.photoDeletedAt).toBeNull();
@@ -137,7 +132,7 @@ describe('reveal load state (Audit-4 SH-16)', () => {
       expect(loaded[key]).not.toEqual(init[key]);
     }
     expect(initialRevealLoad()).toEqual(init);
-    expect(initialRevealLoad().geometry).toBe(PREVIEW_GEOMETRY);
+    expect(initialRevealLoad().geometry).toBe(ABSTRACT_GEOMETRY);
   });
 
   it('keeps the loaded reading intact on the ready state', () => {

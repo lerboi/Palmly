@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ShareView, type ShareSource } from '@/features/reading/ShareView';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
 import { loadReading } from '@/lib/readings';
 import { loadCompatShare } from '@/lib/compat';
@@ -76,7 +76,7 @@ export default function Share() {
   return (
     <ShareView
       readingId={readingId}
-      geometry={loaded?.geometry ?? PREVIEW_GEOMETRY}
+      geometry={loaded?.geometry ?? ABSTRACT_GEOMETRY}
       headline={loaded?.headline ?? 'My palm reading'}
       pair={compat ?? undefined}
       initialVariant={variant}

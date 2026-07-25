@@ -14,7 +14,7 @@ import {
   stageMessage,
   visibleGeometry,
 } from '../analyzing';
-import { PREVIEW_GEOMETRY } from '../reveal';
+import { ABSTRACT_GEOMETRY } from '../reveal';
 
 describe('analyzing loader logic (P6.T1)', () => {
   it('advances line-tracing stages on a timer during extraction, capped before the KB stage', () => {
@@ -38,8 +38,8 @@ describe('analyzing loader logic (P6.T1)', () => {
   });
 
   it('reveals lines progressively (drawn so far)', () => {
-    expect(Object.keys(visibleGeometry(PREVIEW_GEOMETRY, 0))).toEqual(['heart_line']);
-    expect(Object.keys(visibleGeometry(PREVIEW_GEOMETRY, 2)).sort()).toEqual(['head_line', 'heart_line', 'life_line']);
+    expect(Object.keys(visibleGeometry(ABSTRACT_GEOMETRY, 0))).toEqual(['heart_line']);
+    expect(Object.keys(visibleGeometry(ABSTRACT_GEOMETRY, 2)).sort()).toEqual(['head_line', 'heart_line', 'life_line']);
   });
 
   it('maps the real backend failure_reason vocabulary to specific, warm hints', () => {

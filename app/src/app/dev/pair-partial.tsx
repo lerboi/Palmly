@@ -1,5 +1,5 @@
 import { PairRevealView } from '@/features/reading/PairRevealView';
-import { PREVIEW_GEOMETRY } from '@/features/reading/reveal';
+import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import { PREVIEW_PAIR_PARTIAL } from './fixtures';
 
 /**
@@ -7,5 +7,5 @@ import { PREVIEW_PAIR_PARTIAL } from './fixtures';
  * render NOTHING rather than a heading over empty space. Not shipped in production builds.
  */
 export default function PairPartialPreview() {
-  return <PairRevealView data={PREVIEW_PAIR_PARTIAL} geometry={PREVIEW_GEOMETRY} pairId="dev-pair-partial" onBack={() => {}} />;
+  return <PairRevealView data={PREVIEW_PAIR_PARTIAL} geometry={ABSTRACT_GEOMETRY} pairId="dev-pair-partial" onBack={() => {}} />;
 }
