@@ -50,7 +50,10 @@ export function HistoryShelf({ readings, showUnchanged = false, now, onBack }: H
       />
       {showUnchanged ? <UnchangedBanner /> : null}
       {readings.length === 0 ? (
-        <EmptyState />
+        <>
+          <ClaimAccountBanner />
+          <EmptyState />
+        </>
       ) : (
         <>
           <ClaimAccountBanner />

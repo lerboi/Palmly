@@ -24,11 +24,11 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 | Field | Value |
 |---|---|
 | Current phase | U2 — Today (home) recomposition |
-| Next task | U2.T6 |
+| Next task | U2.T7 |
 | Blocked on | — |
 | Waiting on human | — |
 | Last run | 2026-07-25 |
-| Last completed task | U2.T5 [~] — native date spinner is device-only |
+| Last completed task | U2.T6 |
 | Notes for next run | **Three contracts U0.T1–T3 established — extend them, never route around them.** (1) The AA matrix in `theme/__tests__/tokens.test.ts` is the contrast contract; adding a role means adding its used pairings. Sunken chip/pill labels are `textPrimary` (`textSecondary` on `surfaceSunken` is 4.25:1 and is deliberately absent from the matrix as a text pairing). (2) Accent TEXT is `accentPressed`; `accent` is fills / selected / palm-line only; premium TEXT is `premiumInk`, `premium` is fill only. (3) Decorative glyphs are `textSecondary` on a `surfaceSunken` well — `accentMuted` wells now mean "selected". Screenshot recipe erratum: this host's headless Chrome renders **dark** by default, and metro caches the inlined env var — light shots need `EXPO_PUBLIC_FORCE_SCHEME=light npx expo export --platform web` plus `--clear` whenever the flag's value changes. |
 
 ---
@@ -92,6 +92,7 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 | 2026-07-25 | U0.T6 Verify: `grep -RnE "fontSize: ?[0-9]\|fontWeight:" app/src/features` → "no hits outside tokens/tests" | Six hits survive in **`src/features/dev/LandmarksBench*.tsx`** — a native camera-landmark diagnostic whose HUD is deliberately outside the design system (neon-on-black over a live video feed) and which is capture-adjacent, i.e. on this ledger's OUT OF SCOPE list. The verify enumerated "tokens/tests" but not dev harnesses. Production feature code is clean. | None — the intent (no type overrides in shipped UI) is fully met. |
 | 2026-07-25 | U0.T5 Verify: `grep -RnE "[✓✕↑↗→↘↓↙←↖✨👇]" app/src --include=*.ts*` → "only `/dev` or test fixtures" | The class includes **`→`**, which this codebase uses ~145× in ordinary prose comments (`scan-create → PUT → scan-ingest`). Taken literally the check can never pass and would demand vandalising documentation. Verified instead as: the same class MINUS `→`, excluding comment lines → **0 hits outside `/dev`**. | The grep is unrunnable as written; later glyph checks should scope to rendered strings, not comments. |
 | 2026-07-25 | Audit §5 "`surfaceRaised #FFFFFF` on `bg #FAF9F7` = 1.01:1" | WCAG ratio is **1.052:1** (1.01 is a plain lightness delta). The finding's substance is unaffected — 1.05:1 is still invisible without a border, as the U0.T1 before-shot pixel probe confirms (card → shadow AA → page, no border pixel). | None — CC-3 stands; only the quoted number is off. |
+| 2026-07-25 | U2.T6 Verify: "grep `'your match'` → 0 production hits" | **0 in `FortuneHome`** — SH-13's actual site, the fallback that rendered "Waiting for your match". Four hits survive elsewhere and are NOT the same defect: `(capture)/primer.tsx` (out of scope, R3 track), `(reading)/pair.tsx` (the pair partner-name default — **U5.T3 owns it**), and `AccountSheet.tsx` ×2, where `inviterName || 'your match'` is a legitimate English phrase for an unknown inviter rather than a name placeholder. | None for SH-13; the pair default is tracked to U5.T3. |
 
 ### 📋 DECISION LOG (append-only)
 
@@ -278,7 +279,7 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
   - Verify: standing gates; jest: skip persisted → sheet never re-shows; failure keeps sheet
     with error; web fallback renders a usable date input (web has no native spinner — document
     the fallback in the ledger note).
-- [ ] **U2.T6** 🤖 Rows cleanup (SH-13, CP-2): notify opt-in → one-line inline row (hidden on
+- [x] **U2.T6** 🤖 Rows cleanup (SH-13, CP-2): notify opt-in → one-line inline row (hidden on
   web); red-thread row requires a real partner name (else hidden); claim-account row moves to
   Readings (banner, empty state included — CO's history note); FortuneCard gets `entranceIndex`
   0 (hero first).
@@ -449,6 +450,7 @@ Legend: `[ ]` todo · `[~]` in progress OR built-with-a-pending-leg (honesty not
 
 | Date | Task | One-line result |
 |---|---|---|
+| 2026-07-25 | U2.T6 | **Today is a page with one hero, not a card stack.** The `'your match'` fallback is deleted, so the red-thread row requires a REAL partner name and hides itself otherwise (SH-13 — the default literally rendered "Waiting for your match", reading as an unfinished placeholder). The notify opt-in drops from a three-clause card to ONE line ("One quiet notification each morning.") and is hidden on web, where there is no push to opt into (CP-2). The claim row moved to Readings, where "don't lose these" is a real story next to a shelf; the shelf's EMPTY state gained the banner too. `RowLink` + its `IconName` import are now dead and deleted. **Post-hero content on `/dev/fortune-free`: 0 rows** (header + week strip + hero card), against the audit's "stack of five near-identical white cards with six accent-red icons". Gates green, 109 tests. |
 | 2026-07-25 | U2.T5 [~] | **The birth-date blocker becomes a sheet (SH-4).** It was a full-screen form — despite the name — shown BEFORE any value, asking for a hand-typed `YYYY-MM-DD` with no picker and no validation message; Skip persisted nothing so it re-nagged on every open forever; a failed save was silent. Now: `Modal` + scrim + drag handle + slide-up, offered only after the fortune is on screen, with the platform date spinner (D35/D36). Skip is persisted permanently and Settings gains an "Add birth date" row (`?birthDate=1`) as the way back. A failed save keeps the sheet up with a warm inline error. **This also un-blocks `/fortune` for the harness** — the route was unshootable since U1.T4's erratum, and now shoots the real header + hero. 4 new tests pin the ask-rule (never before a fortune, never after a skip, not while resolving, not when already stored). `[~]` PENDING: the native spinner is device-only. Tests 105 → 109. |
 | 2026-07-25 | U2.T4 | **Today finally has the calendar the audit said was missing (SH-9).** `StreakStrip` is deleted — its seven dots were keyed `d0..d6` with no weekday or "today" meaning, it clamped at `Math.min(streak, 7)` so a month-long habit looked like a week, it pulsed a flame forever, and because the `streak` prop was never passed it **never rendered in production at all**. `WeekStrip` replaces it: seven trailing days (D33), weekday initial over a dot, opened = ink fill, today = accent ring (the one ambient accent §4.1 allows), missed = hairline; the streak line appears only for a real run ≥2. Driven by a device-local opened-days store (D34). Analytics `fortune_opened.streak` now reports the computed run — `grep "streak: 0" app/src` → 0 hits. **15 new tests** cover 0/1/3/8-day runs (no clamp), month AND year boundaries, the anchor-on-yesterday rule, a broken run going to 0, and an earlier gap being ignored. Tests 90 → 105. |
 | 2026-07-25 | U2.T3 | Today's header rebuilt (CO-9, CP-5): the day-pillar stops being decoration. "· Wood Rat day" was low-contrast tertiary jargon with no affordance; it is now an ink pill on a sunken well with a help glyph, and tapping it opens a two-sentence explainer in plain language (no CJK, no "day-pillar" term) — D32. Header keeps the camera + settings `HeaderIconButton`s from U1.T4. **5/5 checks passed with a trusted tap:** both header buttons carry a11y labels, the pill is a `role="button"` labelled "Metal Rat day — what does this mean?", the explainer starts closed, and tapping opens it. Gates green, 90 tests. |

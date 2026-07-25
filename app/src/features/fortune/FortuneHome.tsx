@@ -5,7 +5,6 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { PalmDiagram } from '@/components/palm-diagram/PalmDiagram';
 import { Button, Card, HeaderIconButton, Icon, Screen, Skeleton, Text } from '@/components/ui';
-import type { IconName } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { useAccountIdentity } from '@/lib/account';
 import { loadPendingCompat, type PendingCompat } from '@/lib/pendingCompat';
@@ -53,7 +52,8 @@ export interface FortuneHomeProps {
 export function FortuneHome({ fortune, premium, openedDates = [], partnerName, firstRun, loading, entitlementLoading, error, onRetry, now }: FortuneHomeProps) {
   const theme = useTheme();
   const router = useRouter();
-  const { isAnonymous, loading: identityLoading } = useAccountIdentity();
+  // Only the loading flag is needed now — the claim row (its other consumer) moved to Readings.
+  const { loading: identityLoading } = useAccountIdentity();
   const [ts] = useState(() => now ?? Date.now());
   const date = almanacDate(new Date(ts));
   // One resolver, unit-tested (SH-1). `loading`/`error` are about the REQUEST and win first;
@@ -78,9 +78,12 @@ export function FortuneHome({ fortune, premium, openedDates = [], partnerName, f
       active = false;
     };
   }, []);
-  const nudgeName = pending?.partnerName ?? partnerName ?? 'your match';
+  // SH-13: there is no fallback name any more. The literal string 'your match' shipped as a
+  // default and rendered "Waiting for your match", which reads as an unfinished placeholder — so
+  // the row now requires a REAL name and hides itself otherwise (Direction §5).
+  const nudgeName = pending?.partnerName ?? partnerName ?? null;
   const nudgeElapsed = pending ? elapsedLabel(pending.sentAtISO, ts) : undefined;
-  const showThread = !!(pending || partnerName);
+  const showThread = !!nudgeName;
 
   // Daily-fortune push opt-in (sanctioned moment #2, F1.T10) — shown once, in-context on the home the
   // fortune lives on (never at launch), until enabled or dismissed. The OS ask is device-only.
@@ -157,8 +160,8 @@ export function FortuneHome({ fortune, premium, openedDates = [], partnerName, f
               nothing above it — what jumped before was this block growing in stages. */}
           {tailReady ? (
             <Animated.View entering={shouldAnimate ? FadeIn.duration(theme.motion.duration.base) : undefined}>
-              {showOptIn ? <NotifyOptInCard onEnable={onEnablePush} onDismiss={onDismissPush} /> : null}
-              {showThread ? (
+              {showOptIn ? <NotifyOptInRow onEnable={onEnablePush} onDismiss={onDismissPush} /> : null}
+              {showThread && nudgeName ? (
                 <RedThreadRow
                   name={nudgeName}
                   elapsed={nudgeElapsed}
@@ -169,9 +172,8 @@ export function FortuneHome({ fortune, premium, openedDates = [], partnerName, f
           {/* Readings and Ask left with the tab bar (SN-2/SN-5, Direction §1 P3) — Today is a page
               again, not a menu. The free-chat row in particular was a two-hop trap: chip → gate →
               paywall. The Ask TAB now shows that gate, and its CTA goes straight to the paywall. */}
-              {isAnonymous ? (
-                <RowLink icon="sparkle" label="Claim your account" onPress={() => router.push('/account?reason=fortune' as Href)} index={1} />
-              ) : null}
+              {/* The claim row moved to Readings (Direction §4.1): "don't lose these" is a real
+                  story next to a shelf of readings, and an abstract one next to today's fortune. */}
             </Animated.View>
           ) : null}
         </>
@@ -368,61 +370,33 @@ function WeekStrip({ cells, streak }: { cells: DayCell[]; streak: number }) {
 }
 
 /** Daily-fortune push opt-in (F1.T10 sanctioned moment) — a calm, dismissible in-context ask. */
-function NotifyOptInCard({ onEnable, onDismiss }: { onEnable: () => void; onDismiss: () => void }) {
+/**
+ * The notify opt-in, demoted from a card to ONE line (Audit-4 CP-2, Direction §4.1). It used to be
+ * a full card carrying three clauses — "A gentle daily notification — the almanac, tuned to you.
+ * One a day, quiet hours respected." — for a single yes/no. One line, one idea.
+ *
+ * Hidden on web: there is no push to opt into there, so the row would be an empty promise.
+ */
+function NotifyOptInRow({ onEnable, onDismiss }: { onEnable: () => void; onDismiss: () => void }) {
   const theme = useTheme();
+  if (Platform.OS === 'web') return null;
   return (
-    <Card elevation="sm" style={{ marginBottom: theme.spacing.md, gap: theme.spacing.md }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-        <Icon name="bell" size={22} color={theme.colors.textSecondary} decorative />
-        <View style={{ flex: 1 }}>
-          <Text variant="bodyMedium">Get your fortune each morning</Text>
-          <Text variant="caption" tone="secondary">
-            A gentle daily notification — the almanac, tuned to you. One a day, quiet hours respected.
-          </Text>
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-        <Button label="Turn on" variant="secondary" onPress={onEnable} />
-        <Button label="Not now" variant="ghost" onPress={onDismiss} />
-      </View>
-    </Card>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        paddingVertical: theme.spacing.md,
+        marginBottom: theme.spacing.md,
+      }}
+    >
+      <Icon name="bell" size={20} color={theme.colors.textSecondary} decorative />
+      <Text variant="body" style={{ flex: 1 }}>
+        One quiet notification each morning.
+      </Text>
+      <Button label="Turn on" variant="ghost" size="md" onPress={onEnable} />
+      <HeaderIconButton name="close" size={18} accessibilityLabel="Not now" onPress={onDismiss} />
+    </View>
   );
 }
 
-function RowLink({
-  icon,
-  label,
-  onPress,
-  premiumLocked = false,
-  index,
-}: {
-  icon: IconName;
-  label: string;
-  onPress: () => void;
-  premiumLocked?: boolean;
-  index?: number;
-}) {
-  const theme = useTheme();
-  return (
-    <Card
-      elevation="sm"
-      onPress={onPress}
-      accessibilityLabel={label}
-      pressedTint="accent"
-      entranceIndex={index}
-      style={{ marginBottom: theme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}
-    >
-      <Icon name={icon} size={22} color={theme.colors.textSecondary} decorative />
-      <Text variant="bodyMedium" style={{ flex: 1 }}>
-        {label}
-      </Text>
-      {premiumLocked ? (
-        <Text variant="caption" tone="premiumInk">
-          Premium
-        </Text>
-      ) : (
-        <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
-      )}
-    </Card>
-  );
-}
