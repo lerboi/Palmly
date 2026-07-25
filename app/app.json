@@ -9,7 +9,9 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.palmly.app",
-      "associatedDomains": ["applinks:palmly.app"]
+      "associatedDomains": [
+        "applinks:palmly.app"
+      ]
     },
     "android": {
       "package": "com.palmly.app",
@@ -23,8 +25,17 @@
         {
           "action": "VIEW",
           "autoVerify": true,
-          "data": [{ "scheme": "https", "host": "palmly.app", "pathPrefix": "/i" }],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "data": [
+            {
+              "scheme": "https",
+              "host": "palmly.app",
+              "pathPrefix": "/i"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -65,7 +76,8 @@
           "organization": "makeitai",
           "project": "react-native"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
