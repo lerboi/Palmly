@@ -38,8 +38,12 @@ export default function CheckIn() {
       // The seal about to happen is today's, so the number to show is the run INCLUDING today.
       const alreadySealed = cached.sealedDates.includes(localDateKey(new Date()));
       setDay(currentRun(cached.sealedDates, localDateKey(new Date())) + (alreadySealed ? 0 : 1));
-      const newest = rows[0];
-      if (!newest) return;
+      // The PALM subject's signature, not merely the newest reading's. The ritual compares a live
+      // HAND against an enrolled hand; matching it against a signature stored beside a face scan
+      // would be comparing two unrelated things and would fail every time — with copy that blames
+      // the user's lighting. Found live on the S20+ 2026-07-27, where the newest reading was a face.
+      const newest = rows.find((r) => r.kind === 'palm');
+      if (!newest) return; // no palm enrolled → `enrolled` stays null and the ritual offers the tap
       const loaded = await loadReading({ readingId: newest.id });
       if (active && loaded) setEnrolled(loaded.handSignature);
     })();

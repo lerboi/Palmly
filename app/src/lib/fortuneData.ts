@@ -54,12 +54,21 @@ export interface FortuneContext {
 }
 
 export async function loadFortuneContext(): Promise<FortuneContext> {
-  const { data } = await supabase.auth.getSession();
-  const uid = data.session?.user?.id;
-  if (!uid) return { birthDate: null, bucket: 'generic' };
-  const { data: row } = await supabase.from('profiles').select('birth_date').eq('id', uid).maybeSingle();
-  const birthDate = (row as { birth_date?: string | null } | null)?.birth_date ?? null;
-  return { birthDate, bucket: pillarBucket(birthDate) };
+  // Total by construction: the caller gates its whole loading state on this resolving, so a
+  // rejection here leaves Today on a SKELETON FOREVER — found live on the S20+ 2026-07-27 with the
+  // phone's DNS down. An unreachable network is not "still loading", it is "no birth date known",
+  // which is exactly the generic bucket. The screen then reaches a real state and its own error
+  // handling can do its job (Audit-4 SH-1: states never lie, and a spinner that never ends lies).
+  try {
+    const { data } = await supabase.auth.getSession();
+    const uid = data.session?.user?.id;
+    if (!uid) return { birthDate: null, bucket: 'generic' };
+    const { data: row } = await supabase.from('profiles').select('birth_date').eq('id', uid).maybeSingle();
+    const birthDate = (row as { birth_date?: string | null } | null)?.birth_date ?? null;
+    return { birthDate, bucket: pillarBucket(birthDate) };
+  } catch {
+    return { birthDate: null, bucket: 'generic' };
+  }
 }
 
 /**

@@ -8,6 +8,13 @@ import type { StoredHandSignature } from '@/lib/readings';
  * react-native-vision-camera initializes Nitro objects at import time, which crashes the SSG web
  * export — the device-free screenshot path for all UI. The `.native.tsx` sibling is the real one.
  *
+ * **This file is `.tsx`, not `.ts`, and that matters.** Metro walks `sourceExts` in order and, for
+ * each one, tries `.android.<ext>` → `.native.<ext>` → `.<ext>`. `ts` comes before `tsx`, so a
+ * `useSealCheckIn.ts` base would resolve and STOP before ever reaching `useSealCheckIn.native.tsx`
+ * — the web stub would silently win on device. It did: found on the S20+ 2026-07-27, where the
+ * ritual reported "camera isn't available" with the camera permission granted. Every platform pair
+ * in this repo shares one extension; `platformSplit.test.ts` now enforces that.
+ *
  * **The contract has no capture and no upload in it.** There is no `takePhoto`, no `capturedUri`,
  * no `pickAndUpload` — the ritual's mode does not merely decline to use those paths, it does not
  * have them (02 §10.4). That is what makes "no photo is taken, nothing is uploaded" a property of

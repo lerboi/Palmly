@@ -133,12 +133,17 @@ export function usePulse(options: UsePulseOptions = {}): PulseData {
       }
       setPulse(content);
 
-      // The chapter needs the reader's own geometry hash; the newest reading carries both it and the
-      // drawable polylines. A missing reading is not fatal to the reading itself — the card can
-      // still show the words, just without a lit diagram — so this leg never flips the state.
+      // The card draws the reader's PALM, so it needs a palm reading — not merely the newest one.
+      // Found live on the S20+ 2026-07-27: this reader's newest reading was a FACE reading, whose
+      // feature_set has no `line_geometry`, so the hero rendered with no diagram at all even though
+      // a perfectly good palm reading sat one row below it. The newest PALM wins for the diagram;
+      // the newest reading of any kind is the fallback, which still gives the chapter a stable seed.
+      //
+      // A missing reading is not fatal to the reading itself — the card can still show the words —
+      // so this leg never flips the state.
       const rows = await loadHistory();
       if (!active) return;
-      const newest = rows[0];
+      const newest = rows.find((r) => r.kind === 'palm') ?? rows[0];
       if (newest) {
         const loaded = await loadReading({ readingId: newest.id });
         if (!active) return;

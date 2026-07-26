@@ -14,6 +14,14 @@ export const HEADER_ICON_BUTTON_SIZE = controlHeight.md;
 export interface HeaderIconButtonProps {
   name: IconName;
   onPress: () => void;
+  /**
+   * Optional secondary action on a long press. Used for affordances that are deliberately
+   * discoverable-but-not-advertised (Audit-5 02 §6: the camera icon long-press opens the
+   * seal-the-day ritual). Never the ONLY way to reach something a user needs.
+   */
+  onLongPress?: () => void;
+  /** Spoken hint for the long-press action, so it is not invisible to a screen reader. */
+  accessibilityHint?: string;
   /** Spoken name — required, because the glyph alone tells a screen reader nothing. */
   accessibilityLabel: string;
   /** Glyph size inside the 44pt box. Default 24. */
@@ -36,7 +44,9 @@ export interface HeaderIconButtonProps {
 export function HeaderIconButton({
   name,
   onPress,
+  onLongPress,
   accessibilityLabel,
+  accessibilityHint,
   size = 24,
   color,
   style,
@@ -47,6 +57,7 @@ export function HeaderIconButton({
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       onPressIn={() => {
         onPressIn();
         tick();
@@ -54,6 +65,7 @@ export function HeaderIconButton({
       onPressOut={onPressOut}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       style={[
         {
           width: HEADER_ICON_BUTTON_SIZE,

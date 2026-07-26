@@ -40,6 +40,8 @@ export interface FortuneHomeProps {
   pulseSlot?: ReactNode;
   /** The chapter-turn banner, on the one day a chapter turns. */
   boundarySlot?: ReactNode;
+  /** Open the on-device seal ritual — the header camera's long-press (02 §6). Absent hides it. */
+  onSealWithPalm?: () => void;
   /** Pending compatibility partner (the red-thread row), if any. */
   partnerName?: string | null;
   /**
@@ -73,6 +75,7 @@ export function FortuneHome({
   sealedWithPalm = [],
   pulseSlot,
   boundarySlot,
+  onSealWithPalm,
   partnerName,
   firstRun,
   loading,
@@ -159,7 +162,18 @@ export function FortuneHome({
           </View>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <HeaderIconButton name="camera" accessibilityLabel="New reading" onPress={() => router.push('/primer')} />
+          {/* Long-press opens the seal-the-day ritual (Audit-5 02 §6). The card's "Seal it with
+              your palm" link is the primary entry, but it lives on the UNREVEALED state only — so
+              after a tap-reveal there was no way back to the ritual at all (found live on the S20+
+              2026-07-27). Deliberately a long press: discoverable, never advertised, and never the
+              only way to reach anything. */}
+          <HeaderIconButton
+            name="camera"
+            accessibilityLabel="New reading"
+            accessibilityHint={onSealWithPalm ? 'Long press to seal today with your palm' : undefined}
+            onPress={() => router.push('/primer')}
+            onLongPress={onSealWithPalm}
+          />
           <HeaderIconButton name="settings" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
         </View>
       </View>

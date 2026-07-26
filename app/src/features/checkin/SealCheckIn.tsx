@@ -69,8 +69,11 @@ export function SealCheckIn({ enrolled, day, onSealed, onTapInstead, onClose }: 
   return (
     <Screen>
       <View style={{ flex: 1 }}>
-        {/* The live feed, full-bleed and underneath everything. */}
-        <View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.colors.textPrimary }]}>
+        {/* The live feed, full-bleed and underneath everything. Its backdrop is a FIXED near-black,
+            not a theme role: this stands in for a camera image, and the white plate text sits on
+            top of it. `textPrimary` was used here first and is near-WHITE in dark mode, so the
+            no-feed state rendered pale grey with white text on it (seen on the S20+ 2026-07-27). */}
+        <View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#14151A' }]}>
           {engine.feed}
         </View>
 

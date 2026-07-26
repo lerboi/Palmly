@@ -88,10 +88,12 @@ export default function FortuneScreen() {
   // Resolve the caller's context (birth_date → bucket). No birth date yet → offer the sheet on first open.
   useEffect(() => {
     let active = true;
-    loadFortuneContext().then((c) => {
-      if (!active) return;
-      setCtx(c);
-    });
+    loadFortuneContext()
+      .catch(() => ({ birthDate: null, bucket: 'generic' }) as FortuneContext)
+      .then((c) => {
+        if (!active) return;
+        setCtx(c);
+      });
     wasBirthDateSkipped().then((v) => active && setBirthSkipped(v));
     hasFirstReadingComplete().then((done) => active && setFirstRun(!done));
     return () => {
@@ -203,7 +205,9 @@ export default function FortuneScreen() {
         error={failed}
         firstRun={firstRun}
         openedDates={pulse.sealedDates}
+        sealedWithPalm={pulse.palmSealedDates}
         streak={pulse.streak}
+        onSealWithPalm={offerSeal ? () => router.push('/checkin' as Href) : undefined}
         pulseSlot={pulseSlot}
         boundarySlot={
           chapter?.is_boundary && pulse.featureKey ? (
