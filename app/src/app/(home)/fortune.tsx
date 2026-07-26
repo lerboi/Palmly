@@ -1,24 +1,35 @@
-import { useEffect, useState } from 'react';
-import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { FortuneHome } from '@/features/fortune/FortuneHome';
 import { BirthDateSheet } from '@/features/fortune/BirthDateSheet';
 import type { Fortune } from '@/features/fortune/fortune';
 import { loadFortuneContext, loadTodayFortune, saveBirthDate, type FortuneContext } from '@/lib/fortuneData';
 import { useEntitlement } from '@/lib/entitlements';
 import { hasFirstReadingComplete, setBirthDateSkipped, wasBirthDateSkipped } from '@/lib/session';
-import { markFortuneOpened } from '@/lib/fortuneOpens';
-import { streakRun } from '@/features/fortune/openHistory';
+import { migrateLocalOpens, recordDay } from '@/lib/dailyLedger';
 import { homeState, shouldAskBirthDate } from '@/features/fortune/fortune';
 import { track } from '@/lib/analytics';
+import { PULSE_ENABLED } from '@/lib/capabilities';
+import { usePulse } from '@/features/pulse/usePulse';
+import { PulseCard, PulseCardError, PulseCardSkeleton, askPulsePrefill } from '@/features/pulse/PulseCard';
+import { ChapterSheet } from '@/features/pulse/ChapterSheet';
+import { BoundaryBanner } from '@/features/pulse/BoundaryBanner';
+import { MilestoneMoment } from '@/features/pulse/MilestoneMoment';
+import { describeChapter } from '@/features/pulse/chapters';
+import { deviceLocale } from '@/lib/locale';
+import { sealCameraSupported, sealWithCameraEnabled } from '@/features/checkin/sealPreference';
 
 /**
- * Returning-user daily-fortune home (UIUX §2.11, audit F0.3 / F1.3). The honest free default:
- * entitlement comes from the free-by-default store (no hardcoded `premium`); the fortune is today's
- * real `fortune_templates` row for the caller's **day-pillar bucket** — derived from the birth date
- * they entered on first open (skippable → the `generic` bucket). No fake streak, no fabricated "Mei".
- * Premium fixtures live under `/dev/*` only.
+ * Today (UIUX §2.11, audit F0.3 / F1.3; recomposed at Audit-5 RF2.T3).
+ *
+ * The honest free default is unchanged: entitlement comes from the free-by-default store, the
+ * almanac is today's real `fortune_templates` row for the caller's day-pillar bucket, no fake
+ * streak. What changed is the hierarchy — **Today's Line is now the single `md` hero** and the
+ * almanac renders flat beneath it (02 §3), and the week strip reads the SERVER ledger instead of a
+ * device-local list.
  */
 export default function FortuneScreen() {
+  const router = useRouter();
   const { premium, loading: entitlementLoading } = useEntitlement();
   const [fortune, setFortune] = useState<Fortune | null>(null);
   // The request's own state, tracked explicitly (SH-1). A missing fortune used to stand in for
@@ -28,8 +39,6 @@ export default function FortuneScreen() {
   // Is this user genuinely new? Answered by the session's first-reading flag, NOT by the absence
   // of a fortune row — that is the whole of SH-1.
   const [firstRun, setFirstRun] = useState<boolean | undefined>(undefined);
-  // The days this user opened their fortune — drives the week strip and the REAL streak (SH-9).
-  const [openedDates, setOpenedDates] = useState<string[]>([]);
   const [ctx, setCtx] = useState<FortuneContext | null>(null); // null → still loading the context
   const [savingBirth, setSavingBirth] = useState(false);
   const [birthSaveFailed, setBirthSaveFailed] = useState(false);
@@ -37,24 +46,44 @@ export default function FortuneScreen() {
   const [birthSkipped, setBirthSkipped] = useState<boolean | undefined>(undefined);
   // Settings' "Add birth date" row re-opens the sheet even after a permanent skip.
   const { birthDate: reopenBirth } = useLocalSearchParams<{ birthDate?: string }>();
+  const [chapterOpen, setChapterOpen] = useState(false);
+  // The "Seal with your palm" link is offered only where a camera exists AND the reader has not
+  // turned the flourish off (02 §8). Resolved async, defaulting to hidden, so the link never
+  // flashes in and out as the preference loads.
+  const [offerSeal, setOfferSeal] = useState(false);
+
+  const bucket = ctx?.bucket ?? 'generic';
+  const pulse = usePulse({ bucket, disabled: !PULSE_ENABLED });
+  const locale = deviceLocale();
+  const chapter = useMemo(() => describeChapter(pulse.chapter, pulse.featureKey), [pulse.chapter, pulse.featureKey]);
+
+  // One-time: replay the device's old local open-history into the server ledger, so nobody's streak
+  // resets on the day the ledger ships (03 §6). Idempotent and latched; safe to call every launch.
+  useEffect(() => {
+    void migrateLocalOpens();
+  }, []);
+
+  useEffect(() => {
+    if (!sealCameraSupported()) return;
+    let active = true;
+    void sealWithCameraEnabled().then((v) => active && setOfferSeal(v));
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     // Retention signal (D1/D7/D30). Recording the open and reporting the streak are the same act:
     // `streak` was hardcoded 0 before (SH-9), so the funnel could never see a habit forming.
     let active = true;
-    void markFortuneOpened().then((dates) => {
+    void recordDay({ bucket }).then((r) => {
       if (!active) return;
-      setOpenedDates(dates);
-      track('fortune_opened', {
-        date: new Date().toISOString().slice(0, 10),
-        premium,
-        streak: streakRun(new Date(), dates),
-      });
+      track('fortune_opened', { date: new Date().toISOString().slice(0, 10), premium, streak: r.currentStreak });
     });
     return () => {
       active = false;
     };
-  }, [premium]);
+  }, [bucket, premium]);
 
   // Resolve the caller's context (birth_date → bucket). No birth date yet → offer the sheet on first open.
   useEffect(() => {
@@ -71,7 +100,6 @@ export default function FortuneScreen() {
   }, []);
 
   // Load the fortune for the resolved bucket (re-runs when the bucket changes after a birth-date save).
-  const bucket = ctx?.bucket ?? 'generic';
   useEffect(() => {
     if (!ctx) return; // wait for the context before reading
     let active = true;
@@ -121,6 +149,50 @@ export default function FortuneScreen() {
     birthDate: ctx?.birthDate,
     skipped: reopenBirth === '1' ? false : birthSkipped,
   });
+
+  const onReveal = () => {
+    void pulse.reveal('tap');
+    track('pulse_revealed', { feature_key: pulse.featureKey ?? 'unknown', method: 'tap', streak: pulse.streak, premium });
+  };
+
+  /**
+   * The pulse slot. `firstRun` is handled by `FortuneHome`'s own hero, so the slot stays empty
+   * there — Today's Line does not exist until a reading does, and the first-run CTA already says
+   * exactly the right thing ("Read my palm").
+   */
+  const pulseSlot = !PULSE_ENABLED || pulse.state === 'firstRun'
+    ? undefined
+    : pulse.state === 'loading'
+      ? <PulseCardSkeleton />
+      : pulse.state === 'error' || !pulse.pulse || !pulse.featureKey
+        ? <PulseCardError onRetry={pulse.retry} />
+        : (
+            <PulseCard
+              featureKey={pulse.featureKey}
+              pulse={pulse.pulse}
+              geometry={pulse.geometry}
+              chapter={chapter}
+              premium={premium}
+              revealed={pulse.revealed}
+              locale={locale}
+              onReveal={onReveal}
+              // Native only, and only if the reader wants the flourish: there is no camera ritual to
+              // offer on web, so the link is not shown rather than shown-and-broken (the
+              // capability-gate idiom, like the torch).
+              onSealWithPalm={offerSeal ? () => router.push('/checkin' as Href) : undefined}
+              onUnlock={() => router.push(`/paywall?trigger=pulse_full&section=${pulse.featureKey}` as Href)}
+              onOpenChapter={
+                chapter
+                  ? () => {
+                      track('chapter_viewed', { feature_key: pulse.featureKey ?? 'unknown', boundary: chapter.is_boundary });
+                      setChapterOpen(true);
+                    }
+                  : undefined
+              }
+              onAsk={(q) => router.push(`/chat?q=${encodeURIComponent(q)}` as Href)}
+            />
+          );
+
   return (
     <>
       <FortuneHome
@@ -130,12 +202,57 @@ export default function FortuneScreen() {
         entitlementLoading={entitlementLoading}
         error={failed}
         firstRun={firstRun}
-        openedDates={openedDates}
+        openedDates={pulse.sealedDates}
+        streak={pulse.streak}
+        pulseSlot={pulseSlot}
+        boundarySlot={
+          chapter?.is_boundary && pulse.featureKey ? (
+            <BoundaryBanner
+              featureKey={pulse.featureKey}
+              onPress={() => {
+                track('chapter_viewed', { feature_key: pulse.featureKey ?? 'unknown', boundary: true });
+                if (premium) setChapterOpen(true);
+                else router.push('/paywall?trigger=cycle_boundary' as Href);
+              }}
+            />
+          ) : undefined
+        }
         onRetry={() => setReloads((n) => n + 1)}
       />
       {askBirth ? (
         <BirthDateSheet onSave={onSaveBirth} onSkip={onSkipBirth} busy={savingBirth} failed={birthSaveFailed} />
       ) : null}
+      {chapter && pulse.featureKey ? (
+        <ChapterSheet
+          visible={chapterOpen}
+          chapter={chapter}
+          featureKey={pulse.featureKey}
+          geometryHash={pulse.geometryHash}
+          premium={premium}
+          locale={locale}
+          onClose={() => setChapterOpen(false)}
+          onUnlock={() => {
+            setChapterOpen(false);
+            router.push('/paywall?trigger=cycle_boundary' as Href);
+          }}
+        />
+      ) : null}
+      {pulse.milestone ? (
+        <MilestoneMoment
+          visible
+          day={pulse.milestone}
+          onShown={(day) => track('milestone_reached', { day })}
+          premium={premium}
+          onShare={() => {
+            pulse.clearMilestone();
+            router.push('/share?source=home' as Href);
+          }}
+          onDismiss={pulse.clearMilestone}
+        />
+      ) : null}
     </>
   );
 }
+
+/** The chat bridge's prefill, re-exported so the pulse card and this route cannot drift. */
+export { askPulsePrefill };

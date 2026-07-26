@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pulse.v1",
+  "title": "Palmly Today's Line (v1)",
+  "description": "One day's reading of ONE feature (Audit-5 · 03 §2.1). Generated per (pulse_date × feature_key × locale), NOT per user — the day-pillar belongs to the DATE, and the personalization is which of the reader's own features is drawn today plus their own geometry lit beneath it. Reflective entertainment in the considered-scholar-friend voice; never health/medical/financial claims, never a prediction of real events. `essence` is the FREE line; everything below it is Premium (01 §6).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "essence": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 90,
+      "description": "The free line. Second person, names the feature, ≤90 chars so it fits the card's serif setting on a 320pt screen without truncation."
+    },
+    "reading": { "type": "string", "minLength": 1, "description": "2–3 sentences reading this feature through the day's pillar." },
+    "career": { "type": "string", "minLength": 1, "description": "One line, through this feature's lens." },
+    "love": { "type": "string", "minLength": 1, "description": "One line, through this feature's lens." },
+    "wealth": { "type": "string", "minLength": 1, "description": "One line, through this feature's lens." },
+    "watch": { "type": "string", "minLength": 1, "description": "One line — what to keep an eye on. Never a warning about health, money or fate." },
+    "chapter_tone": { "type": "string", "minLength": 1, "description": "One line usable INSIDE a chapter reading (Line Cycles), so the static catalog has a dated voice to sit beside." }
+  },
+  "required": ["essence", "reading", "career", "love", "wealth", "watch", "chapter_tone"]
+}

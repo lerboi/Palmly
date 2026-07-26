@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parseMatchedKind } from '@/features/reading/history';
+import { supabase } from './supabase';
 
 /**
  * Returning-user session flags (audit F0.7). Persisted locally so a relaunch lands on the daily
@@ -76,11 +77,29 @@ export async function wasContinueDismissed(): Promise<boolean> {
 
 const PAYWALL_DECLINED_KEY = 'palmly.paywall_declined_at.v1';
 
+/**
+ * Record a paywall dismissal — locally AND on the profile (Audit-5 RF0.T3, 03 §2.4).
+ *
+ * The local key alone was a dead end: the server's `winback` push template consumes "declined >24h
+ * ago", and no server can read AsyncStorage, so the template could never fire for anybody. The
+ * profile column (`profiles.paywall_declined_at`, migration 0035) is what the fan-out selects on;
+ * `profiles_update_own` scopes the write to the caller's own row.
+ *
+ * Both writes are best-effort and independent: the local one is the instant offline read, the
+ * remote one is the trigger. A failed network write must never break dismissing a modal.
+ */
 export async function setPaywallDeclined(at: string): Promise<void> {
   try {
     await AsyncStorage.setItem(PAYWALL_DECLINED_KEY, at);
   } catch {
     /* best-effort */
+  }
+  try {
+    const { data } = await supabase.auth.getSession();
+    const uid = data.session?.user?.id;
+    if (uid) await supabase.from('profiles').update({ paywall_declined_at: at }).eq('id', uid);
+  } catch {
+    /* offline / signed out — the local key still holds, and the next decline retries */
   }
 }
 

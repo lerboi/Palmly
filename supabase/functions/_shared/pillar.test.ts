@@ -1,5 +1,5 @@
 import { assert, assertEquals } from '@std/assert';
-import { dayPillar, elementProfile, GENERIC_BUCKET, pillarBucket } from './pillar.ts';
+import { branchAnimal, dayPillar, dayPillarEn, elementProfile, GENERIC_BUCKET, pillarBucket } from './pillar.ts';
 
 Deno.test('dayPillar: anchor 2000-01-07 is 甲子 (jiazi, yang wood)', () => {
   const p = dayPillar('2000-01-07');
@@ -52,4 +52,22 @@ Deno.test('there are exactly 60 distinct buckets across the cycle', () => {
     buckets.add(pillarBucket(iso));
   }
   assertEquals(buckets.size, 60, 'the 60-day cycle yields 60 unique buckets');
+});
+
+// ── RF1.T4: the English whisper, server-side ─────────────────────────────────────────────────────
+Deno.test('dayPillarEn: matches the client romanization the header already shows', () => {
+  // Anchor: 2000-01-07 is 甲子 — yang wood, branch Rat.
+  assertEquals(dayPillarEn('2000-01-07'), 'Wood Rat');
+  assertEquals(dayPillarEn('2000-01-08'), 'Wood Ox');
+  assertEquals(dayPillarEn('2000-01-12'), 'Earth Snake');
+  assertEquals(dayPillarEn(null), null);
+  assertEquals(dayPillarEn('not-a-date'), null);
+});
+
+Deno.test('branchAnimal: all twelve, and it wraps rather than returning undefined', () => {
+  assertEquals(branchAnimal(0), 'Rat');
+  assertEquals(branchAnimal(11), 'Pig');
+  assertEquals(branchAnimal(12), 'Rat');
+  assertEquals(branchAnimal(59), 'Pig');
+  assertEquals(new Set(Array.from({ length: 12 }, (_, i) => branchAnimal(i))).size, 12);
 });

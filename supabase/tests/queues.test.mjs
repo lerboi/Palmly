@@ -34,17 +34,26 @@ test('enqueue → stub drains + archives → telemetry row written', async () =>
   await withRollback(async (c) => {
     await applyMigrations(c);
 
+    // DELTAS, not absolute counts. `pgmq.a_*` and `worker_telemetry` are shared, long-lived tables
+    // on the single staging project, and the live drain crons have been appending to them since
+    // migration 0034 went in — so `count(*) == 1` was only ever true on a pristine database. The
+    // rows this test creates are what it may assert about; everything else is the world.
+    const before = {
+      q: await n(c, `select count(*)::int n from pgmq.q_scan_jobs`),
+      a: await n(c, `select count(*)::int n from pgmq.a_scan_jobs`),
+      t: await n(c, `select count(*)::int n from public.worker_telemetry where queue='scan_jobs' and status='ok'`),
+    };
+
     await c.query(`select pgmq.send('scan_jobs', '{"scan_id":"abc"}')`);
-    assert.equal(await n(c, `select count(*)::int n from pgmq.q_scan_jobs`), 1, 'message queued');
+    assert.equal(await n(c, `select count(*)::int n from pgmq.q_scan_jobs`), before.q + 1, 'message queued');
 
     const drained = await n(c, `select public.drain_stub('scan_jobs') as n`);
-    assert.equal(drained, 1, 'stub drained 1 message');
+    assert.ok(drained >= 1, 'stub drained at least this message');
 
     assert.equal(await n(c, `select count(*)::int n from pgmq.q_scan_jobs`), 0, 'queue now empty');
-    assert.equal(await n(c, `select count(*)::int n from pgmq.a_scan_jobs`), 1, 'message archived');
-    assert.equal(
-      await n(c, `select count(*)::int n from public.worker_telemetry where queue='scan_jobs' and status='ok'`),
-      1,
+    assert.equal(await n(c, `select count(*)::int n from pgmq.a_scan_jobs`), before.a + before.q + 1, 'message archived');
+    assert.ok(
+      (await n(c, `select count(*)::int n from public.worker_telemetry where queue='scan_jobs' and status='ok'`)) > before.t,
       'telemetry row written',
     );
   });

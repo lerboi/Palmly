@@ -14,6 +14,7 @@ export type NotifType =
   | 'compat_complete'
   | 'invite_accepted'
   | 'daily_fortune'
+  | 'daily_pulse'
   | 'solar_term'
   | 'winback'
   | 'invite_nudge'
@@ -29,6 +30,9 @@ export interface NotifContext {
   scan_id?: string;
   reading_id?: string;
   pair_id?: string;
+  feature_label?: string; // Today's Line — the reader's own feature, e.g. 'heart line'
+  weekday?: string; // e.g. 'Friday' — the day the line is about
+  is_boundary?: boolean; // the reader's chapter turns today → the boundary copy variant
   fortune_date?: string; // lunar-day label, e.g. '初七'
   fortune_hook?: string; // e.g. 'A day that favors beginnings'
   lucky_direction?: string; // e.g. 'East'
@@ -57,6 +61,10 @@ const CAP_CLASS: Record<NotifType, CapClass> = {
   compat_complete: 'exempt',
   invite_accepted: 'exempt',
   daily_fortune: 'marketing',
+  // The morning Today's Line push. Marketing class, so the hard 1/day cap and quiet hours apply —
+  // the loop gets ONE morning send, and it competes for the same slot as the almanac push rather
+  // than stacking on top of it (01 §9: push fatigue is designed against, not hoped away).
+  daily_pulse: 'marketing',
   solar_term: 'marketing',
   winback: 'marketing',
   invite_nudge: 'marketing', // proactive 48h cron re-share reminder → counts against the 1/day cap
@@ -118,6 +126,31 @@ const EN: Catalog = {
     const hook = clean(c.fortune_hook, 'Today’s almanac is ready');
     const dir = clean(c.lucky_direction);
     return { title: day ? `${day} · ${hook}` : hook, body: dir ? `Your lucky direction: ${dir}.` : 'Open to read the day.', deep_link: 'palmly://fortune', dedupe_key: 'daily_fortune' };
+  },
+  daily_pulse: (c) => {
+    // The push NAMES the reader's own feature — that is the entire difference from a horoscope
+    // notification, and the reason contextual pushes out-open generic ones ~3.4× (01 §2.1).
+    // The fallback is deliberately still specific ("your palm") rather than "your reading":
+    // a nameless push would be the generic one we are trying not to send.
+    const feature = clean(c.feature_label, 'palm');
+    const weekday = clean(c.weekday);
+    if (c.is_boundary === true) {
+      return {
+        title: `Your ${feature} turns a page today`,
+        body: 'A new chapter opens — see what it says.',
+        deep_link: 'palmly://fortune',
+        dedupe_key: 'daily_pulse',
+      };
+    }
+    return {
+      title: `Your ${feature} has something to say`,
+      body: weekday ? `Open Palmly to read ${weekday}.` : 'Open Palmly to read today.',
+      deep_link: 'palmly://fortune',
+      // Keyed on the type alone, NOT on the feature: two sends on one day are the same push
+      // regardless of which line they name, and keying on the feature would let a second one
+      // through (the dedupe index is (user, key, day)).
+      dedupe_key: 'daily_pulse',
+    };
   },
   solar_term: (c) => {
     const term = clean(c.solar_term, 'A new solar term');

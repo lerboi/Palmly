@@ -74,6 +74,26 @@ export function allPillarBuckets(): BucketInfo[] {
   return out;
 }
 
+/**
+ * The branch's zodiac animal in English, e.g. index 0 → 'Rat' (Audit-5 RF1.T4).
+ *
+ * The English-first UI has surfaced the day pillar as "Wood Rat day" since the redesign, but the
+ * romanization lived only on the CLIENT (`fortune.ts`). Today's Line's prompt needs the same words
+ * server-side, and two copies of one mapping is how they drift — so the server gets its own export
+ * and the pair is covered by a test.
+ */
+const BRANCH_ANIMAL = ['Rat', 'Ox', 'Tiger', 'Rabbit', 'Dragon', 'Snake', 'Horse', 'Goat', 'Monkey', 'Rooster', 'Dog', 'Pig'];
+export const branchAnimal = (index: number): string => BRANCH_ANIMAL[((index % 12) + 12) % 12];
+
+/** The stem's element, capitalized for prose ('wood' → 'Wood'). */
+export const stemElementLabel = (element: string): string => element.charAt(0).toUpperCase() + element.slice(1);
+
+/** The English day-pillar whisper the UI shows, e.g. "Wood Rat" — mirrors the client's `dayPillarEn`. */
+export function dayPillarEn(date: string | null | undefined): string | null {
+  const p = dayPillar(date);
+  return p ? `${stemElementLabel(p.element)} ${branchAnimal(p.index)}` : null;
+}
+
 /** The jsonb stored on profiles.element_profile at birth-date capture. */
 export function elementProfile(birthDate: string | null | undefined): Record<string, unknown> {
   const p = dayPillar(birthDate);

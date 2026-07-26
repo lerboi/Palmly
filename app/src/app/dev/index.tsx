@@ -54,6 +54,21 @@ const GROUPS: { title: string; routes: { href: string; label: string }[] }[] = [
     routes: [
       { href: '/paywall', label: 'paywall' },
       { href: '/share', label: 'share' },
+      { href: '/checkin', label: 'checkin (seal the day — device only)' },
+    ],
+  },
+  {
+    // Audit-5 — Today's Line. Every state of the new hero, the chapter surfaces, and the ritual's
+    // copy plate, so the whole feature is walkable without a camera or a generated night.
+    title: 'dev — Today’s Line (Audit-5)',
+    routes: [
+      { href: '/dev/pulse-unrevealed', label: 'today’s line · unrevealed (S1)' },
+      { href: '/dev/pulse-free', label: 'today’s line · revealed, free (S3)' },
+      { href: '/dev/pulse-premium', label: 'today’s line · revealed, premium (S4)' },
+      { href: '/dev/pulse-error', label: 'today’s line · skeleton + error (S0/S5)' },
+      { href: '/dev/pulse-boundary', label: 'chapter · boundary banner + sheet' },
+      { href: '/dev/milestone-7', label: 'milestone · day 3/7/14/30' },
+      { href: '/dev/checkin-walk', label: 'check-in · every phase of the copy plate' },
     ],
   },
   {

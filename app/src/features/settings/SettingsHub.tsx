@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
-import { Alert, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Switch, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 
 import { Icon, AppHeader, Screen, Text } from '@/components/ui';
@@ -7,6 +8,8 @@ import { useTheme } from '@/theme';
 import { signOutAccount, useAccountIdentity } from '@/lib/account';
 import { restorePurchases } from '@/lib/revenuecat';
 import { SettingGroup, SettingRow } from './settingsUi';
+import { sealCameraSupported, sealWithCameraEnabled, setSealWithCamera } from '@/features/checkin/sealPreference';
+import { PULSE_ENABLED } from '@/lib/capabilities';
 
 /**
  * Settings hub (UIUX §2.11, P10.T1, redesign v2 V20) — grouped rows for subscription, preferences,
@@ -17,8 +20,22 @@ import { SettingGroup, SettingRow } from './settingsUi';
  */
 export function SettingsHub({ premium = false }: { premium?: boolean }) {
   const router = useRouter();
+  const theme = useTheme();
   const { isAnonymous, label } = useAccountIdentity();
   const version = Constants.expoConfig?.version ?? '1.0.0';
+
+  // "Seal with camera" (Audit-5 02 §8). Offered only where there IS a camera; the row is absent on
+  // web rather than present-and-inert, which is the same capability-gate idiom as the torch.
+  const showSealRow = PULSE_ENABLED && sealCameraSupported();
+  const [sealWithCamera, setSealWithCameraState] = useState(true);
+  useEffect(() => {
+    if (!showSealRow) return;
+    let active = true;
+    void sealWithCameraEnabled().then((v) => active && setSealWithCameraState(v));
+    return () => {
+      active = false;
+    };
+  }, [showSealRow]);
 
   return (
     <Screen scroll>
@@ -69,6 +86,26 @@ export function SettingsHub({ premium = false }: { premium?: boolean }) {
         {/* The way back in after skipping the birth-date sheet (SH-4). Skipping is permanent,
             so without this row a change of mind would be unreachable. */}
         <SettingRow leadingIcon="today" label="Add birth date" onPress={() => router.push('/fortune?birthDate=1' as Href)} />
+        {showSealRow ? (
+          <SettingRow
+            leadingIcon="seal"
+            label="Seal with your palm"
+            caption="Offer the on-device palm check on Today. Tapping always counts the day."
+            right={
+              <Switch
+                value={sealWithCamera}
+                onValueChange={(v) => {
+                  setSealWithCameraState(v);
+                  void setSealWithCamera(v);
+                }}
+                accessibilityLabel="Seal with your palm"
+                trackColor={{ true: theme.colors.accent, false: theme.colors.trackOff }}
+                thumbColor={theme.colors.surface}
+                activeThumbColor={theme.colors.surface}
+              />
+            }
+          />
+        ) : null}
         {/* English-only for the MVP — an informational row (no fake chevron). The zh "traditional
             view" (activeSkin → Ink & Cinnabar + CJK) language picker is a device follow-up. */}
         <SettingRow leadingIcon="globe" label="Language" value="English" />

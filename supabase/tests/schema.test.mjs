@@ -14,6 +14,7 @@ const TABLES = [
   'worker_telemetry', // added by migration 0004 (queues/telemetry)
   'notification_log', // added by migration 0014 (P9.T5 push caps/dedupe)
   'rate_limits', // added by migration 0026 (B13/H9 — spec §13 rate limiting; Edge fns are stateless)
+  'pulse_templates', // added by migration 0036 (Audit-5 RF1.T1 — Today's Line shared content)
 ];
 
 test('all public tables exist with RLS enabled — and nothing extra', async () => {

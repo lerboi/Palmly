@@ -20,6 +20,7 @@ const n = async (c, sql, p = []) => (await c.query(sql, p)).rows[0].n;
 test('transient failure substrate: read increments read_ct; an un-archived message is re-delivered', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);
+    const archivedBefore = await n(c, `select count(*)::int n from pgmq.a_scan_jobs`);
     await one(c, `select public.queue_send('scan_jobs', '{"scan_id":"x"}'::jsonb) as id`);
 
     // vt=0 → the message is immediately visible again; each read bumps read_ct (the retry counter).
@@ -29,13 +30,18 @@ test('transient failure substrate: read increments read_ct; an un-archived messa
     assert.equal(r2.msg_id, r1.msg_id, 'the same message is re-delivered (worker left it un-archived)');
     assert.equal(r2.read_ct, 2, 're-delivery increments read_ct');
     assert.equal(await n(c, `select count(*)::int n from pgmq.q_scan_jobs`), 1, 'un-archived message stays queued');
-    assert.equal(await n(c, `select count(*)::int n from pgmq.a_scan_jobs`), 0, 'nothing archived on a transient failure');
+    // (the archive baseline is captured above, before anything this test does)
+    // Delta, not absolute: `pgmq.a_*` is a shared, long-lived table that the live drain crons
+    // append to on the single staging project (see queues.test.mjs). What this test may assert is
+    // that IT archived nothing — not that the archive is globally empty.
+    assert.equal(await n(c, `select count(*)::int n from pgmq.a_scan_jobs`), archivedBefore, 'nothing archived on a transient failure');
   });
 });
 
 test('poison / retry-exhausted message → dead-letter (archived + scan failed max_retries)', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);
+    const archivedBefore = await n(c, `select count(*)::int n from pgmq.a_scan_jobs`);
     await seedUser(c, A);
     const scan = await one(c, `insert into public.scans (user_id,kind,status) values ($1,'palm','extracting') returning id`, [A]);
     await one(c, `select public.queue_send('scan_jobs', $1::jsonb) as id`, [JSON.stringify({ scan_id: scan.id })]);
@@ -50,7 +56,7 @@ test('poison / retry-exhausted message → dead-letter (archived + scan failed m
     await one(c, `select public.queue_archive('scan_jobs', $1) as ok`, [msg.msg_id]);
 
     assert.equal(await n(c, `select count(*)::int n from pgmq.q_scan_jobs`), 0, 'removed from the active queue');
-    assert.equal(await n(c, `select count(*)::int n from pgmq.a_scan_jobs`), 1, 'preserved in the archive (dead-letter store)');
+    assert.equal(await n(c, `select count(*)::int n from pgmq.a_scan_jobs`), archivedBefore + 1, 'preserved in the archive (dead-letter store)');
     const s = await one(c, `select status, failure_reason from public.scans where id=$1`, [scan.id]);
     assert.equal(s.status, 'failed');
     assert.equal(s.failure_reason, 'max_retries');
@@ -60,6 +66,7 @@ test('poison / retry-exhausted message → dead-letter (archived + scan failed m
 test('permanent failure → fail fast: archived on the first read + scan failed with the specific reason', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);
+    const archivedBefore = await n(c, `select count(*)::int n from pgmq.a_scan_jobs`);
     await seedUser(c, A);
     const scan = await one(c, `insert into public.scans (user_id,kind,status) values ($1,'palm','extracting') returning id`, [A]);
     await one(c, `select public.queue_send('scan_jobs', $1::jsonb) as id`, [JSON.stringify({ scan_id: scan.id })]);

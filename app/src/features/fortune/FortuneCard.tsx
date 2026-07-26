@@ -13,7 +13,26 @@ import { askPrefill, DIRECTION_BEARING, luckyBasis, type Fortune } from './fortu
  * claret is reserved for the red-thread, §3.2), the career/love/wealth lines, and the lucky
  * direction/colour/hours (U4 gating), each section staggering in. English-first, no CJK.
  */
-export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fortune; premium: boolean; onUnlock?: () => void; onAsk?: (prefill: string) => void }) {
+export function FortuneCard({
+  fortune,
+  premium,
+  flat = false,
+  onUnlock,
+  onAsk,
+}: {
+  fortune: Fortune;
+  premium: boolean;
+  /**
+   * Render flat + bordered instead of as an `md` hero (Audit-5 · 02 §3).
+   *
+   * Set when Today's Line is on screen: one hero per screen is the law, and the personalized card
+   * outranks the bucket-generic one. The almanac keeps every word of its content and its own paywall
+   * trigger — it loses elevation, not substance.
+   */
+  flat?: boolean;
+  onUnlock?: () => void;
+  onAsk?: (prefill: string) => void;
+}) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
@@ -26,7 +45,13 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
   return (
     // The hero animates FIRST (Direction §3): Today used to spring its secondary rows in while
     // the fortune card — the page's whole point — just appeared.
-    <Card elevation="md" entranceIndex={0} style={{ marginBottom: theme.spacing.md }}>
+    <Card
+      elevation={flat ? 'none' : 'md'}
+      bordered={flat ? true : undefined}
+      // When it is no longer the hero it no longer animates first — the pulse card takes index 0.
+      entranceIndex={flat ? 1 : 0}
+      style={{ marginBottom: theme.spacing.md }}
+    >
       {/* Eyebrow, no icon chip (Direction §4.2). The chip was one more decorative mark on a card
           that was already running four hues at once. */}
       <Text
@@ -34,12 +59,15 @@ export function FortuneCard({ fortune, premium, onUnlock, onAsk }: { fortune: Fo
         tone="secondary"
         style={{ textTransform: 'uppercase', letterSpacing: 1, marginBottom: theme.spacing.sm }}
       >
-        Today’s fortune
+        {flat ? 'The almanac' : 'Today’s fortune'}
       </Text>
 
       {/* The essence is the card's hero and its share crop — set in the serif, the one editorial
-          moment this surface gets (Direction §4.2). It was plain 17px body before. */}
-      <Text variant="editorialTitle">{fortune.overall}</Text>
+          moment this surface gets (Direction §4.2). It was plain 17px body before.
+          Demoted with the card: the serif is the screen's ONE editorial moment, and once Today's
+          Line owns it, a second serif headline directly beneath reads as two competing headlines
+          rather than a hierarchy. Elevation alone would not have fixed that. */}
+      <Text variant={flat ? 'bodyLarge' : 'editorialTitle'}>{fortune.overall}</Text>
 
       {!premium ? (
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.md, alignItems: 'flex-start' }}>

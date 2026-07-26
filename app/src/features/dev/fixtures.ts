@@ -2,6 +2,9 @@ import type { Fortune } from '@/features/fortune/fortune';
 import type { Reading } from '@/features/reading/reveal';
 import type { PairData } from '@/features/reading/PairRevealView';
 import type { CompatShareData } from '@/lib/compatCopy';
+import type { Pulse } from '@/lib/pulseData';
+import { describeChapter, type DescribedChapter } from '@/features/pulse/chapters';
+import { chapterFor } from '@/features/pulse/pulseMath';
 
 /**
  * `/dev`-only fixtures. These live HERE, not in the production module, so a fixture can never be
@@ -88,3 +91,30 @@ export const PREVIEW_COMPAT_SHARE: CompatShareData = {
   blurb: 'A rare, easy resonance — you steady each other.',
   chips: ['Emotion', 'Mind', 'Energy', 'Destiny'],
 };
+
+/**
+ * A representative Today's Line (Audit-5 RF2.T2). Real generated content from the `eval/rf.ts
+ * --live` run of 2026-07-26, so the `/dev` card is measuring the same prose length the production
+ * card will get — a fixture written to fit would prove nothing about the 320pt sweep.
+ */
+export const PREVIEW_PULSE: Pulse = {
+  essence: 'Your heart line favors patience on a Fire Rooster day.',
+  reading:
+    'The tradition reads a Fire day as one that wants to move first and ask second, and a deep heart line as the part of you that would rather be sure. Today those two pull against each other. Neither is wrong; the day just goes better if the heart sets the pace.',
+  career: 'Warmth lands better than pressure in the room you need something from.',
+  love: 'The honest sentence, said plainly, is the one that carries today.',
+  wealth: 'A day that favors holding a position rather than chasing a new one.',
+  watch: 'Notice the urge to explain yourself a second time.',
+  chapter_tone: 'A stretch that rewards steadiness over reach.',
+};
+
+/** The feature the `/dev` pulse fixtures read — a palm LINE, so the diagram has something to light. */
+export const PREVIEW_PULSE_FEATURE = 'heart';
+
+/** A stable fixture chapter. Pinned to a date so the screenshots do not change with the calendar. */
+export const PREVIEW_CHAPTER: DescribedChapter =
+  describeChapter(chapterFor(PREVIEW_PULSE_FEATURE, 'dev-fixture-hash', '2026-07-26'), PREVIEW_PULSE_FEATURE)!;
+
+/** The same chapter on its FIRST day — the boundary-banner fixture. */
+export const PREVIEW_BOUNDARY_CHAPTER: DescribedChapter =
+  describeChapter(chapterFor(PREVIEW_PULSE_FEATURE, 'dev-fixture-hash', PREVIEW_CHAPTER.starts_on), PREVIEW_PULSE_FEATURE)!;

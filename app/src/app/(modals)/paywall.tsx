@@ -31,9 +31,28 @@ const PLACEHOLDER_OFFERS: Plan[] = [
 ];
 
 type PaywallTrigger = AnalyticsEventMap['paywall_viewed']['trigger'];
-const TRIGGERS: PaywallTrigger[] = ['locked_section', 'fortune_full', 'compat_second', 'chat_entry', 'post_share', 'settings'];
+const TRIGGERS: PaywallTrigger[] = [
+  'locked_section',
+  'fortune_full',
+  'compat_second',
+  'chat_entry',
+  'post_share',
+  'settings',
+  // Audit-5 (01 §7): the daily workhorse, the chapter-turn spike, and the milestone soft variant.
+  'pulse_full',
+  'cycle_boundary',
+  'streak_milestone',
+];
 
-/** Section key → the palm line to light + a human name for the tease (audit F1.2 — hero matches). */
+/**
+ * Section/feature key → the palm line to light + a human name for the tease (audit F1.2 — hero
+ * matches what the reader tapped).
+ *
+ * Audit-5 extends this from the 7 palm sections to all 15 pulse features, because `pulse_full`
+ * passes today's feature as `section`: a reader who just met their BROWS must not be sold on a
+ * "fate line". Face features light no line — the hero shows their palm unlit and the copy names the
+ * face feature, which is honest about what the diagram is.
+ */
 const SECTION_TEASE: Record<string, { line?: string; name: string }> = {
   heart: { line: 'heart_line', name: 'heart line' },
   head: { line: 'head_line', name: 'head line' },
@@ -42,6 +61,14 @@ const SECTION_TEASE: Record<string, { line?: string; name: string }> = {
   hand_shape: { name: 'hand-shape reading' },
   mounts: { name: 'mounts' },
   markings: { name: 'rare markings' },
+  face_shape: { name: 'elemental face' },
+  proportion: { name: 'proportions' },
+  eyes: { name: 'eyes' },
+  eyebrows: { name: 'brows' },
+  nose: { name: 'nose' },
+  mouth: { name: 'mouth' },
+  ears: { name: 'ears' },
+  canthus: { name: 'under-eye' },
 };
 
 interface Hero {
@@ -62,6 +89,25 @@ function heroFor(trigger: PaywallTrigger, section?: string): Hero {
       heroSubtitle: `Your ${t.name} is still hidden — unlock the full read.`,
     };
   }
+  // Today's Line: the hero lights TODAY's feature, so the paywall is visibly about the reading the
+  // user just had rather than a generic upsell. The hero system already accepts a highlighted line;
+  // this just hands it the right one.
+  if ((trigger === 'pulse_full' || trigger === 'cycle_boundary') && section && SECTION_TEASE[section]) {
+    const t = SECTION_TEASE[section];
+    return trigger === 'pulse_full'
+      ? {
+          lockedLine: t.line,
+          lockedNames: [`daily ${t.name} reading`],
+          heroTitle: 'The rest of today’s reading',
+          heroSubtitle: `Your ${t.name}, read in full — every day, not just today.`,
+        }
+      : {
+          lockedLine: t.line,
+          lockedNames: [`${t.name} chapters`],
+          heroTitle: `A new chapter of your ${t.name}`,
+          heroSubtitle: 'Read the chapter that just opened — and see what comes next.',
+        };
+  }
   switch (trigger) {
     case 'fortune_full':
       return { lockedLine: 'fate_line', lockedNames: ['daily almanac'], heroTitle: 'Your daily almanac awaits', heroSubtitle: 'Unlock today’s full fortune — lucky hours, directions, and the year ahead.' };
@@ -71,6 +117,15 @@ function heroFor(trigger: PaywallTrigger, section?: string): Hero {
       return { lockedLine: 'heart_line', lockedNames: ['compatibility matches'], heroTitle: 'Compare with everyone', heroSubtitle: 'Unlock unlimited compatibility matches with your friends.' };
     case 'post_share':
       return { lockedLine: 'fate_line', lockedNames: ['full reading'], heroTitle: 'You’ve got more to reveal', heroSubtitle: 'Unlock your full reading, daily fortune, and unlimited matches.' };
+    // Reached without a feature (a boundary tapped before the day's line resolved), and from the
+    // milestone sheet. The milestone variant is deliberately the softest copy on the screen: the
+    // reader has just been congratulated, and a hard pitch there would sour the moment (01 §7 T3).
+    case 'pulse_full':
+      return { lockedLine: 'heart_line', lockedNames: ['daily reading'], heroTitle: 'The rest of today’s reading', heroSubtitle: 'Your own lines, read in full — every day.' };
+    case 'cycle_boundary':
+      return { lockedLine: 'fate_line', lockedNames: ['line chapters'], heroTitle: 'A new chapter just opened', heroSubtitle: 'Read the chapter your line has entered — and see what comes next.' };
+    case 'streak_milestone':
+      return { lockedLine: 'life_line', lockedNames: ['daily readings'], heroTitle: 'Keep the days going', heroSubtitle: 'Your full daily readings, for as long as the streak lasts.' };
     default:
       return { lockedLine: 'fate_line', lockedNames: ['deep-dive lines'] };
   }

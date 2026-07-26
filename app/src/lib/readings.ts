@@ -14,12 +14,28 @@ import type { ReadingSummary } from '@/features/reading/history';
  * which is only the scale-invariant match signature.
  */
 
+/** The scale-invariant hand-shape signature stored on `feature_sets.geometry.hand` (Backend §6.6
+ *  item 3). The Seal-the-day ritual compares a live on-device signature against this one — no photo,
+ *  no upload, no tokens (Audit-5 RF3). Owner-readable under the existing feature_sets RLS. */
+export interface StoredHandSignature {
+  fingers: number[];
+  palm_width: number;
+}
+
 /** A loaded reading plus the geometry to draw its palm/face and its id/kind. */
 export interface LoadedReading {
   id: string;
   kind: 'palm' | 'face';
   reading: Reading;
   geometry: LineGeometry;
+  /**
+   * `feature_sets.feature_hash` — the deterministic semantic hash of this reading's features. Line
+   * Cycles seeds each chapter's schedule from it (Audit-5 03 §4.2), so two readers are never on the
+   * same rhythm and the same reader's lines turn pages independently.
+   */
+  featureHash: string | null;
+  /** `feature_sets.geometry.hand` — the enrolled palm signature the check-in ritual matches against. */
+  handSignature: StoredHandSignature | null;
   /** When the source photo was ACTUALLY deleted (scans.image_deleted_at) — null until it is.
    *  Never falls back to the upload time: claiming "deleted" while the crop sits in the bucket
    *  is the trust-break this product exists to avoid (found live 2026-07-25). */
@@ -45,17 +61,50 @@ function photoStateFrom(featureSets: unknown): { deletedAt: string | null; kept:
   return { deletedAt: s?.image_deleted_at ?? null, kept: s?.keep_image === true };
 }
 
+/** The embedded feature_set row, whichever shape PostgREST returned it in. */
+const featureSetRow = (featureSets: unknown): Record<string, unknown> | undefined => {
+  const one = Array.isArray(featureSets) ? featureSets[0] : featureSets;
+  return one && typeof one === 'object' ? (one as Record<string, unknown>) : undefined;
+};
+
+/**
+ * The enrolled hand signature, validated rather than trusted (Audit-5 RF3.T1).
+ *
+ * Mirrors the server's `parseHandSignature`: four finite positive finger chains plus a palm width.
+ * A malformed signature must resolve to `null` — the ritual then simply offers the tap fallback,
+ * which is the honest outcome. Silently comparing against `undefined` would make every check-in
+ * fail with copy that blames the user's lighting.
+ */
+function handSignatureFrom(featureSets: unknown): StoredHandSignature | null {
+  const geo = featureSetRow(featureSets)?.geometry as { hand?: unknown } | undefined;
+  const hand = geo?.hand as { fingers?: unknown; palm_width?: unknown } | undefined;
+  if (!hand || typeof hand !== 'object') return null;
+  const { fingers, palm_width: palmWidth } = hand;
+  if (!Array.isArray(fingers) || fingers.length !== 4) return null;
+  if (!fingers.every((f) => typeof f === 'number' && Number.isFinite(f) && f > 0 && f < 5)) return null;
+  if (typeof palmWidth !== 'number' || !Number.isFinite(palmWidth) || palmWidth <= 0 || palmWidth >= 5) return null;
+  return { fingers: fingers as number[], palm_width: palmWidth };
+}
+
 function toLoaded(row: Record<string, unknown>): LoadedReading {
   const photo = photoStateFrom(row.feature_sets);
+  const fs = featureSetRow(row.feature_sets);
   return {
     id: row.id as string,
     kind: row.kind as 'palm' | 'face',
     reading: row.narrative as Reading,
     geometry: geometryFrom(row.feature_sets),
+    featureHash: typeof fs?.feature_hash === 'string' ? fs.feature_hash : null,
+    handSignature: handSignatureFrom(row.feature_sets),
     photoDeletedAt: photo.deletedAt,
     photoKept: photo.kept,
   };
 }
+
+// The reading select, in ONE place (Audit-5 RF3.T1 added `geometry` + `feature_hash` and there are
+// three call sites below — three chances to add it to two of them). `geometry` is the scale-invariant
+// signature, NOT the drawable polylines; those stay on `features.line_geometry`.
+const FS_COLUMNS = 'features, geometry, feature_hash';
 
 /**
  * Load one reading by its own id, or by the scan id that produced it (readings →
@@ -71,7 +120,7 @@ export async function loadReading(params: { readingId?: string; scanId?: string 
   if (params.readingId) {
     const { data, error } = await supabase
       .from('readings')
-      .select('id, kind, narrative, feature_sets!inner(features, scans(image_deleted_at, keep_image))')
+      .select(`id, kind, narrative, feature_sets!inner(${FS_COLUMNS}, scans(image_deleted_at, keep_image))`)
       .eq('id', params.readingId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -83,7 +132,7 @@ export async function loadReading(params: { readingId?: string; scanId?: string 
 
   const direct = await supabase
     .from('readings')
-    .select('id, kind, narrative, feature_sets!inner(features, scan_id, scans(image_deleted_at, keep_image))')
+    .select(`id, kind, narrative, feature_sets!inner(${FS_COLUMNS}, scan_id, scans(image_deleted_at, keep_image))`)
     .eq('feature_sets.scan_id', params.scanId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -96,7 +145,7 @@ export async function loadReading(params: { readingId?: string; scanId?: string 
   if (!scan) return null;
   let byKind = supabase
     .from('readings')
-    .select('id, kind, narrative, feature_sets!inner(features, side, scans(image_deleted_at, keep_image))')
+    .select(`id, kind, narrative, feature_sets!inner(${FS_COLUMNS}, side, scans(image_deleted_at, keep_image))`)
     .eq('kind', scan.kind as string);
   if (scan.side) byKind = byKind.eq('feature_sets.side', scan.side as string);
   const { data: canonical, error: canonErr } = await byKind

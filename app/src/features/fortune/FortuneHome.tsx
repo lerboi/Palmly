@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -20,10 +20,26 @@ export interface FortuneHomeProps {
   fortune?: Fortune | null;
   premium: boolean;
   /**
-   * Local dates (`YYYY-MM-DD`) on which the user opened their fortune — drives the week strip and
-   * the streak run. Empty is honest: an empty week renders dots with no streak claim (SH-9).
+   * Local dates (`YYYY-MM-DD`) on which the user SEALED the day — drives the week strip and the
+   * streak run. Server truth via the daily ledger since Audit-5 RF2.T3 (it was device-local before,
+   * so it undercounted across a reinstall and could never target a push). Empty is honest: an empty
+   * week renders dots with no streak claim (SH-9).
    */
   openedDates?: readonly string[];
+  /**
+   * The streak, as the SERVER computed it (`record_daily_open`). Passed in rather than derived so a
+   * client can never mint a run — the local `streakRun` is only the offline fallback.
+   */
+  streak?: number;
+  /** Days sealed with the camera ritual — those get the small seal glyph in the strip (02 §2). */
+  sealedWithPalm?: readonly string[];
+  /**
+   * Today's Line — the screen's ONE `md` hero (02 §3). Rendered above the almanac, which demotes to
+   * a flat bordered card. Absent → the screen is exactly what it was before this feature.
+   */
+  pulseSlot?: ReactNode;
+  /** The chapter-turn banner, on the one day a chapter turns. */
+  boundarySlot?: ReactNode;
   /** Pending compatibility partner (the red-thread row), if any. */
   partnerName?: string | null;
   /**
@@ -49,7 +65,22 @@ export interface FortuneHomeProps {
  * fortune hero card (free/premium), a pending-compatibility red-thread row, and entries to the
  * readings shelf and chat. English-first, no CJK. A first-run user sees a traced-palm hero.
  */
-export function FortuneHome({ fortune, premium, openedDates = [], partnerName, firstRun, loading, entitlementLoading, error, onRetry, now }: FortuneHomeProps) {
+export function FortuneHome({
+  fortune,
+  premium,
+  openedDates = [],
+  streak,
+  sealedWithPalm = [],
+  pulseSlot,
+  boundarySlot,
+  partnerName,
+  firstRun,
+  loading,
+  entitlementLoading,
+  error,
+  onRetry,
+  now,
+}: FortuneHomeProps) {
   const theme = useTheme();
   const router = useRouter();
   // Only the loading flag is needed now — the claim row (its other consumer) moved to Readings.
@@ -143,17 +174,31 @@ export function FortuneHome({ fortune, premium, openedDates = [], partnerName, f
         <FirstRunState onScan={() => router.push('/primer')} />
       ) : (
         <>
-          <WeekStrip cells={weekCells(new Date(ts), openedDates)} streak={streakRun(new Date(ts), openedDates)} />
+          <WeekStrip
+            cells={weekCells(new Date(ts), openedDates)}
+            // The server's number when we have it, the local walk when we don't (offline cold open).
+            streak={streak ?? streakRun(new Date(ts), openedDates)}
+            sealedWithPalm={sealedWithPalm}
+          />
+          {/* Today's Line — the ONE `md` hero (02 §3). It goes above the almanac because the
+              personalized artifact outranks the generic one: this card is about the reader's own
+              heart line, and the almanac is about everyone born on a Wood Rat day. */}
+          {pulseSlot}
           {/* `homeState` only returns 'ready' with a fortune in hand, so this guard is unreachable —
               it is here to prove that to the type system rather than to assert it with a `!`. */}
           {fortune ? (
             <FortuneCard
               fortune={fortune}
               premium={premium}
+              // DEMOTED to a flat bordered card (02 §3) now that the pulse card is the hero. One
+              // hero per screen is the law, and two `md` cards stacked read as two competing
+              // headlines. Content and paywall trigger are untouched.
+              flat={pulseSlot != null}
               onUnlock={() => router.push('/paywall?trigger=fortune_full' as Href)}
               onAsk={(q) => router.push(`/chat?q=${encodeURIComponent(q)}` as Href)}
             />
           ) : null}
+          {boundarySlot}
           {/* The tail mounts ONCE, after all three of its async reads have answered, and fades in
               (SH-3). Previously each read inserted its own row on arrival, so Today visibly
               reflowed two or three times per open. It sits below the hero, so appearing costs
@@ -290,15 +335,13 @@ function RedThreadRow({ name, elapsed, onPress, index }: { name: string; elapsed
       <View style={{ flex: 1 }}>
         <Text variant="bodyMedium">Waiting for {name}</Text>
         <Text variant="caption" tone="secondary">
-          {elapsed ? `Sent ${elapsed} â€” tap to nudge them again.` : 'Your thread is tied â€” nudge them to compare palms.'}
+          {elapsed ? `Sent ${elapsed} — tap to nudge them again.` : 'Your thread is tied — nudge them to compare palms.'}
         </Text>
       </View>
       <Icon name="chevron" size={20} color={theme.colors.textTertiary} decorative />
     </Card>
   );
 }
-
-/** Daily-fortune push opt-in (F1.T10 sanctioned moment) â€” a calm, dismissible in-context ask. */
 
 /**
  * The week rhythm Today never had (Audit-4 SH-9, Direction §4.1). Seven trailing days: weekday
@@ -310,8 +353,9 @@ function RedThreadRow({ name, elapsed, onPress, index }: { name: string; elapsed
  * flame forever, and — because the `streak` prop was never passed — never rendered in production
  * at all.
  */
-function WeekStrip({ cells, streak }: { cells: DayCell[]; streak: number }) {
+function WeekStrip({ cells, streak, sealedWithPalm = [] }: { cells: DayCell[]; streak: number; sealedWithPalm?: readonly string[] }) {
   const theme = useTheme();
+  const palmDays = new Set(sealedWithPalm);
   return (
     <View style={{ marginBottom: theme.spacing.md }}>
       <View
@@ -328,16 +372,23 @@ function WeekStrip({ cells, streak }: { cells: DayCell[]; streak: number }) {
             <Text variant="caption" tone="secondary">
               {cell.initial}
             </Text>
-            <View
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: theme.radii.pill,
-                backgroundColor: cell.opened ? theme.colors.textSecondary : 'transparent',
-                borderWidth: cell.opened ? 0 : theme.strokes.hairline,
-                borderColor: theme.colors.border,
-              }}
-            />
+            {/* A day sealed with the camera ritual wears the chop instead of the dot — a small,
+                earned difference the user can point at, and the only visible reward the ritual
+                gets (it is never a gate, so it must never look like one either). */}
+            {cell.opened && palmDays.has(cell.key) ? (
+              <Icon name="seal" size={12} color={theme.colors.textSecondary} decorative />
+            ) : (
+              <View
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: theme.radii.pill,
+                  backgroundColor: cell.opened ? theme.colors.textSecondary : 'transparent',
+                  borderWidth: cell.opened ? 0 : theme.strokes.hairline,
+                  borderColor: theme.colors.border,
+                }}
+              />
+            )}
             {/* Today's ring sits UNDER the dot as a halo, so the fill still reads on an opened day. */}
             {cell.isToday ? (
               <View

@@ -1,0 +1,1094 @@
+{
+  "_note": "Audit-5 RF1.T2 — shared test vectors for the pulse math. Committed so the Deno (_shared/pulse.ts) and Jest (app/src/features/pulse/pulseMath.ts) implementations are proven byte-identical. Regenerate ONLY with a deliberate algorithm change: every existing user would get a different feature that day.",
+  "fnv1a": [
+    {
+      "input": "fnv-anchor",
+      "hash": 1699189229
+    },
+    {
+      "input": "",
+      "hash": 2166136261
+    },
+    {
+      "input": "heart:9f8a7b6c",
+      "hash": 2001108813
+    },
+    {
+      "input": "甲子",
+      "hash": 3893524063
+    },
+    {
+      "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "hash": 3018110693
+    }
+  ],
+  "pools": [
+    {
+      "kinds": [
+        "palm_left"
+      ],
+      "pool": [
+        "heart",
+        "head",
+        "life",
+        "fate",
+        "hand_shape",
+        "mounts",
+        "markings"
+      ]
+    },
+    {
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "pool": [
+        "heart",
+        "head",
+        "life",
+        "fate",
+        "hand_shape",
+        "mounts",
+        "markings"
+      ]
+    },
+    {
+      "kinds": [
+        "face"
+      ],
+      "pool": [
+        "face_shape",
+        "proportion",
+        "eyes",
+        "eyebrows",
+        "nose",
+        "mouth",
+        "ears",
+        "canthus"
+      ]
+    },
+    {
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "pool": [
+        "heart",
+        "head",
+        "life",
+        "fate",
+        "hand_shape",
+        "mounts",
+        "markings",
+        "face_shape",
+        "proportion",
+        "eyes",
+        "eyebrows",
+        "nose",
+        "mouth",
+        "ears",
+        "canthus"
+      ]
+    }
+  ],
+  "selection": [
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-07-26",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "markings"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-07-26",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "markings"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-07-26",
+      "kinds": [
+        "face"
+      ],
+      "feature": "canthus"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-07-26",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "canthus"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-07-27",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "head"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-07-27",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "head"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-07-27",
+      "kinds": [
+        "face"
+      ],
+      "feature": "eyebrows"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-07-27",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "mouth"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-07-28",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "mounts"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-07-28",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "mounts"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-07-28",
+      "kinds": [
+        "face"
+      ],
+      "feature": "nose"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-07-28",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "fate"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-08-01",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "hand_shape"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-08-01",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "hand_shape"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-08-01",
+      "kinds": [
+        "face"
+      ],
+      "feature": "proportion"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-08-01",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "heart"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-12-31",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "hand_shape"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-12-31",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "hand_shape"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-12-31",
+      "kinds": [
+        "face"
+      ],
+      "feature": "mouth"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2026-12-31",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "nose"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2027-03-01",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "head"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2027-03-01",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "head"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2027-03-01",
+      "kinds": [
+        "face"
+      ],
+      "feature": "eyes"
+    },
+    {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "dateKey": "2027-03-01",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "mounts"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-07-26",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "markings"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-07-26",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "markings"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-07-26",
+      "kinds": [
+        "face"
+      ],
+      "feature": "proportion"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-07-26",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "fate"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-07-27",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "life"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-07-27",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "life"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-07-27",
+      "kinds": [
+        "face"
+      ],
+      "feature": "mouth"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-07-27",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "head"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-07-28",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "mounts"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-07-28",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "mounts"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-07-28",
+      "kinds": [
+        "face"
+      ],
+      "feature": "proportion"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-07-28",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "ears"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-08-01",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "markings"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-08-01",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "markings"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-08-01",
+      "kinds": [
+        "face"
+      ],
+      "feature": "eyes"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-08-01",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "hand_shape"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-12-31",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "heart"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-12-31",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "heart"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-12-31",
+      "kinds": [
+        "face"
+      ],
+      "feature": "nose"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2026-12-31",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "mounts"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2027-03-01",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "head"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2027-03-01",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "head"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2027-03-01",
+      "kinds": [
+        "face"
+      ],
+      "feature": "proportion"
+    },
+    {
+      "userId": "22222222-2222-4222-8222-222222222222",
+      "dateKey": "2027-03-01",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "proportion"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-07-26",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "hand_shape"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-07-26",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "hand_shape"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-07-26",
+      "kinds": [
+        "face"
+      ],
+      "feature": "face_shape"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-07-26",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "hand_shape"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-07-27",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "fate"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-07-27",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "fate"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-07-27",
+      "kinds": [
+        "face"
+      ],
+      "feature": "nose"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-07-27",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "heart"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-07-28",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "heart"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-07-28",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "heart"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-07-28",
+      "kinds": [
+        "face"
+      ],
+      "feature": "eyes"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-07-28",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "life"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-08-01",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "mounts"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-08-01",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "mounts"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-08-01",
+      "kinds": [
+        "face"
+      ],
+      "feature": "canthus"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-08-01",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "head"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-12-31",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "head"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-12-31",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "head"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-12-31",
+      "kinds": [
+        "face"
+      ],
+      "feature": "mouth"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2026-12-31",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "ears"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2027-03-01",
+      "kinds": [
+        "palm_left"
+      ],
+      "feature": "hand_shape"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2027-03-01",
+      "kinds": [
+        "palm_left",
+        "palm_right"
+      ],
+      "feature": "hand_shape"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2027-03-01",
+      "kinds": [
+        "face"
+      ],
+      "feature": "face_shape"
+    },
+    {
+      "userId": "c0ffee00-dead-4bee-8fee-0123456789ab",
+      "dateKey": "2027-03-01",
+      "kinds": [
+        "palm_right",
+        "face"
+      ],
+      "feature": "mouth"
+    }
+  ],
+  "chapters": [
+    {
+      "featureKey": "heart",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2026-07-26",
+      "chapter": {
+        "index": 6,
+        "archetype": "quiet_forge",
+        "starts_on": "2026-07-09",
+        "ends_on": "2026-08-10",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "heart",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2026-01-01",
+      "chapter": {
+        "index": 0,
+        "archetype": "turning_soil",
+        "starts_on": "2026-01-01",
+        "ends_on": "2026-02-14",
+        "is_boundary": true
+      }
+    },
+    {
+      "featureKey": "heart",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2026-03-15",
+      "chapter": {
+        "index": 2,
+        "archetype": "clear_morning",
+        "starts_on": "2026-03-13",
+        "ends_on": "2026-04-13",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "heart",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2027-01-01",
+      "chapter": {
+        "index": 11,
+        "archetype": "the_rebuild",
+        "starts_on": "2026-11-30",
+        "ends_on": "2027-01-09",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "heart",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2026-07-26",
+      "chapter": {
+        "index": 6,
+        "archetype": "turning_soil",
+        "starts_on": "2026-06-29",
+        "ends_on": "2026-08-06",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "heart",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2026-01-01",
+      "chapter": {
+        "index": 0,
+        "archetype": "quiet_forge",
+        "starts_on": "2026-01-01",
+        "ends_on": "2026-01-27",
+        "is_boundary": true
+      }
+    },
+    {
+      "featureKey": "heart",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2026-03-15",
+      "chapter": {
+        "index": 2,
+        "archetype": "the_rebuild",
+        "starts_on": "2026-03-02",
+        "ends_on": "2026-04-10",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "heart",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2027-01-01",
+      "chapter": {
+        "index": 11,
+        "archetype": "quiet_forge",
+        "starts_on": "2026-12-28",
+        "ends_on": "2027-02-01",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "fate",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2026-07-26",
+      "chapter": {
+        "index": 7,
+        "archetype": "long_light",
+        "starts_on": "2026-07-25",
+        "ends_on": "2026-09-01",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "fate",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2026-01-01",
+      "chapter": {
+        "index": 0,
+        "archetype": "the_rebuild",
+        "starts_on": "2026-01-01",
+        "ends_on": "2026-01-22",
+        "is_boundary": true
+      }
+    },
+    {
+      "featureKey": "fate",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2026-03-15",
+      "chapter": {
+        "index": 2,
+        "archetype": "quiet_forge",
+        "starts_on": "2026-02-20",
+        "ends_on": "2026-03-25",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "fate",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2027-01-01",
+      "chapter": {
+        "index": 12,
+        "archetype": "long_light",
+        "starts_on": "2026-12-29",
+        "ends_on": "2027-01-19",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "fate",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2026-07-26",
+      "chapter": {
+        "index": 6,
+        "archetype": "quiet_forge",
+        "starts_on": "2026-07-26",
+        "ends_on": "2026-09-03",
+        "is_boundary": true
+      }
+    },
+    {
+      "featureKey": "fate",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2026-01-01",
+      "chapter": {
+        "index": 0,
+        "archetype": "turning_soil",
+        "starts_on": "2026-01-01",
+        "ends_on": "2026-01-27",
+        "is_boundary": true
+      }
+    },
+    {
+      "featureKey": "fate",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2026-03-15",
+      "chapter": {
+        "index": 2,
+        "archetype": "clear_morning",
+        "starts_on": "2026-03-02",
+        "ends_on": "2026-04-09",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "fate",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2027-01-01",
+      "chapter": {
+        "index": 11,
+        "archetype": "the_rebuild",
+        "starts_on": "2026-12-26",
+        "ends_on": "2027-01-24",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "eyes",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2026-07-26",
+      "chapter": {
+        "index": 6,
+        "archetype": "open_road",
+        "starts_on": "2026-07-18",
+        "ends_on": "2026-08-14",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "eyes",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2026-01-01",
+      "chapter": {
+        "index": 0,
+        "archetype": "steady_water",
+        "starts_on": "2026-01-01",
+        "ends_on": "2026-02-09",
+        "is_boundary": true
+      }
+    },
+    {
+      "featureKey": "eyes",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2026-03-15",
+      "chapter": {
+        "index": 1,
+        "archetype": "quiet_forge",
+        "starts_on": "2026-02-10",
+        "ends_on": "2026-03-15",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "eyes",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2027-01-01",
+      "chapter": {
+        "index": 11,
+        "archetype": "held_breath",
+        "starts_on": "2026-12-12",
+        "ends_on": "2027-01-13",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "eyes",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2026-07-26",
+      "chapter": {
+        "index": 5,
+        "archetype": "turning_soil",
+        "starts_on": "2026-06-28",
+        "ends_on": "2026-07-28",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "eyes",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2026-01-01",
+      "chapter": {
+        "index": 0,
+        "archetype": "held_breath",
+        "starts_on": "2026-01-01",
+        "ends_on": "2026-02-07",
+        "is_boundary": true
+      }
+    },
+    {
+      "featureKey": "eyes",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2026-03-15",
+      "chapter": {
+        "index": 2,
+        "archetype": "steady_water",
+        "starts_on": "2026-03-12",
+        "ends_on": "2026-04-06",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "eyes",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2027-01-01",
+      "chapter": {
+        "index": 10,
+        "archetype": "quiet_forge",
+        "starts_on": "2026-12-11",
+        "ends_on": "2027-01-05",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "markings",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2026-07-26",
+      "chapter": {
+        "index": 6,
+        "archetype": "turning_soil",
+        "starts_on": "2026-06-29",
+        "ends_on": "2026-08-06",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "markings",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2026-01-01",
+      "chapter": {
+        "index": 0,
+        "archetype": "quiet_forge",
+        "starts_on": "2026-01-01",
+        "ends_on": "2026-01-27",
+        "is_boundary": true
+      }
+    },
+    {
+      "featureKey": "markings",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2026-03-15",
+      "chapter": {
+        "index": 2,
+        "archetype": "the_rebuild",
+        "starts_on": "2026-03-02",
+        "ends_on": "2026-04-10",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "markings",
+      "geometryHash": "a1b2c3d4e5f6",
+      "dateKey": "2027-01-01",
+      "chapter": {
+        "index": 11,
+        "archetype": "quiet_forge",
+        "starts_on": "2026-12-25",
+        "ends_on": "2027-01-18",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "markings",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2026-07-26",
+      "chapter": {
+        "index": 6,
+        "archetype": "turning_soil",
+        "starts_on": "2026-07-18",
+        "ends_on": "2026-08-24",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "markings",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2026-01-01",
+      "chapter": {
+        "index": 0,
+        "archetype": "quiet_forge",
+        "starts_on": "2026-01-01",
+        "ends_on": "2026-01-26",
+        "is_boundary": true
+      }
+    },
+    {
+      "featureKey": "markings",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2026-03-15",
+      "chapter": {
+        "index": 2,
+        "archetype": "the_rebuild",
+        "starts_on": "2026-02-28",
+        "ends_on": "2026-04-07",
+        "is_boundary": false
+      }
+    },
+    {
+      "featureKey": "markings",
+      "geometryHash": "deadbeefcafe",
+      "dateKey": "2027-01-01",
+      "chapter": {
+        "index": 10,
+        "archetype": "steady_water",
+        "starts_on": "2026-12-01",
+        "ends_on": "2027-01-04",
+        "is_boundary": false
+      }
+    }
+  ]
+}

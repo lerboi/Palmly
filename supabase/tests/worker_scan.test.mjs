@@ -55,6 +55,7 @@ test('H1: subject_profiles enforces unique(user_id, kind) — the insert error w
 test('worker-scan DB flow: enqueue → store feature_set → narrating → enqueue narrative → telemetry', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);
+    const telemetryBefore = await n(c, `select count(*)::int n from public.worker_telemetry where worker='worker-scan' and status='ok'`);
     await seedUser(c, A); // trigger provisions the profile
 
     // a queued scan + its scan_job (what scan-create + scan-ingest produce)
@@ -92,7 +93,9 @@ test('worker-scan DB flow: enqueue → store feature_set → narrating → enque
     assert.equal((await one(c, `select status from public.scans where id=$1`, [scan.id])).status, 'narrating', 'scan → narrating');
     assert.equal(await n(c, `select count(*)::int n from public.feature_sets where scan_id=$1 and feature_hash='deadbeef'`, [scan.id]), 1, 'feature_set stored');
     assert.equal(await n(c, `select count(*)::int n from pgmq.q_narrative_jobs`), 1, 'narrative_job enqueued');
-    assert.equal(await n(c, `select count(*)::int n from public.worker_telemetry where worker='worker-scan' and status='ok'`), 1, 'telemetry written');
+    // Delta, not absolute: `worker_telemetry` is a shared, long-lived table and the live workers have
+    // been writing to it on staging since the drain crons went in. This test owns the row it wrote.
+    assert.equal(await n(c, `select count(*)::int n from public.worker_telemetry where worker='worker-scan' and status='ok'`), telemetryBefore + 1, 'telemetry written');
     assert.equal(await n(c, `select count(*)::int n from pgmq.q_scan_jobs`), 0, 'scan_job archived');
   });
 });

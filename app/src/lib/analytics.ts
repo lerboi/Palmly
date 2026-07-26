@@ -60,7 +60,13 @@ export type AnalyticsEventMap = {
   pair_reveal_viewed: { pair_id: string; role: 'sender' | 'recipient' };
 
   // ── Paywall funnel ("is the paywall placed right?") ──
-  paywall_viewed: { trigger: 'locked_section' | 'fortune_full' | 'compat_second' | 'chat_entry' | 'post_share' | 'settings'; variant?: string };
+  // The three Audit-5 triggers join the union here (03 §9). `pulse_full` is the workhorse — it can
+  // fire at most once a day per user, right after value has landed — and `cycle_boundary` is the
+  // category's proven conversion spike, made personal.
+  paywall_viewed: {
+    trigger: 'locked_section' | 'fortune_full' | 'compat_second' | 'chat_entry' | 'post_share' | 'settings' | 'pulse_full' | 'cycle_boundary' | 'streak_milestone';
+    variant?: string;
+  };
   paywall_page_viewed: { trigger: string; page: number };
   paywall_dismissed: { trigger: string; page: number };
   purchase_completed: { plan: 'monthly' | 'annual'; trigger: string };
@@ -70,6 +76,16 @@ export type AnalyticsEventMap = {
   fortune_opened: { date: string; premium: boolean; streak: number };
   push_opened: { type: string };
   notification_pref_changed: { pref: 'daily_fortune' | 'social' | 'offers'; enabled: boolean };
+
+  // ── Today's Line (Audit-5 · 03 §9) — the daily loop's own diagnostics ──
+  // The north stars are D1/D7/D30 and REVEAL RATE (% of DAU who open their line); these are the
+  // events those are computed from. `method` separates the tap from the camera ritual, which is the
+  // only way to learn whether the ritual is worth its build cost.
+  pulse_revealed: { feature_key: string; method: 'tap' | 'palm'; streak: number; premium: boolean };
+  /** The check-in ritual finished. `matched` false is a NON-match, not an error — both are normal. */
+  pulse_sealed: { method: 'tap' | 'palm'; matched: boolean; attempt_ms: number };
+  chapter_viewed: { feature_key: string; boundary: boolean };
+  milestone_reached: { day: number };
 
   // ── Account + privacy ──
   account_linked: { provider: 'apple' | 'google' | 'phone' };

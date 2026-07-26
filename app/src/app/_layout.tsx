@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { identifyUser, initAnalytics, track, withSentry } from '@/lib/analytics';
 import { useAuthBootstrap } from '@/lib/auth';
+import { usePushOpenTracking } from '@/lib/usePushOpenTracking';
 import { ThemeProvider, primeReduceMotion, useFontsReady } from '@/theme';
 import type { ColorScheme } from '@/theme';
 
@@ -42,6 +43,10 @@ function RootLayout() {
   useEffect(() => {
     track('app_opened', { cold_start: true });
   }, []);
+
+  // A tapped notification finally reports itself (RF0.T4). Mounted at the root so it catches the
+  // cold-start tap as well as warm ones; the deep link itself is expo-router's job, not ours.
+  usePushOpenTracking();
 
   // Associate analytics + crash reports with the pseudonymous Supabase UUID once it's known.
   useEffect(() => {

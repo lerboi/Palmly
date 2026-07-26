@@ -77,7 +77,9 @@ Deno.test('posture: every function directory declares a verify_jwt in config.tom
   // A function with no config block silently takes the platform default, which is exactly the kind
   // of "nobody decided this" that the matrix exists to prevent. readPostures() asserts per-function;
   // this pins the count so a whole function cannot vanish from the matrix unnoticed.
-  assertEquals(p.length, 20, `expected 20 functions, found ${p.length}: ${p.map((x) => x.fn).join(', ')}`);
+  // 20 → 22 at Audit-5: `pulse-generate` (RF1.T4, the nightly Today's Line generator) and
+  // `pulse-fanout` (RF4.T2, the morning push producer). Both secret-mode, both cron-invoked.
+  assertEquals(p.length, 22, `expected 22 functions, found ${p.length}: ${p.map((x) => x.fn).join(', ')}`);
   assert(!p.some((x) => x.fn === 'hello'), 'the hello skeleton is gone (B20) and must not come back');
 });
 
@@ -97,7 +99,11 @@ Deno.test('posture: a secret-mode worker MUST have verify_jwt=false — else the
   const workers = (await readPostures()).filter((x) => x.modes.includes('secret'));
   assertEquals(
     workers.map((x) => x.fn),
-    ['card-render', 'cleanup', 'fortune-generate', 'ops-alerts', 'push-dispatch', 'worker-compat', 'worker-narrative', 'worker-scan'],
+    // `pulse-generate` and `pulse-fanout` joined at Audit-5: cron-invoked with the service key,
+    // exactly like fortune-generate, so both stay verify_jwt=false with requireMode('secret') as
+    // the gate. `pulse-fanout` in particular MUST NOT be user-callable — it can enqueue a push to
+    // any user id it is handed.
+    ['card-render', 'cleanup', 'fortune-generate', 'ops-alerts', 'pulse-fanout', 'pulse-generate', 'push-dispatch', 'worker-compat', 'worker-narrative', 'worker-scan'],
   );
   for (const f of workers) {
     // These authenticate in-function on the unforgeable service key. verify_jwt=true would make the

@@ -44,6 +44,9 @@ export interface PaywallViewProps {
 
 /** What Premium adds — each with a feature-matched icon (not a row of identical checks). */
 const INCLUSIONS: { icon: IconName; text: string }[] = [
+  // Audit-5 (02 §8) adds one row, first: the daily line is the thing a subscriber now gets EVERY
+  // morning, so it leads. The list stays four-plus-one, not a spec sheet.
+  { icon: 'seal', text: 'Your line, read daily' },
   { icon: 'streak', text: 'Your daily almanac & fortune' },
   { icon: 'thread', text: 'Unlimited compatibility matches' },
   { icon: 'palm', text: 'Deep-dive line readings' },

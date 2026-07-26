@@ -48,6 +48,8 @@ export type IconName =
   | 'compass'
   | 'logout'
   | 'warning'
+  | 'seal'
+  | 'chapter'
   | 'apple'
   | 'google';
 
@@ -263,6 +265,27 @@ const PATHS: Record<IconName, ReactNode> = {
       <Circle cx="12" cy="17.2" r="0.95" fill="currentColor" stroke="none" />
     </G>
   ),
+  // The chop — the physical stamp the day is sealed with (Audit-5 02 §2): handle, body, and the
+  // inked base bar. A first pass drew a bordered square with inner rules and read unmistakably as a
+  // DOCUMENT at 16–24px, which is the size it is actually used at (the week strip and the chip).
+  // The silhouette of the tool is legible where an abstract "impression" is not.
+  seal: (
+    <G>
+      <Path d="M9.5 3 H14.5 A1.5 1.5 0 0 1 16 4.5 V7 H8 V4.5 A1.5 1.5 0 0 1 9.5 3 Z" />
+      <Path d="M8 7 H16 L17.2 14.5 H6.8 Z" />
+      <Path d="M4.5 17 H19.5 V20.5 H4.5 Z" />
+    </G>
+  ),
+  // An OPEN book — a dated chapter of a line (Line Cycles). Two facing pages over a centre gutter:
+  // it survives 14px, where the earlier scroll-with-rules collapsed into the same grey smudge as
+  // `document`. The two must never read alike; they appear on the same screen.
+  chapter: (
+    <G>
+      <Path d="M12 6.5 V20" />
+      <Path d="M12 6.5 C10.2 5 7.6 4.5 3.5 4.8 V18.2 C7.6 17.9 10.2 18.4 12 20" />
+      <Path d="M12 6.5 C13.8 5 16.4 4.5 20.5 4.8 V18.2 C16.4 17.9 13.8 18.4 12 20" />
+    </G>
+  ),
   // ── Provider marks (auth buttons only) ────────────────────────────────
   // Filled silhouettes, not strokes: both marks are recognized by their solid shape. See the
   // note on DEFAULT_LABELS — these are house approximations, NOT the official brand assets.
@@ -322,6 +345,8 @@ const DEFAULT_LABELS: Record<IconName, string> = {
   compass: 'Direction',
   logout: 'Sign out',
   warning: 'Warning',
+  seal: 'Seal',
+  chapter: 'Chapter',
   apple: 'Apple',
   google: 'Google',
 };

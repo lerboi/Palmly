@@ -69,7 +69,12 @@ export interface ShareViewProps {
   /** Re-share an EXISTING invite (the home red-thread nudge) — the sheet reuses this exact URL and
    *  never mints a second invite (audit F1.7). When set, the framing picker is hidden (locked). */
   presetInviteUrl?: string;
-  onClose?: () => void;
+  /**
+   * Close the sheet. `didShare` reports whether a share or copy-link actually COMPLETED while it was
+   * open — the signal the `post_share` paywall trigger runs on (Audit-5 RF0.T2). Callers that don't
+   * care can ignore the argument; `() => router.back()` still type-checks.
+   */
+  onClose?: (didShare: boolean) => void;
 }
 
 type Variant = 'solo' | 'compat';
@@ -190,11 +195,16 @@ export function ShareView({
     if (invite && readingId && variant === 'solo' && !presetInviteUrl) void ensureInvite().catch(() => {});
   }, [invite, readingId, variant, presetInviteUrl, ensureInvite]);
 
+  // Did a share/copy actually land while this sheet was open? A ref, not state: it only ever feeds
+  // the close handler, and re-rendering the sheet because a share succeeded would be pure churn.
+  const sharedRef = useRef(false);
+
   const onCopyLink = async () => {
     try {
       const { url } = await ensureInvite();
       await Clipboard.setStringAsync(url);
       setCopied(true);
+      sharedRef.current = true;
       track('share_completed', { channel: 'copy', card_variant: 'feed', with_invite: invite });
     } catch {
       /* mint / clipboard unavailable — leave the un-copied state, no crash */
@@ -210,6 +220,7 @@ export function ShareView({
         /* share the essence without a link rather than block the share */
       }
     }
+    sharedRef.current = true;
     track('share_completed', { channel, card_variant: 'feed', with_invite: invite });
     // Sanctioned push moment (F1.T10): the first compat invite send. Once ever, device-only.
     if (variant === 'compat' && invite) void maybeAskFirstCompatPush();
@@ -227,7 +238,7 @@ export function ShareView({
     // what flex could give it on a 844pt device, and Yoga doesn't clip, so the card painted over the
     // toggles, the framing picker and the channel row beneath it.
     <Screen scroll>
-      <AppHeader title="Share your reading" onClose={onClose} />
+      <AppHeader title="Share your reading" onClose={onClose ? () => onClose(sharedRef.current) : undefined} />
 
       <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
         <SelectPill label="My reading" role="tab" active={variant === 'solo'} onPress={() => { setVariant('solo'); regenerate(); }} />

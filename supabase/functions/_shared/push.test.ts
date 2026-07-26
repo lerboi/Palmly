@@ -31,10 +31,20 @@ Deno.test('shouldSend: gates on token + prefs + quiet hours (pipeline bypasses q
   assert(!shouldSend(job('compat_complete'), dev({ social: true }, null), 14), 'no token → no send');
 });
 
-Deno.test('buildExpoMessage: to/title/body + deep_link folded into data', () => {
-  const m = buildExpoMessage('ExpoTok', job('compat_complete')) as { to: string; data: { deep_link: string } };
+Deno.test('buildExpoMessage: to/title/body + deep_link and type folded into data', () => {
+  const m = buildExpoMessage('ExpoTok', job('compat_complete')) as { to: string; data: { deep_link: string; type: string } };
   assertEquals(m.to, 'ExpoTok');
   assertEquals(m.data.deep_link, 'palmly://x');
+  // RF0.T4: the client reads this to emit `push_opened {type}` — without it the event is blind.
+  assertEquals(m.data.type, 'compat_complete');
+});
+
+Deno.test('buildExpoMessage: caller data cannot override the routing facts', () => {
+  const hostile: PushJob = { ...job('daily_pulse'), data: { type: 'spoofed', deep_link: 'palmly://elsewhere', extra: 1 } };
+  const m = buildExpoMessage('ExpoTok', hostile) as { data: { deep_link: string; type: string; extra: number } };
+  assertEquals(m.data.type, 'daily_pulse');
+  assertEquals(m.data.deep_link, 'palmly://x');
+  assertEquals(m.data.extra, 1); // caller context still rides along
 });
 
 Deno.test('sendExpoPush: batches ≤100 and returns aligned tickets (mock Expo API)', async () => {

@@ -1,0 +1,75 @@
+/loop Execute the Palmly post-capture UI/UX redesign (Audit-4) fix loop.
+
+This is a SELF-PACED loop (no fixed interval — one ledger task per iteration, each a full
+multi-step task, not a timed poll). It is fully re-entrant: every iteration re-derives where it
+is from the ledger's STATE block, never from conversation memory, so it resumes correctly after
+a context reset. Do NOT schedule fixed-interval wakeups; pace yourself by the work.
+
+GROUND YOURSELF FIRST (every iteration, in this order):
+1. Read Planning/Audits/Audit-4-PostCapture/Audit-4-Tasks.md IN FULL — it is the single source
+   of truth for what to do next. Its STATE block tells you where the last run stopped; its
+   EXECUTION PROTOCOL is the algorithm you must follow LITERALLY.
+2. Read the audit finding(s) the task cites (SN/SH/CC/CO/CP IDs) in
+   Planning/Audits/Audit-4-PostCapture/Audit-4-PostCapture.md — they hold the WHY, the
+   evidence, and the exact failure the task prevents — AND the matching sections of
+   Planning/Audits/Audit-4-PostCapture/Design-Direction.md — it holds the TARGET design (the
+   five principles in its §1 govern every visual decision; its §6 acceptance defines done).
+   If you have not yet oriented this run, also read the audit's §1 (verdict) and §2 (journey)
+   once, plus Design-Direction §1–§2 once.
+3. The task will cite specs (Planning/UIUX/UIUX-Redesign-v2.md, Planning/UIUX/UIUX-specs.md,
+   Planning/mvp_spec.md) — read those too; they are the authoritative behavioral detail.
+   Design-Direction.md supersedes them ONLY on color-quantity, surface separation, navigation
+   structure, and per-screen composition; everything else defers to the specs.
+
+THEN RUN THE PROTOCOL — for each task, strictly in this order:
+- RESEARCH: read the CURRENT source of every named file before editing. Cites were correct on
+  2026-07-25 but the tree moves — grep for the quoted code/strings to re-anchor every cite; if
+  a cite is wrong, record it in the ledger's AUDIT ERRATA table and proceed against reality.
+  Check app/package.json before assuming a library exists. This loop should never need the
+  backend; if a task appears to, mark it [!] and report — do not touch supabase/.
+- PLAN: write a short 3-6 line plan (files, approach, how Verify will pass) before editing.
+  Where the direction is silent, choose the simplest thing that passes Verify and the accent
+  litmus, and record the choice in the ledger's DECISION LOG.
+- EXECUTE: the smallest coherent change. Match surrounding code style. Theme tokens only (no
+  raw hexes), reduce-motion + web gating on every animation, the typed track() facade for all
+  analytics, keep PREVIEW_* fixtures for the /dev routes only. Copy discipline: US spelling,
+  typographic apostrophes, deletion wording only from app/src/lib/trustCopy.ts, no CJK in the
+  default UI.
+- VERIFY: run the task's Verify line LITERALLY, plus the standing gates (from app/:
+  npm run typecheck, npm run lint, npm run test:ci — all clean). Screenshot recipe: from app/,
+  npx expo export --platform web, then node scripts/shoot.mjs <outDir> <route:WxH[=name]> ...;
+  the root route is "/" never "/index"; dark needs EXPO_PUBLIC_FORCE_SCHEME=dark; save under
+  docs/checkpoints/audit4/. Only when everything passes: mark the box [x] (or [~] with a note
+  naming exactly which device/human leg remains), append one Build Log line, update the STATE
+  block, and commit this task's changes (git add <files> && git commit -m "U#.T# <short
+  description>" — but never sweep in unrelated pre-existing working-tree changes; scope the
+  commit to the task + the ledger).
+
+HARD RULES:
+- NEVER mark a task done without its verification passing. NEVER fake a green. Device-only
+  legs (live haptics, native spring feel, real keyboard, native date spinner, OS share sheet,
+  TalkBack): build the code fully, verify what is device-free-verifiable, mark the live leg
+  [~] honestly.
+- On failure: 3 distinct approaches max, then mark [!] with the failure detail, update STATE,
+  move to the next ∥-marked task if one exists, else report and stop.
+- Respect the ledger's OUT OF SCOPE list absolutely: no RevenueCat purchase wiring, no push
+  provider plumbing, no camera/capture surfaces (features/capture/*, (capture)/* — the R3
+  track in Planning/MVP_Buildplan.md is paused by the owner), no backend/Edge/schema changes,
+  no server card-render work, no lunar-calendar library. If a task turns out to need a human
+  item, mark it [!] naming the exact item and move on.
+- Dependencies: the ONLY permitted addition is @react-native-community/datetimepicker via
+  npx expo install (U2.T5, Decision Log entry required). Anything else → [!].
+- The accent litmus governs every touched screen: at most 2 non-interactive vermilion
+  occurrences per screen (Design-Direction §1 P1). If your change adds accent to something
+  non-interactive, it is wrong.
+- The Supabase MCP is READ-ONLY inspection and should not be needed here.
+- The three prior fix loops are DONE — never re-open Audit-1/2/3 or UIUX-v2 ledger boxes; those
+  files are read-only context.
+
+LOOP CONTROL (self-paced — how each turn ends and when the loop stops):
+- Work tasks one at a time, in ledger order, and keep going while context allows.
+- Near the context limit: finish (or [~]-note) the in-flight task, update STATE, commit, and
+  stop the turn cleanly — the next iteration resumes exactly from the ledger's STATE block.
+- END THE LOOP (stop scheduling further iterations) only when every remaining task is
+  [!]/human-blocked — then write the consolidated blocker report into STATE and report it —
+  OR when U8.G passes and the ledger STATE reads COMPLETE. Otherwise the loop continues.

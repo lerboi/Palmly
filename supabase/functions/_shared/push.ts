@@ -28,6 +28,10 @@ export interface DeviceRow {
 // and always sent; fortune respects `daily_fortune`; everything social respects `social`.
 const CLASS_OF: Record<string, PushClass> = {
   daily_fortune: 'fortune',
+  // Today's Line rides the EXISTING `daily_fortune` preference (02 §8): one pref, one morning push.
+  // Giving it its own toggle would ask the user to make a distinction the product does not make —
+  // and would let someone opt out of the fortune while still being woken by the line.
+  daily_pulse: 'fortune',
   solar_term: 'fortune',
   reading_ready: 'pipeline',
   compat_complete: 'social',
@@ -59,8 +63,27 @@ export function shouldSend(job: PushJob, device: DeviceRow, localHour: number): 
   return true;
 }
 
+/**
+ * One Expo message. The notification's `data` carries the two routing facts the CLIENT needs on a
+ * tap: where to go (`deep_link`) and what kind of push it was (`type`).
+ *
+ * `type` was missing (Audit-5 RF0.T4): the queue message has always carried it, but only
+ * `deep_link` + the caller's free-form `data` were forwarded, so a tapped notification arrived at
+ * the app with no way to say WHICH notification it was — which is exactly the property the
+ * `push_opened {type}` analytics event needs. The per-type open rate is the loop's core diagnostic
+ * (01 §8), and it was unmeasurable.
+ *
+ * Ordering is deliberate: the caller's `data` spreads FIRST, so the server-controlled routing facts
+ * always win. A context key named `type` or `deep_link` can no longer misroute a push.
+ */
 export function buildExpoMessage(token: string, job: PushJob): Record<string, unknown> {
-  return { to: token, title: job.title, body: job.body, sound: 'default', data: { ...(job.deep_link ? { deep_link: job.deep_link } : {}), ...(job.data ?? {}) } };
+  return {
+    to: token,
+    title: job.title,
+    body: job.body,
+    sound: 'default',
+    data: { ...(job.data ?? {}), type: job.type, ...(job.deep_link ? { deep_link: job.deep_link } : {}) },
+  };
 }
 
 const chunk = <T>(xs: T[], size: number): T[][] => {

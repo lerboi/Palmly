@@ -10,3 +10,15 @@
  * regresses.
  */
 export const FACE_READING_ENABLED = true;
+
+/**
+ * `PULSE_ENABLED` gates Today's Line and everything hanging off it — the hero card, the chapter
+ * chip/sheet, the boundary banner, the milestone moment, and the check-in ritual's entry point
+ * (Audit-5 · 03 §6, staged rollout §11).
+ *
+ * Off means Today renders exactly as it did before Audit-5: the almanac back at `md` elevation, the
+ * week strip on its local history. That is the property that makes this a real switch rather than a
+ * decoration — the rollout plan ships the schema and generation dark first (RF1), observes three
+ * nightly runs, and only then flips this.
+ */
+export const PULSE_ENABLED = true;

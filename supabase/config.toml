@@ -484,6 +484,18 @@ import_map = "./functions/deno.json"
 verify_jwt = false
 import_map = "./functions/deno.json"
 
+# pulse-generate: secret mode (nightly cron), like fortune-generate. verify_jwt=false because the
+# cron's `apikey` service-role header is not a JWT; the in-function requireMode('secret') is the gate.
+[functions.pulse-generate]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
+# pulse-fanout: secret mode (every 15 min). The morning Today's Line producer — enqueues only, never
+# sends; push-dispatch owns delivery. Same verify_jwt reasoning as every other cron-invoked worker.
+[functions.pulse-fanout]
+verify_jwt = false
+import_map = "./functions/deno.json"
+
 [functions.revenuecat-webhook]
 verify_jwt = false
 import_map = "./functions/deno.json"

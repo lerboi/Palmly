@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { ShareView, type ShareSource } from '@/features/reading/ShareView';
 import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import type { LineGeometry } from '@/components/palm-diagram/geometry';
@@ -7,6 +7,9 @@ import { loadReading } from '@/lib/readings';
 import { loadCompatShare } from '@/lib/compat';
 import { hasRealPair, type CompatShareData } from '@/lib/compatCopy';
 import { loadPendingCompat } from '@/lib/pendingCompat';
+import { loadFortuneOpens } from '@/lib/fortuneOpens';
+import { useEntitlement } from '@/lib/entitlements';
+import { markPostShareOffered, postShareOffered, shouldOfferPostShare } from '@/features/paywall/postShare';
 
 /**
  * Share sheet (UIUX §2.6/§2.7, audit F0.4 / A6). Takes `readingId` + `initialVariant` (+ `source`,
@@ -18,6 +21,7 @@ import { loadPendingCompat } from '@/lib/pendingCompat';
  */
 export default function Share() {
   const router = useRouter();
+  const { premium } = useEntitlement();
   const { readingId, initialVariant, source, reshare, pairId } = useLocalSearchParams<{
     readingId?: string;
     initialVariant?: string;
@@ -73,6 +77,31 @@ export default function Share() {
   const shareSource: ShareSource =
     variant === 'compat' ? 'compat' : source === 'home' || source === 'face' ? source : 'reveal';
 
+  /**
+   * Close — and, after a share that actually landed, the `post_share` paywall (RF0.T2, 01 §7 T5).
+   * `replace`, not push-on-top: the share modal has done its job, so the paywall takes its slot and
+   * closing the paywall returns the user to the reveal (or Today) they came from, one tap, no stack
+   * of two modals. Rules live in `shouldOfferPostShare`; the day-count comes from the local open
+   * history so a day-1 user is never sold to on their very first share.
+   */
+  const onClose = (didShare: boolean) => {
+    if (!didShare || premium || postShareOffered()) {
+      router.back();
+      return;
+    }
+    void loadFortuneOpens()
+      .then((dates) => {
+        const offer = shouldOfferPostShare({ shared: true, premium, daysActive: dates.length, offeredThisSession: postShareOffered() });
+        if (!offer) {
+          router.back();
+          return;
+        }
+        markPostShareOffered();
+        router.replace('/paywall?trigger=post_share' as Href);
+      })
+      .catch(() => router.back());
+  };
+
   return (
     <ShareView
       readingId={readingId}
@@ -82,7 +111,7 @@ export default function Share() {
       initialVariant={variant}
       source={shareSource}
       presetInviteUrl={presetUrl}
-      onClose={() => router.back()}
+      onClose={onClose}
     />
   );
 }
