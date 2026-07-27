@@ -1,0 +1,65 @@
+ultracode
+
+Act as a market/product researcher for Palmly (a palm + face reading app). This burst is RESEARCH
+ONLY — do not write or change any application code, migrations, prompts, or UI.
+
+CONTEXT
+
+Read Planning/Audits/Audit-5-RetentionFeatures/05-PROVEN-LOOP-ADAPTATION.md, sections 0 and 3
+(task RF6.T6). Skim section 2 for what the plan proposes to change.
+
+That plan proposes a significant reframe of a shipped feature. Its central argument rests on claims
+copied from 01-RETENTION-STRATEGY.md section 2, which cites a "full sourced report in the session
+record" that no longer exists. Nobody has checked those numbers. Before we spend effort executing
+the reframe, I want them verified or corrected.
+
+YOUR TASK — RF6.T6 only
+
+Verify, correct, or refute each claim below. Use the workflow tool to fan out across independent
+angles (app-intelligence estimates, app store listings and review corpora, the apps' own marketing
+and paywall screens, press/interviews, teardown write-ups), then verify findings adversarially
+before reporting — I would rather have three well-sourced claims than ten plausible ones.
+
+THE LOAD-BEARING CLAIM (spend most of the effort here):
+
+  1. Hint — reportedly the top-earning palmistry app (~$14M/yr). What does it ACTUALLY do after the
+     palm scan? Specifically: does it attempt any daily content derived from the palm itself, or
+     does it retain users on generic astrology/horoscope content? Has it ever tried daily palm
+     content and dropped it?
+  2. Has ANY app shipped recurring daily content computed from a real biometric scan (palm, face,
+     iris, body)? If yes, what happened to it — retained, quietly removed, review backlash?
+
+SECONDARY CLAIMS (verify or mark unverifiable, do not over-invest):
+
+  3. CHANI: ~$500K/mo, 4.9 stars, generous free daily content with contextual depth gating.
+  4. Faladdin: ~1M readings/day sustained on 24h-refresh credits + anticipation mechanics.
+  5. Co-Star: daily push is the core retention mechanic; contextual pushes ~3.4x the open rate of
+     generic (cited as 14.4% vs 4.2%, attributed to CleverTap/MobiLoud benchmarks).
+  6. Duolingo: streak-freeze users hold streaks ~48% longer; ~55% next-day return.
+  7. Category pricing: clusters $9-15/mo and $20-70/yr. Weekly plans convert ~5.4x better to trial
+     but renew worst-in-class (~35%).
+  8. The cited failure modes: Umax (ratings collapse from paywalling before showing the result),
+     Nebula (trust collapse from blurring free vs paid), The Pattern/Nebula (visible content
+     recycling), Moonly (content bloat off-hook).
+
+DELIVERABLE
+
+Write Planning/Audits/Audit-5-RetentionFeatures/06-MARKET-VERIFICATION.md containing:
+
+  - One row per claim: VERIFIED / CORRECTED / UNVERIFIABLE, the corrected value if any, the source,
+    and your confidence. Say "unverifiable" plainly rather than reaching — an unsourced number
+    presented as fact is worse than an admitted gap, because the next session will build on it.
+  - A short section: does the RF6 reframe still hold? The reframe assumes daily palm content is the
+    unproven half and that the almanac/astrology substrate is the proven one. State whether the
+    evidence supports that, undermines it, or is silent.
+  - If any claim in 01-RETENTION-STRATEGY.md section 2 is wrong, correct it IN PLACE in that file
+    and note the correction in 06.
+
+Then update the STATE block in 05 and commit `RF6.T6 market verification` on the existing branch
+`audit5-retention-features`. Do not branch, do not push.
+
+FINALLY
+
+Tell me in plain language: should I proceed with the RF6 reframe as written, proceed with changes,
+or reconsider it? If the Hint finding does not hold up, say so directly — I would rather cut the
+plan now than after building it.

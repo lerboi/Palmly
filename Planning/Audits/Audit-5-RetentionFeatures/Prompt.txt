@@ -1,21 +1,13 @@
-Act as a Principal Product Strategist and Lead Software Architect.
+RF6 runs in two bursts. Copy-paste one of these into a CLEARED context, in order.
 
-We are conducting an audit and research phase for the "Palmly" codebase to design high-converting, daily retention features rooted in the Palm and Face reading domain.
+  Burst 1 — Prompt-1-VERIFY.txt   (ultracode)  RF6.T6 only. Research, no code.
+            Verifies the market claims the whole reframe rests on. Run this FIRST:
+            if the premise does not survive, burst 2 changes or is cancelled.
 
-CONTEXT & CORE PROBLEM:
-- Our viral hooks (Palm Scans & Face Readings) perform well for initial user acquisition, but are inherently "one-and-done" because a user's palm lines and facial structure don't change every day.
-- Current retention attempts (generic daily almanac, basic AI chat) feel shallow, disconnected from the core palm/face hook, and fail to convince users to convert into recurring subscribers.
-- OBJECTIVE: Research and design a daily habit loop rooted specifically in Palm/Face/Biometric insights that gives users a compelling reason to log in every single day, while creating natural paywall triggers for recurring revenue.
-- DESIGN AESTHETIC: Apple-inspired, ultra-clean, professional minimalism — subtle glassmorphism, crisp typography, dark/light mode balance, zero clutter.
+  Burst 2 — Prompt-2-BUILD.txt    (xhigh)      RF6.T1 -> T3. The reframe itself.
+            Sequential, coherence-critical work. One head, not many.
 
-YOUR TASKS:
-1. Audit the Palmly codebase to understand currently implemented features, database schemas, and UI components.
-2. Conduct targeted product research to define 1–2 core daily retention features that bridge physical palm/face readings with daily dynamic updates (e.g., Daily Palm Aura/Energy shifts, Dynamic Face Vibe checks, Daily Compatibility/Transit overlays).
-3. Identify exact conversion triggers within this daily flow (e.g., what is free daily value vs. what unlocks the paid subscription).
-4. Generate comprehensive, production-ready planning files inside `c:\Users\leheh\.Projects\Palmly\Planning\Audits\Audit-5-RetentionFeatures\`:
-   - `01-RETENTION-STRATEGY.md`: Core daily habit loop, product positioning, paywall placement, and conversion mechanics.
-   - `02-UI-UX-SPEC.md`: Component layout, Apple-style UI guidelines, screen wireframe flows, and interaction models.
-   - `03-TECHNICAL-ARCHITECTURE.md`: Data schemas, state management, API routes, and integration with existing palm/face pipelines.
-   - `04-TASK-MATRIX.md`: Granular, step-by-step checklist of tasks ordered logically so each can be implemented cleanly in isolated sessions.
+Later bursts (not written yet): RF6.T4 streak insurance, RF6.T5 weekly recap (largest — needs a new
+card-svg variant), RF6.T7 analytics + kill criterion.
 
-Begin by inspecting the codebase to ground your research in our actual existing build.
+The ledger is 05-PROVEN-LOOP-ADAPTATION.md. Its STATE block tracks progress across all bursts.

@@ -1,0 +1,66 @@
+Act as a Principal Full-Stack Engineer on Palmly (Expo Router / React Native + Supabase Edge
+Functions in Deno — NOT Next.js, whatever any older doc implies).
+
+Read these, in this order, before writing any code:
+
+  1. Planning/Audits/Audit-5-RetentionFeatures/05-PROVEN-LOOP-ADAPTATION.md   <- the ledger. Governs.
+  2. Planning/Audits/Audit-5-RetentionFeatures/06-MARKET-VERIFICATION.md      <- if it exists. If it
+     says the reframe's premise did not survive verification, STOP and tell me before building.
+  3. Planning/Audits/Audit-5-RetentionFeatures/02-UI-UX-SPEC.md               <- design contract
+  4. Planning/Audits/Audit-4-PostCapture/Design-Direction.md                  <- LOCKED design system
+
+Docs 01 and 04 in that folder are history: 04 (RF0-RF5) is COMPLETE and DEPLOYED, and 05 supersedes
+01's framing where they disagree. Do not rebuild RF0-RF5. Read 05 section 6 for what already exists
+on disk and on staging — do not re-derive the codebase from scratch.
+
+SCOPE OF THIS BURST — RF6.T1, RF6.T2, RF6.T3 ONLY
+
+Stop after T3. Do not start T4 (streak insurance), T5 (weekly recap) or T7 (analytics). Those are a
+later burst, and T5 in particular is under-scoped in the plan — 05 explains why.
+
+These three tasks are one editorial decision expressed in several places: **stop claiming the user's
+palm changed today; put the daily variance on the almanac, which really does change; make the palm
+the LENS it is read through; and make the on-device "same palm, day N" seal the backbone rather than
+a flourish.** Keep that sentence in mind for every string you write. Consistency of voice across the
+prompt, the merged card, the lock line and the push copy IS the deliverable — more than any
+individual file.
+
+  RF6.T1  Prompt v2 (feature is the subject; the day-pillar name never appears in the essence)
+          plus a structural-repetition gate in eval/rf.ts.
+  RF6.T2  Merge the two Today cards into one daily unit. 05 gives the exact top-to-bottom contract
+          so you do not have to invent it. This is the big one.
+  RF6.T3  Promote the seal: REPLACE the existing "{streak}-day streak" line in FortuneHome
+          (~L425, inside WeekStrip) with the measured "Day {n} - your lines hold". Do not add a
+          second streak line beside it.
+
+HOW TO WORK
+
+Follow the execution protocol inlined in 05's STATE block: run each task's Verify literally, tick
+the box only if it genuinely passes, update STATE, commit `RF6.T# <description>` per task. Continue
+on the existing branch `audit5-retention-features` — do not branch again, do not rebase onto main,
+do not push.
+
+RULES
+
+- Verify means verify. Never mark a box done on a passing typecheck alone. T1's Verify needs a real
+  `eval/rf.ts --live --full` run and then a HUMAN read of the 15 essences — the automated gate only
+  catches structural collisions, not dullness. Show me the 15 lines and say whether they actually
+  sound like 15 different sentences. If they do not, iterate the prompt before ticking the box.
+- Read 05 section 5 (guardrails) and section 7 (traps) before you start. Section 7 lists seven
+  failures that each cost real time on the previous run — including a platform-split file-extension
+  mismatch that silently killed an entire feature on device while every test stayed green, and a
+  blank web screenshot that meant a JS throw rather than a layout bug.
+- Do not deploy to Supabase, do not run `db push`, do not deploy an Edge Function. Write the code
+  freely; shipping to staging is my call. Note that a prompt change does not take effect until
+  `pulse-generate` is redeployed — so T1's live eval runs locally against the versioned .md, and the
+  deployed function stays on v1 until I say otherwise.
+- Anything device-only needs my hands. Build it fully, verify everything verifiable device-free
+  (typecheck, lint, jest, Deno, web-export screenshots at 390pt and 320pt in light AND dark), then
+  tell me exactly what to run.
+- If a task turns out to be wrong or more expensive than 05 claims, stop and say so rather than
+  pushing through. If you disagree with the plan on the merits, say so BEFORE executing that task.
+
+START BY
+
+Confirming you have read 05 (and 06 if present), then stating in a few sentences: what you are about
+to change in T1, and anything in the plan you think is wrong. Then begin.
