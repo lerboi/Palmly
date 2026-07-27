@@ -20,7 +20,7 @@ import { createContext, requireMode } from '../_shared/context.ts';
 import { AppError, jsonResponse, withErrorEnvelope } from '../_shared/http.ts';
 import { writeTelemetry } from '../_shared/telemetry.ts';
 
-import { SYSTEM_INSTRUCTION as PULSE_PREFIX } from '../../../prompts/pulse/v1/system_instruction.generated.ts';
+import { SYSTEM_INSTRUCTION as PULSE_PREFIX } from '../../../prompts/pulse/v2/system_instruction.generated.ts';
 
 function realGeminiCall(): GeminiCall {
   const key = Deno.env.get('GEMINI_API_KEY') ?? '';

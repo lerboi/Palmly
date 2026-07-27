@@ -12,10 +12,10 @@ exists on disk and on staging; §7 has the commands and the traps. Do not re-der
 
 | Field | Value |
 |---|---|
-| Current phase | Burst 1 COMPLETE (research). Burst 2 (RF6.T1→T3) is next. |
-| Next task | **RF6.T1** (burst 2, xhigh single agent — coherence-bound, do not split). |
-| Blocked on | Nothing. ⚠️ Owner decision pending on T2 — see notes. |
-| Last run | 2026-07-28 — RF6.T6 market verification |
+| Current phase | Burst 2 in progress. **RF6.T1 COMPLETE.** T2 next. |
+| Next task | **RF6.T2** (merge the two Today cards into one daily unit). |
+| Blocked on | Nothing. ⚠️ Owner deploy gate: `pulse-generate` still runs **v1** on staging — v2 needs a redeploy to take effect. |
+| Last run | 2026-07-28 — RF6.T1 prompt v2 + shape assignment + repetition gate |
 | Notes for next run | **Read `06-MARKET-VERIFICATION.md` §4 first.** RF6.T6 refuted the argument §0 was built on: Hint is delisted, its $14M was a 2019 US astrology estimate, and it never evaluated daily palm content. The whitespace claim is also false — `Solma` (iOS 6760654131) ships our exact architecture today with zero traction. §0 has been rewritten; 01 §0/§2 corrected in place (7 corrections, `06` §5). **The reframe still holds, but T2 must now be justified by the honesty argument (§1) + Audit-4's one-hero rule, NOT by "Hint chose the almanac."** T1 is strengthened (Pattern recycling is the best-evidenced claim in the set). **T3 is upgraded to the strongest task** — argue it from the non-determinism failure mode (`06` §2.5), not from "no competitor precedent". **T4 must be retuned to 2 freezes per rolling 7** (see its task note). RF6.G's kill rule is now more valuable, not less. |
 
 **Execution protocol (inlined so you need not chase it through three files).** Work the first
@@ -147,7 +147,7 @@ for each are committed beside this file (`Prompt.txt` is the index).
 Do not attempt the whole ledger in one session: there is a deploy gate the owner controls, a device
 leg that needs their hands, and T5 is a session on its own.
 
-- [ ] **RF6.T1** 🤖 **Prompt v2 — kill the skeleton.** New `prompts/pulse/v2/system_instruction.md`
+- [x] **RF6.T1** ✅ 2026-07-28 🤖 **Prompt v2 — kill the skeleton.** New `prompts/pulse/v2/system_instruction.md`
   (never edit v1 — versioned artifact rule). Rules to add, stated as hard constraints:
   the **feature is the grammatical subject** of `essence`; the day-pillar's name **may not appear in
   `essence` at all** (it may inform the tone and may appear in `reading`); no two features may share
@@ -159,7 +159,40 @@ leg that needs their hands, and T5 is a session on its own.
     more than 3 of 15 collide, or if any essence contains the pillar or animal name.
   - Verify: `deno run … eval/rf.ts --live --full` → 15 essences, gate passes, and read them: they
     must sound like 15 different sentences. `node prompts/build-prompts.mjs` then `--check` clean.
-    Deno suite green.
+    Deno suite green. ✅ 15/15 · gate 0/15 colliding · `PROMPTS_OK` · Deno **304 passed** (+5).
+  - **What the plan did not say, and what it cost.** Three plumbing hard-points hardcoded `v1`:
+    `prompts/build-prompts.mjs` (its walk, so `v2/` generated NOTHING while `--check` stayed green —
+    a silent no-op with every test passing), `pulse-generate/index.ts`'s import, and `eval/rf.ts`.
+    The build script now walks `prompts/*/v*/` and fails loudly if the walk matches nothing.
+  - **The real finding: a prompt rule cannot fix this, because the calls are blind.** The 15 features
+    are 15 INDEPENDENT calls sharing one prompt and one pinned seed, so "no two features may share an
+    opening construction" is not a rule the model is able to obey. Told to vary, it simply picked a
+    *new* skeleton: v2 draft 1 produced 5× `prefers the quiet X over Y` and 5× `holds its X while the
+    air grows restless`. **The caller now assigns the construction**: `PULSE_SHAPES` (15 shapes) +
+    `PULSE_STANCES` (4), permuted per date in `pulseComposition()` and passed in the payload, so every
+    feature on a day gets a different frame *by construction* and no feature wears one as a habit.
+    Asserted, not hoped: `pulseComposition: every feature gets a DIFFERENT shape on the same day`.
+  - **Rule zero is enforced in the generator, not only in the eval.** A prompt rule with no
+    enforcement leaks — v2's first live run put "this Fire day" into 1 of 15. `essenceNamesDay()`
+    now rejects it in `generatePulse` (`failureReason: 'essence_names_day'`), and the eval imports
+    that same function so the gate and production cannot drift into two rules. Element adjective
+    forms are irregular (`fire`→`fiery`, `metal`→`metallic`), so they are spelled out rather than
+    suffix-guessed.
+  - **The gate's teeth are proven independently of the mock.** `selfTest()` feeds the gate the four
+    real v1 essences quoted in §0 and asserts it FAILS. Without it the gate is only ever exercised by
+    a mock this same file wrote.
+  - ⚠️ **Operational risk for whoever deploys this.** A content rejection loses that feature for the
+    whole day (the reader draws an error card). Seed is pinned, so a deterministic rejection would
+    fail the same feature every night. Two were hit while iterating: a 90-char overflow on
+    `consequence`, and `content_safety \binvest in\b` on an innocuous "invest in yourself" — the
+    banned-claims filter is a blunt string match. Both are now routed around in the prompt by name.
+    The idempotent re-run / `force` is the operational answer, same as for `essence_generic`.
+  - ⚠️ **Not deployed.** `pulse-generate` on staging still runs v1 until the owner redeploys. The
+    version stamp and the import moved together on purpose — a function that stamps `pulse.v2` while
+    sending v1's text would be worse than one that is simply behind.
+  - **Residual, for a later pass (diction, not skeleton):** "quiet" appeared 4× and "room" 3× in the
+    accepted run. Structural repetition is solved; adjective ruts are not, and they are cheap to
+    tune in the prompt whenever the owner wants.
 
 - [ ] **RF6.T2** 🤖 **Merge the two cards into one daily unit.** Today gets ONE hero: the almanac's
   daily tone, read through today's feature, over the reader's lit diagram. The `FortuneCard`

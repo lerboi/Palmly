@@ -1,12 +1,16 @@
 import { assert, assertEquals } from '@std/assert';
 import {
   buildPulseRequest,
+  essenceNamesDay,
   essenceNamesFeature,
   FEATURE_LABEL,
   generatePulse,
   generatePulseDay,
+  pulseComposition,
   pulseDayComplete,
   PULSE_PROMPT_VERSION,
+  PULSE_SHAPES,
+  PULSE_STANCES,
   type PulseDayInput,
   type PulseInput,
 } from './pulse-generate.ts';
@@ -107,7 +111,66 @@ Deno.test('buildPulseRequest: pins the schema, the seed, and the versioned promp
   assert(text.includes('"feature_key":"heart"'));
   assert(text.includes('"feature_label":"heart line"'), 'the model is told how to say it out loud');
   assert(text.includes('"animal":"Rat"'));
-  assertEquals(PULSE_PROMPT_VERSION, 'pulse.v1');
+  assertEquals(PULSE_PROMPT_VERSION, 'pulse.v2');
+});
+
+// ── v2: rule zero and the anti-convergence axes (RF6.T1) ─────────────────────────────────────────
+
+Deno.test('generatePulse: an essence that NAMES the day is rejected — rule zero', async () => {
+  // The reframe in one assertion: the palm did not change today, so the day may colour the free
+  // line but may never be its subject. v1 named the pillar in all fifteen, which is how fifteen
+  // features became one sentence with the nouns swapped (05 §0).
+  const element = await generatePulse(input(mock({ ...validPulse, essence: 'Your heart line favours patience on a wood day.' })));
+  assert(!element.ok && element.failureReason === 'essence_names_day');
+
+  const animal = await generatePulse(input(mock({ ...validPulse, essence: 'Your heart line keeps its own counsel, Rat or no Rat.' })));
+  assert(!animal.ok && animal.failureReason === 'essence_names_day');
+
+  const pillar = await generatePulse(input(mock({ ...validPulse, essence: 'Your heart line reads long on a 甲子 morning.' })));
+  assert(!pillar.ok && pillar.failureReason === 'essence_names_day');
+
+  // …and `reading` is explicitly where the day IS allowed to be named.
+  const ok = await generatePulse(input(mock({ ...validPulse, reading: 'A wood day wants to plan. Your heart line would rather wait and see.' })));
+  assert(ok.ok, 'the day belongs in `reading` — only `essence` is protected');
+});
+
+Deno.test('essenceNamesDay: word-bounded, catches the adjective forms, ignores lookalikes', () => {
+  const day = { element: 'fire', animal: 'Goat', dayPillar: '丁未' };
+  assertEquals(essenceNamesDay('Your brows sit level.', day), null);
+  assertEquals(essenceNamesDay('Your brows catch the fire of the hour.', day), 'fire');
+  assertEquals(essenceNamesDay('A fiery patience sits in your brows.', day), 'fire');
+  assertEquals(essenceNamesDay('Your brows read like two goats on a ridge.', day), 'Goat');
+  // A word that merely CONTAINS the element must not trip it — the rule is about naming the day.
+  assertEquals(essenceNamesDay('Your brows keep the calm of fired clay.', day), null);
+  assertEquals(essenceNamesDay('Your brows hold a metallurgic patience.', { element: 'metal', animal: 'Ox' }), null);
+});
+
+Deno.test('pulseComposition: every feature gets a DIFFERENT shape on the same day', () => {
+  // This is the whole anti-convergence guarantee. The fifteen features are written by fifteen
+  // INDEPENDENT calls sharing one prompt and one pinned seed, so "no two may open the same way" is
+  // not a rule the model can obey — it never sees the other fourteen. The caller assigns instead,
+  // and this asserts the assignment is actually a permutation rather than a hash with collisions.
+  for (const date of ['2026-08-01', '2026-08-02', '2026-11-30', '2027-01-01']) {
+    const shapes = PULSE_FEATURE_KEYS.map((k) => pulseComposition(k, date).shape);
+    assertEquals(new Set(shapes).size, PULSE_FEATURE_KEYS.length, `${date}: two features share a shape`);
+    for (const s of shapes) assert(PULSE_SHAPES.includes(s), `${s} is not in the catalog the prompt documents`);
+  }
+});
+
+Deno.test('pulseComposition: deterministic per (feature, date), and reshuffled across days', () => {
+  assertEquals(pulseComposition('heart', '2026-08-01'), pulseComposition('heart', '2026-08-01'));
+  const a = PULSE_FEATURE_KEYS.map((k) => pulseComposition(k, '2026-08-01').shape).join(',');
+  const b = PULSE_FEATURE_KEYS.map((k) => pulseComposition(k, '2026-08-02').shape).join(',');
+  assert(a !== b, 'a feature must not wear one shape as a habit');
+  for (const k of PULSE_FEATURE_KEYS) assert(PULSE_STANCES.includes(pulseComposition(k, '2026-08-01').stance));
+});
+
+Deno.test('buildPulseRequest: hands the model the shape and stance it did not choose', () => {
+  const req = buildPulseRequest(input(mock(validPulse))) as { contents: [{ parts: [{ text: string }] }] };
+  const text = req.contents[0].parts[0].text;
+  const { shape, stance } = pulseComposition('heart', '2026-07-26');
+  assert(text.includes(`"shape":"${shape}"`), 'the construction is assigned, not left to the model');
+  assert(text.includes(`"stance":"${stance}"`));
 });
 
 // ── The day fan-out ──────────────────────────────────────────────────────────────────────────────
