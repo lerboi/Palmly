@@ -84,6 +84,36 @@ export function streakRun(now: Date, opened: readonly string[]): number {
   return run;
 }
 
+/**
+ * Did the CURRENT run include a real camera seal? (Audit-5 RF6.T3.)
+ *
+ * This is what separates a measured claim from a slogan. "Your lines hold" says the app re-checked
+ * this hand against the enrolled signature and it matched — true for a palm seal, and simply not
+ * true for a tap. A reader who has only ever tapped has had nothing measured, so they must not be
+ * told their lines held; 05 §5 bans that pseudo-measurement outright and `06` §2.5 shows fake
+ * measurement is the specific thing that sinks scan-based apps in the reviews.
+ *
+ * Scoped to the run, not to all history: a palm seal from two months ago does not make today's
+ * "Day 47" a measured sentence. The claim ages out, which is also the nudge back to the ritual.
+ */
+export function palmHeldInRun(now: Date, sealed: readonly string[], palmSealed: readonly string[]): boolean {
+  const set = new Set(sealed);
+  const palm = new Set(palmSealed);
+  const todayKey = localDateKey(now);
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+
+  let cursor: Date;
+  if (set.has(todayKey)) cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  else if (set.has(localDateKey(yesterday))) cursor = yesterday;
+  else return false;
+
+  while (set.has(localDateKey(cursor))) {
+    if (palm.has(localDateKey(cursor))) return true;
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() - 1);
+  }
+  return false;
+}
+
 /** Add today to the opened list, keeping it sorted, unique, and trimmed to a useful window. */
 export function recordOpen(now: Date, opened: readonly string[], keepDays = 400): string[] {
   const key = localDateKey(now);

@@ -82,3 +82,27 @@ export function milestoneReached(streak: number, alreadyCelebrated: readonly num
   const hit = STREAK_MILESTONES.find((m) => m === streak && !seen.has(m));
   return hit ?? null;
 }
+
+/**
+ * The measured line under the week strip (RF6.T3) — or `null` when there is no honest claim.
+ *
+ * "Your lines hold" says the app re-checked this hand against the enrolled signature and it
+ * matched. That is true after the camera ritual and simply **not true** after a tap: a tap seals the
+ * day just as truly (friction never gates a daily) but it measures nothing about the hand. Saying it
+ * anyway would be the pseudo-measurement 05 §5 forbids and `copyGate.test.ts` polices — and it would
+ * spend the exact property that makes the claim worth putting on screen, since `06` §2.5 shows fake
+ * measurement is what sinks scan-based apps in their own reviews.
+ *
+ * So: the day count is the floor (always measured, always true), and the full claim is what the
+ * ritual buys. The sentence upgrades when you use it, which is the whole point of promoting it.
+ */
+export function sealLineText(streak: number, palmHeld: boolean): string | null {
+  if (palmHeld && streak >= 1) {
+    // Day 1 has no number to be proud of yet, so it does not pretend to (02 §9's rule for the
+    // ritual's own success copy).
+    return streak >= 2 ? `Day ${streak} · your lines hold` : 'Your lines hold';
+  }
+  if (streak >= 2) return `Day ${streak}`;
+  // No run, no claim (SH-9). A single tapped day is not a rhythm worth naming.
+  return null;
+}

@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { localDateKey, recordOpen, streakRun, weekCells } from '../openHistory';
+import { localDateKey, recordOpen, streakRun, weekCells, palmHeldInRun } from '../openHistory';
 
 /**
  * The week rhythm behind Today (Audit-4 SH-9). Pure date logic, so the run computation is testable
@@ -129,5 +129,43 @@ describe('recordOpen', () => {
   it('trims to the keep window, dropping the oldest', () => {
     const many = Array.from({ length: 5 }, (_, i) => `2026-01-0${i + 1}`);
     expect(recordOpen(at(2026, 7, 25), many, 3)).toEqual(['2026-01-04', '2026-01-05', '2026-07-25']);
+  });
+});
+
+describe('palmHeldInRun — is the measured claim earned? (RF6.T3)', () => {
+  const at = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12);
+
+  it('is true when the run contains a camera seal', () => {
+    const sealed = ['2026-07-24', '2026-07-25', '2026-07-26'];
+    expect(palmHeldInRun(at(2026, 7, 26), sealed, ['2026-07-25'])).toBe(true);
+  });
+
+  it('is false when every day in the run was a tap', () => {
+    const sealed = ['2026-07-24', '2026-07-25', '2026-07-26'];
+    expect(palmHeldInRun(at(2026, 7, 26), sealed, [])).toBe(false);
+  });
+
+  it('ages out — a palm seal BEFORE the current run does not earn today’s claim', () => {
+    // The run broke on the 20th, so the 19th's ritual is not evidence about the run ending today.
+    // Letting it count would make "Day 47 · your lines hold" true for someone who last held their
+    // palm up in May.
+    const sealed = ['2026-07-18', '2026-07-19', '2026-07-25', '2026-07-26'];
+    expect(palmHeldInRun(at(2026, 7, 26), sealed, ['2026-07-19'])).toBe(false);
+    expect(palmHeldInRun(at(2026, 7, 26), sealed, ['2026-07-25'])).toBe(true);
+  });
+
+  it('counts a run that ends yesterday — today is not missed until it is over', () => {
+    const sealed = ['2026-07-24', '2026-07-25'];
+    expect(palmHeldInRun(at(2026, 7, 26), sealed, ['2026-07-24'])).toBe(true);
+  });
+
+  it('is false with no run at all', () => {
+    expect(palmHeldInRun(at(2026, 7, 26), [], [])).toBe(false);
+    expect(palmHeldInRun(at(2026, 7, 26), ['2026-07-01'], ['2026-07-01'])).toBe(false);
+  });
+
+  it('walks across a month boundary', () => {
+    const sealed = ['2026-06-29', '2026-06-30', '2026-07-01'];
+    expect(palmHeldInRun(at(2026, 7, 1), sealed, ['2026-06-29'])).toBe(true);
   });
 });

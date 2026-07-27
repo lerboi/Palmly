@@ -1,4 +1,4 @@
-import { currentRun, longestRun, mergeSealed, milestoneReached, STREAK_MILESTONES } from '../streak';
+import { currentRun, longestRun, mergeSealed, milestoneReached, sealLineText, STREAK_MILESTONES } from '../streak';
 
 /**
  * RF2.T1 — the ledger's pure half (`features/pulse/streak.ts`). The streak the user SEES offline is computed here, and the one
@@ -93,5 +93,42 @@ describe('milestoneReached', () => {
   it('lets a rebuilt run earn a milestone again — getting back to day 7 is worth marking', () => {
     // The caller clears the celebrated set when a run breaks; this proves the function cooperates.
     expect(milestoneReached(7, [])).toBe(7);
+  });
+});
+
+describe('sealLineText — the measured claim, and the honesty rule under it (RF6.T3)', () => {
+  it('makes the full claim only when a real camera seal happened in this run', () => {
+    expect(sealLineText(12, true)).toBe('Day 12 · your lines hold');
+    expect(sealLineText(47, true)).toBe('Day 47 · your lines hold');
+  });
+
+  it('NEVER says the lines held for a reader who has only ever tapped', () => {
+    // A tap seals the day just as truly, but it measures nothing about the hand. Claiming a
+    // measurement that did not happen is the pseudo-measurement 05 §5 bans — and it is the exact
+    // failure mode `06` §2.5 shows sinking scan-based apps in their own reviews.
+    expect(sealLineText(12, false)).toBe('Day 12');
+    expect(sealLineText(47, false)).toBe('Day 47');
+    for (const n of [2, 5, 30, 365]) expect(sealLineText(n, false)).not.toMatch(/lines hold/);
+  });
+
+  it('drops the number on day one, like the ritual’s own success copy', () => {
+    expect(sealLineText(1, true)).toBe('Your lines hold');
+  });
+
+  it('claims nothing without a run — no run, no claim (SH-9)', () => {
+    expect(sealLineText(1, false)).toBeNull();
+    expect(sealLineText(0, false)).toBeNull();
+    expect(sealLineText(0, true)).toBeNull();
+  });
+
+  it('replaces the streak line rather than joining it — one line, never two', () => {
+    // The old copy was "{n}-day streak". If it ever comes back beside this one, Today carries two
+    // competing claims about the same run.
+    for (const palmHeld of [true, false]) {
+      for (const n of [0, 1, 2, 9, 100]) {
+        const line = sealLineText(n, palmHeld);
+        if (line) expect(line).not.toMatch(/-day streak/);
+      }
+    }
   });
 });

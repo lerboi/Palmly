@@ -13,7 +13,8 @@ import { dismissFortuneOptIn, fortuneOptInDismissed, getPushPermission, requestP
 import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import { FortuneCard } from './FortuneCard';
 import { type Fortune, almanacDate, homeState, todayCards } from './fortune';
-import { streakRun, weekCells, type DayCell } from './openHistory';
+import { palmHeldInRun, streakRun, weekCells, type DayCell } from './openHistory';
+import { SealLine } from '@/features/pulse/SealLine';
 
 export interface FortuneHomeProps {
   /** Today's fortune. Absent while it loads / before the day's row is generated → the first-run state. */
@@ -195,6 +196,9 @@ export function FortuneHome({
             cells={weekCells(new Date(ts), openedDates)}
             // The server's number when we have it, the local walk when we don't (offline cold open).
             streak={streak ?? streakRun(new Date(ts), openedDates)}
+            // Measured, not asserted: the line only claims the lines held if a real camera seal
+            // happened inside THIS run (RF6.T3).
+            palmHeld={palmHeldInRun(new Date(ts), openedDates, sealedWithPalm)}
             sealedWithPalm={sealedWithPalm}
           />
           {/* The day — ONE card, one hero (RF6.T2). The almanac used to live in a second card
@@ -369,7 +373,7 @@ function RedThreadRow({ name, elapsed, onPress, index }: { name: string; elapsed
  * flame forever, and — because the `streak` prop was never passed — never rendered in production
  * at all.
  */
-function WeekStrip({ cells, streak, sealedWithPalm = [] }: { cells: DayCell[]; streak: number; sealedWithPalm?: readonly string[] }) {
+function WeekStrip({ cells, streak, palmHeld, sealedWithPalm = [] }: { cells: DayCell[]; streak: number; palmHeld: boolean; sealedWithPalm?: readonly string[] }) {
   const theme = useTheme();
   const palmDays = new Set(sealedWithPalm);
   return (
@@ -423,15 +427,12 @@ function WeekStrip({ cells, streak, sealedWithPalm = [] }: { cells: DayCell[]; s
           </View>
         ))}
       </View>
-      {/* Only a REAL run of 2+ earns a line. No run, no claim (SH-9). */}
-      {streak >= 2 ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginTop: theme.spacing.sm }}>
-          <Icon name="streak" size={14} color={theme.colors.textSecondary} decorative />
-          <Text variant="caption" tone="secondary">
-            {streak}-day streak
-          </Text>
-        </View>
-      ) : null}
+      {/* RF6.T3 — this was "{n}-day streak", a number any app can print. It is now the measured
+          claim, present every day whether or not the day has been revealed, because the same-palm
+          check is the only thing here a competitor cannot copy (05 §4). Still exactly ONE line: the
+          streak line was replaced, not joined. `SealLine` returns null when there is no honest
+          claim to make, which keeps SH-9's "no run, no claim". */}
+      <SealLine streak={streak} palmHeld={palmHeld} />
     </View>
   );
 }

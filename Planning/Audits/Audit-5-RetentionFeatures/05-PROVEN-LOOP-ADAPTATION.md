@@ -1,6 +1,6 @@
 # Audit-5 · 05 — Proven-Loop Adaptation (RF6)
 
-**Date:** 2026-07-28 · **Status:** PLAN — not started
+**Date:** 2026-07-28 · **Status:** IN PROGRESS — T1/T2/T3/T6 done; T4/T5/T7 open
 **Supersedes where it conflicts:** `01-RETENTION-STRATEGY.md` §0/§3 framing and `02-UI-UX-SPEC.md` §3
 hierarchy. Everything else in 01–03 stands. `04-TASK-MATRIX.md` (RF0–RF5) is COMPLETE and DEPLOYED —
 this ledger adapts what shipped, it does not rebuild it.
@@ -12,11 +12,11 @@ exists on disk and on staging; §7 has the commands and the traps. Do not re-der
 
 | Field | Value |
 |---|---|
-| Current phase | Burst 2 in progress. **RF6.T1 + T2 COMPLETE.** T3 next. |
-| Next task | **RF6.T3** (promote the seal to the screen's backbone). |
+| Current phase | **Burst 2 COMPLETE — RF6.T1, T2, T3 all done.** Burst 3 (T4 + T7) is next. |
+| Next task | **RF6.T4** (streak insurance — 2 freezes per rolling 7, as a tunable constant). Burst 3 also carries T7. |
 | Blocked on | Nothing. ⚠️ Owner deploy gate: `pulse-generate` still runs **v1** on staging — v2 needs a redeploy to take effect. |
-| Last run | 2026-07-28 — RF6.T2 merged daily card |
-| Notes for next run | **Read `06-MARKET-VERIFICATION.md` §4 first.** RF6.T6 refuted the argument §0 was built on: Hint is delisted, its $14M was a 2019 US astrology estimate, and it never evaluated daily palm content. The whitespace claim is also false — `Solma` (iOS 6760654131) ships our exact architecture today with zero traction. §0 has been rewritten; 01 §0/§2 corrected in place (7 corrections, `06` §5). **The reframe still holds, but T2 must now be justified by the honesty argument (§1) + Audit-4's one-hero rule, NOT by "Hint chose the almanac."** T1 is strengthened (Pattern recycling is the best-evidenced claim in the set). **T3 is upgraded to the strongest task** — argue it from the non-determinism failure mode (`06` §2.5), not from "no competitor precedent". **T4 must be retuned to 2 freezes per rolling 7** (see its task note). RF6.G's kill rule is now more valuable, not less. |
+| Last run | 2026-07-28 — RF6.T3 the seal line replaces the streak line |
+| Notes for next run | **Burst 2 (the reframe) is complete and committed — 3 commits, not pushed, not deployed.** Read each task's ✅ block before touching its area; they record what the plan got wrong. Three things carry forward. **(1) DEPLOY GATE, owner's call:** `pulse-generate` on staging still runs prompt **v1**. The version stamp and the import moved together, so a redeploy is all that is needed — but until then the deployed function and the repo disagree on purpose. **(2) T4 is now load-bearing for a gap T2 exposed:** a night where the personal template fails to generate cannot be sealed (there is nothing to reveal), so the run breaks through no fault of the reader. Streak insurance is the fix. Retune to **2 per rolling 7** as a named, tunable constant (`06` §3.4 — the +48% is Trophy's cross-app data, not Duolingo's; Duolingo's own finding is ordinal: two beat one, three no better than two). **(3) T7's `pulse_full` vs `fortune_full` split is now degenerate** — after the merge `fortune_full` is unreachable from Today. Compare against the pre-merge baseline or drop the split. T5 remains the largest task and still needs a third `card-svg` layout variant; its scope warning stands. |
 
 **Execution protocol (inlined so you need not chase it through three files).** Work the first
 unchecked box in document order; `∥` tasks may be taken out of order. Run the task's **Verify**
@@ -254,12 +254,37 @@ leg that needs their hands, and T5 is a session on its own.
     personal line to reveal), so the run breaks. That is already true today and is not made worse
     here — streak insurance is the right fix, not a T2 invention.
 
-- [ ] **RF6.T3** 🤖 **Promote the seal to the screen's backbone.** The measured claim should not be
+- [x] **RF6.T3** ✅ 2026-07-28 🤖 **Promote the seal to the screen's backbone.** The measured claim should not be
   reachable only from the unrevealed card. Put `Day {n} · your lines hold` in the Today header area
   beside the week strip, present whether or not the day is revealed, tapping into the ritual.
   Keep the S1 link and the RF5 header long-press.
   - Verify: visible in all four card states in `/dev`; a11y label reads the full claim; screenshots
-    archived; jest green.
+    archived; jest green. ✅ jest **254** (+11), tsc + lint clean, Deno **304**. Shot light+dark at
+    390 and 320 to `docs/checkpoints/audit5/rf6/`.
+  - **Implemented as a REPLACEMENT, not an addition.** The `{n}-day streak` line inside `WeekStrip`
+    is gone; `SealLine` stands exactly where it stood. One line, never two — asserted in
+    `sealLineText: replaces the streak line rather than joining it`.
+  - ⚠️ **The one place I disagreed with the plan, and what I built instead.** Rendering
+    `Day {n} · your lines hold` unconditionally asserts a **measurement that a tap-only reader never
+    performed**. A tap seals the day just as truly (friction never gates a daily) but it measures
+    nothing about the hand. 05 §5 bans exactly that leak, `copyGate.test.ts` polices it, and `06`
+    §2.5 shows fake measurement is the specific thing that sinks scan-based apps in their own
+    reviews — so turning the differentiator into a slogan would spend the property that makes it
+    worth promoting. **Two variants, one line:**
+    - a real camera seal inside the current run → `Day {n} · your lines hold`, with the chop glyph;
+    - otherwise → `Day {n}`, with the flame. Day 1 drops the number (02 §9's rule); no run, no
+      claim at all (SH-9 preserved).
+    The sentence **upgrades when you use the ritual**, which serves "make the seal the backbone"
+    better than an unconditional claim does. Both halves are pure and tested (`sealLineText`,
+    `palmHeldInRun` — including that a palm seal from BEFORE the current run does not earn today's
+    claim). If the owner wants it unconditional it is a one-line change in `sealLineText`.
+  - **Two new `/dev` routes, closing a gap that predates this task.** `today-sealed` and
+    `today-tapped` are the first fixtures to render the real Today — week strip *and* merged card
+    together. Every existing fortune fixture carried a stale week whose run had already broken, so
+    the strip's streak line **never rendered in `/dev` at all** and could not be reviewed
+    device-free. `today-tapped` also shows the line present on an UNREVEALED day, which is the
+    actual claim of this task.
+  - Accent litmus on the real screen: today's ring + the lit line = **2** non-interactive.
 
 - [ ] **RF6.T4** 🤖 **Streak insurance.** One "quiet day" per rolling 7 does not break a run
   (Duolingo's mechanic, 01 §2.4 / §3). Implement in the streak walk inside `record_daily_open` as a
