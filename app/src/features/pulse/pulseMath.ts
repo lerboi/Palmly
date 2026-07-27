@@ -184,8 +184,14 @@ export const FEATURE_LINE: Record<string, string | undefined> = {
 
 export const featureLabel = (key: string): string => FEATURE_LABEL[key] ?? key.replace(/_/g, ' ');
 
-/** `TODAY · YOUR HEART LINE` — the card's eyebrow (02 §9). */
-export const featureEyebrow = (key: string): string => `Today · your ${featureLabel(key)}`.toUpperCase();
+/**
+ * `TODAY · THROUGH YOUR HEART LINE` — the merged card's eyebrow (RF6.T2).
+ *
+ * It read `TODAY · YOUR HEART LINE`, which framed the line itself as the daily variable — the claim
+ * the reader can disprove by looking at their own hand. The word that changed is the whole reframe:
+ * the almanac is what varies, the feature is the lens it is read through.
+ */
+export const featureEyebrow = (key: string): string => `Today · through your ${featureLabel(key)}`.toUpperCase();
 
 /** "through Aug 14" — the chapter chip's date, in the reader's own locale. */
 export function chapterEndLabel(endsOn: string, locale?: string): string {

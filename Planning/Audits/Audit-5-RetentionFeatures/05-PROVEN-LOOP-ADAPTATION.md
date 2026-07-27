@@ -12,10 +12,10 @@ exists on disk and on staging; §7 has the commands and the traps. Do not re-der
 
 | Field | Value |
 |---|---|
-| Current phase | Burst 2 in progress. **RF6.T1 COMPLETE.** T2 next. |
-| Next task | **RF6.T2** (merge the two Today cards into one daily unit). |
+| Current phase | Burst 2 in progress. **RF6.T1 + T2 COMPLETE.** T3 next. |
+| Next task | **RF6.T3** (promote the seal to the screen's backbone). |
 | Blocked on | Nothing. ⚠️ Owner deploy gate: `pulse-generate` still runs **v1** on staging — v2 needs a redeploy to take effect. |
-| Last run | 2026-07-28 — RF6.T1 prompt v2 + shape assignment + repetition gate |
+| Last run | 2026-07-28 — RF6.T2 merged daily card |
 | Notes for next run | **Read `06-MARKET-VERIFICATION.md` §4 first.** RF6.T6 refuted the argument §0 was built on: Hint is delisted, its $14M was a 2019 US astrology estimate, and it never evaluated daily palm content. The whitespace claim is also false — `Solma` (iOS 6760654131) ships our exact architecture today with zero traction. §0 has been rewritten; 01 §0/§2 corrected in place (7 corrections, `06` §5). **The reframe still holds, but T2 must now be justified by the honesty argument (§1) + Audit-4's one-hero rule, NOT by "Hint chose the almanac."** T1 is strengthened (Pattern recycling is the best-evidenced claim in the set). **T3 is upgraded to the strongest task** — argue it from the non-determinism failure mode (`06` §2.5), not from "no competitor precedent". **T4 must be retuned to 2 freezes per rolling 7** (see its task note). RF6.G's kill rule is now more valuable, not less. |
 
 **Execution protocol (inlined so you need not chase it through three files).** Work the first
@@ -194,7 +194,7 @@ leg that needs their hands, and T5 is a session on its own.
     accepted run. Structural repetition is solved; adjective ruts are not, and they are cheap to
     tune in the prompt whenever the owner wants.
 
-- [ ] **RF6.T2** 🤖 **Merge the two cards into one daily unit.** Today gets ONE hero: the almanac's
+- [x] **RF6.T2** ✅ 2026-07-28 🤖 **Merge the two cards into one daily unit.** Today gets ONE hero: the almanac's
   daily tone, read through today's feature, over the reader's lit diagram. The `FortuneCard`
   premium unfold (do/avoid, lucky trio) becomes the merged card's premium section rather than a
   second card. Free state keeps exactly one lock line.
@@ -221,6 +221,38 @@ leg that needs their hands, and T5 is a session on its own.
   - Verify: `/dev/pulse-free`, `/dev/pulse-premium` re-shot light+dark+320pt; exactly ONE `md` card
     on Today; accent litmus ≤2 non-interactive; the copy gate
     (`features/pulse/__tests__/copyGate.test.ts`) still passes; jest + tsc + lint green.
+    ✅ Shot to `docs/checkpoints/audit5/rf6/{light,dark}` at 390 and 320. Accent litmus: **1**
+    non-interactive on the card (the lit line) + the week strip's today ring = 2. jest **243** (+4),
+    tsc + lint clean, copy gate green, Deno **304**.
+  - **The decision 05 did not make: what the card shows BEFORE the reveal.** The contract gives the
+    revealed order only. Ruling: **the almanac's `overall` renders immediately, ungated.** It was
+    never behind a gesture, and hiding it to feed the hold would have taken away content the reader
+    already had — the reveal would be buying back what we just confiscated. What the hold gates is
+    the reading *through their own feature*, which is the honest scarce half. This also matches the
+    one verified competitor pattern in the file: CHANI's free daily unit forever, depth gated
+    contextually (`06` §3.1).
+  - **One hero is now a tested resolver, not a JSX condition.** `todayCards()` in
+    `features/fortune/fortune.ts`, same idiom as `homeState`, asserted for "never both" across all
+    four input combinations. The standalone `FortuneCard` renders only when the merged card is
+    absent — which is also the RF6.G retreat path and the only remaining route to `fortune_full`.
+  - **`PulseCardError` (02 §4's S5) was DELETED, not kept.** With the degraded day rendering the
+    almanac alone, its only remaining trigger was the almanac itself failing — a state `FortuneHome`
+    already owns, with the same copy. Keeping a second identical error card would have been the
+    exact drift P5 forbids. `/dev/pulse-error` now shows the two states that can actually happen.
+  - **Content deliberately dropped in the merge:** the almanac's own career/love/wealth. The
+    personal ones say the same three things through the reader's own feature, and printing both
+    would be the bloat Audit-4 spent a phase removing. Do/avoid + lucky trio are shared with
+    `FortuneCard` via exported `AlmanacDoAvoid` / `AlmanacLucky` rather than reimplemented.
+  - **A fixture was demonstrating the banned pattern.** `PREVIEW_PULSE.essence` was still
+    "Your heart line favors patience on a Fire Rooster day." — the v1 construction RF6.T1 had just
+    killed, rendering on `/dev` as the reference card. Swapped for a real v2 line from the live run.
+    Caught by looking at the screenshot, not by any gate.
+  - ⚠️ **For RF6.T7 (burst 3):** `fortune_full` is now unreachable from Today, so the planned
+    "`pulse_full` vs `fortune_full` conversion" metric is degenerate. Compare against the pre-merge
+    baseline instead, or drop the split.
+  - ⚠️ **Known gap, correctly deferred to T4:** a pulse-error day cannot be sealed (there is no
+    personal line to reveal), so the run breaks. That is already true today and is not made worse
+    here — streak insurance is the right fix, not a T2 invention.
 
 - [ ] **RF6.T3** 🤖 **Promote the seal to the screen's backbone.** The measured claim should not be
   reachable only from the unrevealed card. Put `Day {n} · your lines hold` in the Today header area

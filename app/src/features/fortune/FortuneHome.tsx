@@ -12,7 +12,7 @@ import { elapsedLabel } from '@/lib/compatCopy';
 import { dismissFortuneOptIn, fortuneOptInDismissed, getPushPermission, requestPushPermission } from '@/lib/notifications';
 import { ABSTRACT_GEOMETRY } from '@/features/reading/reveal';
 import { FortuneCard } from './FortuneCard';
-import { type Fortune, almanacDate, homeState } from './fortune';
+import { type Fortune, almanacDate, homeState, todayCards } from './fortune';
 import { streakRun, weekCells, type DayCell } from './openHistory';
 
 export interface FortuneHomeProps {
@@ -34,8 +34,9 @@ export interface FortuneHomeProps {
   /** Days sealed with the camera ritual — those get the small seal glyph in the strip (02 §2). */
   sealedWithPalm?: readonly string[];
   /**
-   * Today's Line — the screen's ONE `md` hero (02 §3). Rendered above the almanac, which demotes to
-   * a flat bordered card. Absent → the screen is exactly what it was before this feature.
+   * The merged daily card — the screen's ONE `md` hero (02 §3, merged at RF6.T2). It carries the
+   * almanac AND the reader's feature, so when it is present the standalone `FortuneCard` does not
+   * render at all. Absent → the screen is exactly what it was before this feature.
    */
   pulseSlot?: ReactNode;
   /** The chapter-turn banner, on the one day a chapter turns. */
@@ -93,6 +94,8 @@ export function FortuneHome({
   // One resolver, unit-tested (SH-1). `loading`/`error` are about the REQUEST and win first;
   // `firstRun` is about the USER. A missing fortune row on a ready screen is NOT first-run.
   const state = homeState({ loading, entitlementLoading, error, firstRun, fortune });
+  // One hero, decided by a tested resolver rather than by a JSX condition nobody can assert on.
+  const cards = todayCards({ mergedCard: pulseSlot != null, fortune: fortune != null });
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
 
@@ -194,20 +197,19 @@ export function FortuneHome({
             streak={streak ?? streakRun(new Date(ts), openedDates)}
             sealedWithPalm={sealedWithPalm}
           />
-          {/* Today's Line — the ONE `md` hero (02 §3). It goes above the almanac because the
-              personalized artifact outranks the generic one: this card is about the reader's own
-              heart line, and the almanac is about everyone born on a Wood Rat day. */}
-          {pulseSlot}
-          {/* `homeState` only returns 'ready' with a fortune in hand, so this guard is unreachable —
-              it is here to prove that to the type system rather than to assert it with a `!`. */}
-          {fortune ? (
+          {/* The day — ONE card, one hero (RF6.T2). The almanac used to live in a second card
+              directly beneath this one, which put two headlines on the page making two different
+              claims about the same morning. The almanac is now INSIDE this card, as the day's own
+              voice, and the reader's feature is the lens it is read through. */}
+          {cards.merged ? pulseSlot : null}
+          {/* The retreat path, and the only route left to `fortune_full`: when Today's Line is off
+              (PULSE_ENABLED false, or the reader has no reading yet) the almanac is the hero again
+              on its own. `homeState` only returns 'ready' with a fortune in hand, so the guard is
+              here to prove that to the type system rather than to assert it with a `!`. */}
+          {cards.almanac && fortune ? (
             <FortuneCard
               fortune={fortune}
               premium={premium}
-              // DEMOTED to a flat bordered card (02 §3) now that the pulse card is the hero. One
-              // hero per screen is the law, and two `md` cards stacked read as two competing
-              // headlines. Content and paywall trigger are untouched.
-              flat={pulseSlot != null}
               onUnlock={() => router.push('/paywall?trigger=fortune_full' as Href)}
               onAsk={(q) => router.push(`/chat?q=${encodeURIComponent(q)}` as Href)}
             />

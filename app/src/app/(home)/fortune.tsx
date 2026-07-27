@@ -11,7 +11,7 @@ import { homeState, shouldAskBirthDate } from '@/features/fortune/fortune';
 import { track } from '@/lib/analytics';
 import { PULSE_ENABLED } from '@/lib/capabilities';
 import { usePulse } from '@/features/pulse/usePulse';
-import { PulseCard, PulseCardError, PulseCardSkeleton, askPulsePrefill } from '@/features/pulse/PulseCard';
+import { PulseCard, PulseCardSkeleton, askDailyPrefill } from '@/features/pulse/PulseCard';
 import { ChapterSheet } from '@/features/pulse/ChapterSheet';
 import { BoundaryBanner } from '@/features/pulse/BoundaryBanner';
 import { MilestoneMoment } from '@/features/pulse/MilestoneMoment';
@@ -158,42 +158,47 @@ export default function FortuneScreen() {
   };
 
   /**
-   * The pulse slot. `firstRun` is handled by `FortuneHome`'s own hero, so the slot stays empty
-   * there — Today's Line does not exist until a reading does, and the first-run CTA already says
-   * exactly the right thing ("Read my palm").
+   * The merged daily card (RF6.T2). It needs BOTH halves resolved, so it waits on the fortune as
+   * well as the pulse — but only the FORTUNE is load-bearing: if the night's personal template is
+   * missing, the card renders the almanac alone rather than an error, because a degraded day is
+   * still a day. `firstRun` is handled by `FortuneHome`'s own hero, so the slot stays empty there —
+   * there is no line of the day until a reading exists, and the first-run CTA already says exactly
+   * the right thing ("Read my palm").
    */
-  const pulseSlot = !PULSE_ENABLED || pulse.state === 'firstRun'
+  const dayReady = homeState({ loading, entitlementLoading, error: failed, firstRun, fortune }) === 'ready';
+  const pulseSlot = !PULSE_ENABLED || pulse.state === 'firstRun' || !fortune || !dayReady
     ? undefined
     : pulse.state === 'loading'
       ? <PulseCardSkeleton />
-      : pulse.state === 'error' || !pulse.pulse || !pulse.featureKey
-        ? <PulseCardError onRetry={pulse.retry} />
-        : (
-            <PulseCard
-              featureKey={pulse.featureKey}
-              pulse={pulse.pulse}
-              geometry={pulse.geometry}
-              chapter={chapter}
-              premium={premium}
-              revealed={pulse.revealed}
-              locale={locale}
-              onReveal={onReveal}
-              // Native only, and only if the reader wants the flourish: there is no camera ritual to
-              // offer on web, so the link is not shown rather than shown-and-broken (the
-              // capability-gate idiom, like the torch).
-              onSealWithPalm={offerSeal ? () => router.push('/checkin' as Href) : undefined}
-              onUnlock={() => router.push(`/paywall?trigger=pulse_full&section=${pulse.featureKey}` as Href)}
-              onOpenChapter={
-                chapter
-                  ? () => {
-                      track('chapter_viewed', { feature_key: pulse.featureKey ?? 'unknown', boundary: chapter.is_boundary });
-                      setChapterOpen(true);
-                    }
-                  : undefined
-              }
-              onAsk={(q) => router.push(`/chat?q=${encodeURIComponent(q)}` as Href)}
-            />
-          );
+      : (
+          <PulseCard
+            fortune={fortune}
+            // Null on a pulse error — the almanac-only day. `PulseCard` handles it; the error card
+            // is now reserved for the almanac itself failing, which really is the whole day.
+            featureKey={pulse.state === 'error' ? null : pulse.featureKey}
+            pulse={pulse.state === 'error' ? null : pulse.pulse}
+            geometry={pulse.geometry}
+            chapter={chapter}
+            premium={premium}
+            revealed={pulse.revealed}
+            locale={locale}
+            onReveal={onReveal}
+            // Native only, and only if the reader wants the flourish: there is no camera ritual to
+            // offer on web, so the link is not shown rather than shown-and-broken (the
+            // capability-gate idiom, like the torch).
+            onSealWithPalm={offerSeal ? () => router.push('/checkin' as Href) : undefined}
+            onUnlock={() => router.push(`/paywall?trigger=pulse_full&section=${pulse.featureKey ?? ''}` as Href)}
+            onOpenChapter={
+              chapter
+                ? () => {
+                    track('chapter_viewed', { feature_key: pulse.featureKey ?? 'unknown', boundary: chapter.is_boundary });
+                    setChapterOpen(true);
+                  }
+                : undefined
+            }
+            onAsk={(q) => router.push(`/chat?q=${encodeURIComponent(q)}` as Href)}
+          />
+        );
 
   return (
     <>
@@ -258,5 +263,5 @@ export default function FortuneScreen() {
   );
 }
 
-/** The chat bridge's prefill, re-exported so the pulse card and this route cannot drift. */
-export { askPulsePrefill };
+/** The chat bridge's prefill, re-exported so the daily card and this route cannot drift. */
+export { askDailyPrefill };

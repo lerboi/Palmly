@@ -129,7 +129,8 @@ const EN: Catalog = {
   },
   daily_pulse: (c) => {
     // The push NAMES the reader's own feature — that is the entire difference from a horoscope
-    // notification, and the reason contextual pushes out-open generic ones ~3.4× (01 §2.1).
+    // notification, and the reason automatically-triggered pushes out-open manual broadcasts
+    // (Batch 2025, 14.4% vs 4.19%; see 06 §3.3 for what that benchmark does and does not say).
     // The fallback is deliberately still specific ("your palm") rather than "your reading":
     // a nameless push would be the generic one we are trying not to send.
     const feature = clean(c.feature_label, 'palm');
@@ -143,8 +144,12 @@ const EN: Catalog = {
       };
     }
     return {
-      title: `Your ${feature} has something to say`,
-      body: weekday ? `Open Palmly to read ${weekday}.` : 'Open Palmly to read today.',
+      // RF6.T2: it read "Your {feature} has something to say", which promises that the LINE has
+      // news — the one claim a stored palm scan cannot support, and the first thing a sceptical
+      // reader would test. The lens framing promises what is actually true: the day is new, and
+      // this is the feature it is read through.
+      title: `Today, read through your ${feature}`,
+      body: weekday ? `${weekday}’s almanac, through your own lines.` : 'Today’s almanac, through your own lines.',
       deep_link: 'palmly://fortune',
       // Keyed on the type alone, NOT on the feature: two sends on one day are the same push
       // regardless of which line they name, and keying on the feature would let a second one

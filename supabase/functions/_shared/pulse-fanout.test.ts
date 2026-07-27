@@ -148,10 +148,13 @@ Deno.test('planBatch: only the devices actually in their window are planned', ()
 
 // ── The copy ─────────────────────────────────────────────────────────────────────────────────────
 
-Deno.test('daily_pulse: the push NAMES the reader’s own feature', () => {
+Deno.test('daily_pulse: the push NAMES the reader’s own feature, as the LENS', () => {
+  // RF6.T2: the title used to be "Your heart line has something to say", which promises the line
+  // has news. The palm did not change overnight; the day did. The feature is still named — that is
+  // the whole point of this push — but as what the day is read through.
   const n = renderNotification('daily_pulse', { feature_label: 'heart line', weekday: 'Friday' });
-  assertEquals(n.title, 'Your heart line has something to say');
-  assertEquals(n.body, 'Open Palmly to read Friday.');
+  assertEquals(n.title, 'Today, read through your heart line');
+  assertEquals(n.body, 'Friday’s almanac, through your own lines.');
   assertEquals(n.deep_link, 'palmly://fortune');
   assertEquals(n.cap_class, 'marketing', 'the hard 1/day cap must apply');
 });
@@ -163,15 +166,15 @@ Deno.test('daily_pulse: the boundary variant leads with the chapter turn', () =>
 
 Deno.test('daily_pulse: a missing feature label still produces specific copy, never a blank', () => {
   const n = renderNotification('daily_pulse', {});
-  assertEquals(n.title, 'Your palm has something to say');
-  assertEquals(n.body, 'Open Palmly to read today.');
+  assertEquals(n.title, 'Today, read through your palm');
+  assertEquals(n.body, 'Today’s almanac, through your own lines.');
 });
 
 Deno.test('daily_pulse: hostile interpolation cannot inject a second line into the push', () => {
   const n = renderNotification('daily_pulse', { feature_label: 'heart line\nBUY NOW', weekday: 'Fri\r\nday' });
   assert(!n.title.includes('\n'));
   assert(!n.body.includes('\n'));
-  assertEquals(n.title, 'Your heart line BUY NOW has something to say');
+  assertEquals(n.title, 'Today, read through your heart line BUY NOW');
 });
 
 Deno.test('daily_pulse: the dedupe key is per-day, not per-feature — two sends collapse to one', () => {

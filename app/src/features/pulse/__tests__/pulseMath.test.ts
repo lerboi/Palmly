@@ -133,8 +133,9 @@ describe('presentation helpers', () => {
   });
 
   it('builds the card eyebrow in the copy sheet’s exact shape', () => {
-    expect(featureEyebrow('heart')).toBe('TODAY · YOUR HEART LINE');
-    expect(featureEyebrow('hand_shape')).toBe('TODAY · YOUR HAND SHAPE');
+    // RF6.T2 — "through your". The lens framing, not the "your line changed today" claim.
+    expect(featureEyebrow('heart')).toBe('TODAY · THROUGH YOUR HEART LINE');
+    expect(featureEyebrow('hand_shape')).toBe('TODAY · THROUGH YOUR HAND SHAPE');
   });
 
   it('formats the chapter end date without drifting a day across timezones', () => {

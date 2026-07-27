@@ -150,6 +150,23 @@ export function homeState(input: {
 }
 
 /**
+ * Which card carries the day (Audit-5 RF6.T2) — extracted as a resolver for the same reason
+ * `homeState` was: **one hero per screen is the law**, and a law expressed only as a JSX condition
+ * is one careless edit from being broken silently.
+ *
+ * Before the merge Today stacked two cards making two claims about the same morning — an almanac
+ * ("here is the day") and a line card ("your heart line favors patience today"). The second is the
+ * claim a stored palm scan cannot support. The merged card now carries both halves, so the
+ * standalone almanac card survives only as the retreat path: when Today's Line is off, or the
+ * reader has no reading yet, the almanac is the hero again on its own.
+ *
+ * The invariant, asserted in the tests: **never both.**
+ */
+export function todayCards(input: { mergedCard: boolean; fortune: boolean }): { merged: boolean; almanac: boolean } {
+  return { merged: input.mergedCard, almanac: input.fortune && !input.mergedCard };
+}
+
+/**
  * Should the birth-date sheet be offered right now? (Audit-4 SH-4.)
  *
  * The old rule was "no birth date → show it", evaluated before anything rendered, so a brand-new

@@ -93,12 +93,17 @@ export const PREVIEW_COMPAT_SHARE: CompatShareData = {
 };
 
 /**
- * A representative Today's Line (Audit-5 RF2.T2). Real generated content from the `eval/rf.ts
- * --live` run of 2026-07-26, so the `/dev` card is measuring the same prose length the production
- * card will get — a fixture written to fit would prove nothing about the 320pt sweep.
+ * A representative Today's Line. Real generated content from the `eval/rf.ts --live` run, so the
+ * `/dev` card is measuring the same prose length the production card will get — a fixture written
+ * to fit would prove nothing about the 320pt sweep.
+ *
+ * The `essence` is from the **v2** run of 2026-07-28. It had been "Your heart line favors patience
+ * on a Fire Rooster day." — a v1 line, and precisely the construction RF6.T1 exists to kill: the
+ * day as the subject, named in the one sentence every reader sees. A fixture demonstrating the
+ * banned pattern is how a banned pattern comes back.
  */
 export const PREVIEW_PULSE: Pulse = {
-  essence: 'Your heart line favors patience on a Fire Rooster day.',
+  essence: 'Your heart line outlasts the momentary flare of a crowded room.',
   reading:
     'The tradition reads a Fire day as one that wants to move first and ask second, and a deep heart line as the part of you that would rather be sure. Today those two pull against each other. Neither is wrong; the day just goes better if the heart sets the pace.',
   career: 'Warmth lands better than pressure in the room you need something from.',

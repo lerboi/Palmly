@@ -36,9 +36,6 @@ export function FortuneCard({
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
-  // Lucky-row columns follow the real screen width (CO-6), not a fixed minWidth that could not shrink.
-  const { width } = useWindowDimensions();
-  const basis = luckyBasis(width);
   const unfold = (i: number) =>
     shouldAnimate ? FadeInDown.delay(i * theme.motion.stagger.reveal).duration(theme.motion.duration.base) : undefined;
 
@@ -85,8 +82,7 @@ export function FortuneCard({
       ) : (
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.lg }}>
           <Animated.View entering={unfold(0)} style={{ gap: theme.spacing.lg }}>
-            <DoDont title="Do" items={fortune.dos} tone="success" />
-            <DoDont title="Avoid" items={fortune.donts} tone="danger" />
+            <AlmanacDoAvoid fortune={fortune} />
           </Animated.View>
 
           <Divider />
@@ -99,10 +95,8 @@ export function FortuneCard({
 
           <Divider />
 
-          <Animated.View entering={unfold(2)} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
-            <Lucky label="Direction" value={fortune.lucky_direction} bearing={DIRECTION_BEARING[fortune.lucky_direction]} basis={basis} />
-            <Lucky label="Color" value={fortune.lucky_color} basis={basis} />
-            <Lucky label="Hours" value={fortune.lucky_hours} basis={basis} />
+          <Animated.View entering={unfold(2)}>
+            <AlmanacLucky fortune={fortune} />
           </Animated.View>
 
           {/* Fortune → chat bridge (audit §7 P4) — pre-fills the grounded chat with today's almanac. */}
@@ -120,6 +114,36 @@ export function FortuneCard({
         </View>
       )}
     </Card>
+  );
+}
+
+/**
+ * The almanac's Do / Avoid pair and its lucky trio, exported so the merged daily card (RF6.T2) can
+ * render the SAME blocks rather than a second implementation of them.
+ *
+ * P5, one system no drift: after the merge these rows appear on Today inside `PulseCard` and on the
+ * `/dev/fortune-*` fixtures inside `FortuneCard`. Two copies would have drifted the first time
+ * anyone retuned a spacing token.
+ */
+export function AlmanacDoAvoid({ fortune }: { fortune: Pick<Fortune, 'dos' | 'donts'> }) {
+  return (
+    <>
+      <DoDont title="Do" items={fortune.dos} tone="success" />
+      <DoDont title="Avoid" items={fortune.donts} tone="danger" />
+    </>
+  );
+}
+
+export function AlmanacLucky({ fortune }: { fortune: Pick<Fortune, 'lucky_direction' | 'lucky_color' | 'lucky_hours'> }) {
+  const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const basis = luckyBasis(width);
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
+      <Lucky label="Direction" value={fortune.lucky_direction} bearing={DIRECTION_BEARING[fortune.lucky_direction]} basis={basis} />
+      <Lucky label="Color" value={fortune.lucky_color} basis={basis} />
+      <Lucky label="Hours" value={fortune.lucky_hours} basis={basis} />
+    </View>
   );
 }
 

@@ -1,4 +1,4 @@
-import { askPrefill, DIRECTION_BEARING, almanacDate, dayPillarCn, homeState, luckyBasis, luckyColumns, shouldAskBirthDate, type Fortune } from '../fortune';
+import { askPrefill, DIRECTION_BEARING, almanacDate, dayPillarCn, homeState, luckyBasis, luckyColumns, shouldAskBirthDate, todayCards, type Fortune } from '../fortune';
 
 describe('fortune (P9.T3)', () => {
   it('computes the sexagenary day pillar (anchor 2000-01-07 = 甲子)', () => {
@@ -153,4 +153,31 @@ describe('fortune (P9.T3)', () => {
     expect(DIRECTION_BEARING['']).toBeUndefined();
   });
 
+});
+
+describe('todayCards — one hero per screen (RF6.T2)', () => {
+  it('NEVER renders both the merged card and the standalone almanac', () => {
+    // The law Audit-4 §1 P2 states and this merge is most likely to break. Two cards stacked was
+    // the actual pre-merge behaviour, and it put two claims about the same morning on one page.
+    for (const mergedCard of [true, false]) {
+      for (const fortune of [true, false]) {
+        const c = todayCards({ mergedCard, fortune });
+        expect(c.merged && c.almanac).toBe(false);
+      }
+    }
+  });
+
+  it('gives the day to the merged card when it is there', () => {
+    expect(todayCards({ mergedCard: true, fortune: true })).toEqual({ merged: true, almanac: false });
+  });
+
+  it('falls back to the standalone almanac — the RF6.G retreat path', () => {
+    // Today's Line off (PULSE_ENABLED false) or no reading yet: the almanac is the hero again,
+    // and it is the only route left to the `fortune_full` paywall trigger.
+    expect(todayCards({ mergedCard: false, fortune: true })).toEqual({ merged: false, almanac: true });
+  });
+
+  it('renders nothing when there is no fortune — the error card owns that state', () => {
+    expect(todayCards({ mergedCard: false, fortune: false })).toEqual({ merged: false, almanac: false });
+  });
 });
