@@ -13,6 +13,21 @@ const scalar = async (c, sql, p = []) => (await c.query(sql, p)).rows[0]?.n;
 const queueLen = (c) => scalar(c, `select count(*)::int n from pgmq.q_push_jobs`);
 const logLen = (c) => scalar(c, `select count(*)::int n from public.notification_log`);
 
+/**
+ * Rows THIS test added — never the table's absolute count.
+ *
+ * `pgmq.q_push_jobs` and `notification_log` are shared with the live `pulse-fanout` cron, which
+ * runs every 15 minutes and enqueues real pushes against the same staging database these tests run
+ * on. An absolute `count(*) === 1` is therefore a race the suite loses whenever the cron fires
+ * mid-run: on 2026-07-29 the first test saw **3**, and its five siblings were the same bug waiting
+ * for their turn. Ledger §7 states the rule this restores — never assert absolute row counts on
+ * tables live crons append to; measure a delta.
+ *
+ * Capture `baseline()` after seeding and before the enqueues under test.
+ */
+const baseline = async (c) => ({ q: await queueLen(c), log: await logLen(c) });
+const added = async (c, b) => ({ q: (await queueLen(c)) - b.q, log: (await logLen(c)) - b.log });
+
 // enqueue_push_deduped(user, type, title, body, deep_link, data, dedupe_key, cap_class) → bigint | null
 const enqueue = async (c, { type = 'reading_ready', key = null, cls = 'exempt', user = U }) =>
   (await c.query(`select public.enqueue_push_deduped($1,$2,'T','B','palmly://x','{}'::jsonb,$3,$4) as id`, [user, type, key, cls])).rows[0].id;
@@ -21,10 +36,11 @@ test('enqueue_push_deduped: enqueues one push_jobs row and logs it', async () =>
   await withRollback(async (c) => {
     await applyMigrations(c);
     await seedUser(c, U);
+    const b = await baseline(c);
     const id = await enqueue(c, { type: 'reading_ready', key: 'reading_ready:s1', cls: 'exempt' });
     assert.ok(id, 'returns a msg_id');
-    assert.equal(await queueLen(c), 1);
-    assert.equal(await logLen(c), 1);
+    assert.equal((await added(c, b)).q, 1);
+    assert.equal((await added(c, b)).log, 1);
   });
 });
 
@@ -32,11 +48,12 @@ test('dedupe: the same key twice in a day enqueues once (forced double-trigger)'
   await withRollback(async (c) => {
     await applyMigrations(c);
     await seedUser(c, U);
+    const b = await baseline(c);
     const first = await enqueue(c, { type: 'reading_ready', key: 'reading_ready:s1' });
     const second = await enqueue(c, { type: 'reading_ready', key: 'reading_ready:s1' });
     assert.ok(first);
     assert.equal(second, null, 'second identical trigger is deduped');
-    assert.equal(await queueLen(c), 1, 'only one push enqueued');
+    assert.equal((await added(c, b)).q, 1, 'only one push enqueued');
   });
 });
 
@@ -44,9 +61,10 @@ test('distinct entities each notify (different scans → different keys)', async
   await withRollback(async (c) => {
     await applyMigrations(c);
     await seedUser(c, U);
+    const b = await baseline(c);
     assert.ok(await enqueue(c, { type: 'reading_ready', key: 'reading_ready:s1' }));
     assert.ok(await enqueue(c, { type: 'reading_ready', key: 'reading_ready:s2' }));
-    assert.equal(await queueLen(c), 2);
+    assert.equal((await added(c, b)).q, 2);
   });
 });
 
@@ -54,11 +72,12 @@ test('daily marketing cap: a 2nd marketing push the same day is suppressed', asy
   await withRollback(async (c) => {
     await applyMigrations(c);
     await seedUser(c, U);
+    const b = await baseline(c);
     const fortune = await enqueue(c, { type: 'daily_fortune', key: 'daily_fortune', cls: 'marketing' });
     const winback = await enqueue(c, { type: 'winback', key: 'winback', cls: 'marketing' });
     assert.ok(fortune, 'first marketing push goes out');
     assert.equal(winback, null, 'second marketing push hits the daily cap');
-    assert.equal(await queueLen(c), 1);
+    assert.equal((await added(c, b)).q, 1);
   });
 });
 
@@ -66,10 +85,11 @@ test('social + pipeline events are cap-exempt (both enqueue on the same day)', a
   await withRollback(async (c) => {
     await applyMigrations(c);
     await seedUser(c, U);
+    const b = await baseline(c);
     assert.ok(await enqueue(c, { type: 'compat_complete', key: 'compat_complete:pA', cls: 'exempt' }));
     assert.ok(await enqueue(c, { type: 'invite_accepted', key: 'invite_accepted:pB', cls: 'exempt' }));
     assert.ok(await enqueue(c, { type: 'reading_ready', key: 'reading_ready:s1', cls: 'exempt' }));
-    assert.equal(await queueLen(c), 3, 'exempt events are never capped');
+    assert.equal((await added(c, b)).q, 3, 'exempt events are never capped');
   });
 });
 
@@ -77,10 +97,11 @@ test('an exempt push does not consume the marketing cap', async () => {
   await withRollback(async (c) => {
     await applyMigrations(c);
     await seedUser(c, U);
+    const b = await baseline(c);
     await enqueue(c, { type: 'reading_ready', key: 'reading_ready:s1', cls: 'exempt' });
     const fortune = await enqueue(c, { type: 'daily_fortune', key: 'daily_fortune', cls: 'marketing' });
     assert.ok(fortune, 'marketing still allowed after an exempt send');
-    assert.equal(await queueLen(c), 2);
+    assert.equal((await added(c, b)).q, 2);
   });
 });
 
@@ -88,11 +109,12 @@ test('the cap is per-user (a second user still gets their marketing push)', asyn
   await withRollback(async (c) => {
     await applyMigrations(c);
     await seedUser(c, U);
+    const b = await baseline(c);
     const V = 'e6000000-0000-0000-0000-0000000000e6';
     await seedUser(c, V);
     assert.ok(await enqueue(c, { type: 'daily_fortune', key: 'daily_fortune', cls: 'marketing', user: U }));
     assert.ok(await enqueue(c, { type: 'daily_fortune', key: 'daily_fortune', cls: 'marketing', user: V }), 'other user unaffected');
-    assert.equal(await queueLen(c), 2);
+    assert.equal((await added(c, b)).q, 2);
   });
 });
 
