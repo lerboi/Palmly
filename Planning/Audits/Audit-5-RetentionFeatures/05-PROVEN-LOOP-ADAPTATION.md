@@ -12,10 +12,10 @@ exists on disk and on staging; §7 has the commands and the traps. Do not re-der
 
 | Field | Value |
 |---|---|
-| Current phase | **Burst 2 COMPLETE — RF6.T1, T2, T3 all done.** Burst 3 (T4 + T7) is next. |
+| Current phase | **Burst 2 COMPLETE — RF6.T1, T2, T3 all done and device-verified.** Burst 3 (T4 + T7) is next. |
 | Next task | **RF6.T4** (streak insurance — 2 freezes per rolling 7, as a tunable constant). Burst 3 also carries T7. |
 | Blocked on | Nothing. ⚠️ Owner deploy gate: `pulse-generate` still runs **v1** on staging — v2 needs a redeploy to take effect. |
-| Last run | 2026-07-28 — RF6.T3 the seal line replaces the streak line |
+| Last run | 2026-07-28 — RF6.T1–T3 **device-verified on the S20+**; 3 bugs found and fixed |
 | Notes for next run | **Burst 2 (the reframe) is complete and committed — 3 commits, not pushed, not deployed.** Read each task's ✅ block before touching its area; they record what the plan got wrong. Three things carry forward. **(1) DEPLOY GATE, owner's call:** `pulse-generate` on staging still runs prompt **v1**. The version stamp and the import moved together, so a redeploy is all that is needed — but until then the deployed function and the repo disagree on purpose. **(2) T4 is now load-bearing for a gap T2 exposed:** a night where the personal template fails to generate cannot be sealed (there is nothing to reveal), so the run breaks through no fault of the reader. Streak insurance is the fix. Retune to **2 per rolling 7** as a named, tunable constant (`06` §3.4 — the +48% is Trophy's cross-app data, not Duolingo's; Duolingo's own finding is ordinal: two beat one, three no better than two). **(3) T7's `pulse_full` vs `fortune_full` split is now degenerate** — after the merge `fortune_full` is unreachable from Today. Compare against the pre-merge baseline or drop the split. T5 remains the largest task and still needs a third `card-svg` layout variant; its scope warning stands. |
 
 **Execution protocol (inlined so you need not chase it through three files).** Work the first
@@ -26,6 +26,28 @@ commit `RF6.T# <short description>`. On failure, try up to three distinct approa
 Verify did not pass** — a falsely-green ledger is worse than a stalled one. Standing repo rules
 (`CLAUDE.md`, `Planning/MVP_Buildplan.md` §Execution Protocol) still apply: new migration per schema
 change, expand-contract only, versioned artifacts bump rather than mutate, secrets never committed.
+
+**Device verification (S20+ `R58N91Q16BL`, 2026-07-28, JS-only reload — no native rebuild needed).**
+The merged card, the `TODAY · THROUGH YOUR {FEATURE}` eyebrow, the almanac-before-the-reveal ruling,
+hold-to-reveal, the streak advancing 2→3, the chapter sheet, the paywall and all three tabs were
+walked on the real device against real staging data. **Today's personal line rendered as
+"Your head line flows with the quiet, intuitive depth of this Water Rabbit day" — v1's banned
+skeleton, verbatim** — which is exactly what T1 fixes and exactly what the deploy gate is holding
+back. Three bugs surfaced that no suite caught (all fixed, commit `e2696c7`):
+
+1. **`MilestoneMoment` claimed a measurement that never happened** — "3 days of your lines holding"
+   fired at a tap-only reader. The same pseudo-measurement T3 had just removed from the week strip,
+   living one component away. Now gated on `palmHeldInRun` via `milestoneCopy()`.
+2. **`ChapterSheet`'s Unlock button was unreachable** — a percentage `maxHeight` on a parent with no
+   height, so the ScrollView sized to its content and the CTA fell off-screen unscrollably. A free
+   reader could read the lock line and not act on it.
+3. **The paywall hero drew an EMPTY hand** — `rows[0]` is the newest reading of ANY kind, and this
+   reader's newest is a FACE reading with no `line_geometry`. `usePulse` was fixed for exactly this
+   on 2026-07-27; `paywall.tsx` never was. It also flipped `ownGeometry` true, so the copy kept the
+   possessive over a blank silhouette.
+
+**Lesson worth carrying:** two of the three were a known fix that had not been applied everywhere.
+When a device session fixes a data-shape bug, grep for the other call sites before closing it.
 
 **Git:** the RF0–RF5 work is committed on branch `audit5-retention-features` (2 commits, not
 pushed). Continue on that branch — do not branch again, and do not rebase onto `main`.
