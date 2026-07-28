@@ -6,7 +6,7 @@
  * Postgres inside a transaction that is ALWAYS rolled back — real Supabase platform
  * (auth schema, `auth.uid()`, roles) with zero persistent mutation of staging.
  *
- * Secrets: the DB password is read from the git-ignored `.env.staging`; never logged,
+ * Secrets: the DB password is read from the git-ignored `.env`; never logged,
  * never committed. `connString()` builds the direct connection to `db.<ref>.supabase.co`.
  */
 import pg from 'pg';
@@ -18,8 +18,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 export const MIGRATIONS_DIR = path.join(REPO_ROOT, 'supabase', 'migrations');
 
-function loadEnvStaging() {
-  const p = path.join(REPO_ROOT, '.env.staging');
+// Consolidated 2026-07-29: this used to read `.env.staging`, which no longer exists —
+// every key moved into the single root `.env`. The SUPABASE_STAGING_* names are kept
+// because they say WHICH project the harness talks to, and that distinction still
+// matters at launch (P12) even though only one project exists pre-launch.
+function loadRootEnv() {
+  const p = path.join(REPO_ROOT, '.env');
   const out = {};
   if (fs.existsSync(p)) {
     for (const line of fs.readFileSync(p, 'utf8').split(/\r?\n/)) {
@@ -31,11 +35,11 @@ function loadEnvStaging() {
 }
 
 export function connString() {
-  const env = { ...loadEnvStaging(), ...process.env };
+  const env = { ...loadRootEnv(), ...process.env };
   if (env.SUPABASE_DB_URL) return env.SUPABASE_DB_URL;
   const ref = env.SUPABASE_STAGING_PROJECT_REF;
   const pw = env.SUPABASE_STAGING_DB_PASSWORD;
-  if (!ref || !pw) throw new Error('db.mjs: missing SUPABASE_STAGING_PROJECT_REF / SUPABASE_STAGING_DB_PASSWORD (.env.staging)');
+  if (!ref || !pw) throw new Error('db.mjs: missing SUPABASE_STAGING_PROJECT_REF / SUPABASE_STAGING_DB_PASSWORD (.env)');
   return `postgresql://postgres:${encodeURIComponent(pw)}@db.${ref}.supabase.co:5432/postgres`;
 }
 

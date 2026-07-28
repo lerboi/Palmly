@@ -30,7 +30,7 @@ const refs = [...kb.keys()];
 const live = Deno.args.includes('--live');
 const key = live
   ? (Deno.env.get('GEMINI_API_KEY') ??
-    (await Deno.readTextFile(new URL('../.env.staging', import.meta.url)).catch(() => '')).split(/\r?\n/).find((l) => l.startsWith('GEMINI_API_KEY='))?.split('=').slice(1).join('=').trim())
+    (await Deno.readTextFile(new URL('../.env', import.meta.url)).catch(() => '')).split(/\r?\n/).find((l) => l.startsWith('GEMINI_API_KEY='))?.split('=').slice(1).join('=').trim())
   : undefined;
 
 const mockCall = () => (): Promise<GeminiResponse> =>

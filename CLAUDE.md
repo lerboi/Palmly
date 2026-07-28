@@ -38,5 +38,7 @@ Common read tools:
   file in `supabase/migrations/` (Build Plan standing rule + Backend spec), and must be
   **backward-compatible / expand-contract** (additive; never a breaking drop/rename in one step).
   Local dev uses `supabase start`; deploys run migrations via the Supabase CLI.
-- Don't paste secrets into queries or output. Secret keys live only in `.env.staging` /
-  `.env.prod` (git-ignored), never in the client bundle.
+- Don't paste secrets into queries or output. Secret keys live only in the root `.env`
+  (git-ignored), never in the client bundle. **Consolidated 2026-07-29:** `.env.staging` and
+  `.env.prod` are gone — one `.env` holds everything, and the `SUPABASE_STAGING_*` key names are
+  what now say which project is being addressed.

@@ -6,8 +6,8 @@ if you add a new secret anywhere in the codebase, add a row here in the same PR.
 
 **Standing rule (MVP_Buildplan §Standing rules):** secrets go in `.env` (git-ignored) /
 EAS secrets / Supabase Vault — **never committed**, and **never in the client bundle except the
-RevenueCat public SDK keys** (client-safe by design). Only `.env.example` (placeholders) is
-tracked in git.
+RevenueCat public SDK keys** (client-safe by design). Nothing env-related is tracked in git
+(`.env.example` was removed 2026-07-29).
 
 **Note on Supabase project count (updated 2026-07-14 — Decision Log):** **ONE cloud project**
 (`palmly-staging`, ref `rphtdgoggsldshtdbkaj`) is the single working DB pre-launch. The `palmly-prod`
@@ -117,9 +117,7 @@ by the platform — they only need to be in the **local** `.env` for tests/scrip
 
 | File | Purpose | Git |
 |---|---|---|
-| `.env.example` | Placeholder names for every key above | **tracked** |
-| `.env.staging` | Real keys for the single working project (P0.T2/T3) | ignored |
-| `.env.prod` | **Unused pre-launch** (prod deleted 2026-07-14); recreated at launch | ignored |
+| `.env` | **Everything the tooling reads** — project ref, db password, service-role key, access token, `GEMINI_API_KEY`, `EXPO_TOKEN`. Consolidated 2026-07-29 (was `.env.staging`). Not loaded by Expo. | ignored |
 | `app/.env` | Client `EXPO_PUBLIC_*` for local dev | ignored |
 | `supabase/.env` | Local function secrets for `supabase functions serve` | ignored |
 

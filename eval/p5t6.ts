@@ -90,7 +90,7 @@ if (Deno.args.includes('--live')) {
   const readEnvStaging = async (): Promise<string | undefined> => {
     if (Deno.env.get('GEMINI_API_KEY')) return Deno.env.get('GEMINI_API_KEY');
     try {
-      const txt = await Deno.readTextFile(new URL('../.env.staging', import.meta.url));
+      const txt = await Deno.readTextFile(new URL('../.env', import.meta.url));
       return txt.split(/\r?\n/).find((l) => l.startsWith('GEMINI_API_KEY='))?.split('=').slice(1).join('=').trim();
     } catch {
       return undefined;

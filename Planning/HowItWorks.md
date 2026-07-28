@@ -405,7 +405,7 @@ $env:ANDROID_HOME="$env:LOCALAPPDATA\Android\Sdk"
 
 ### The 3 git-ignored env files
 
-`.gitignore` ignores `.env` and `.env.*` except `.env.example`. Copy `.env.example` and fill real values — never commit them.
+`.gitignore` ignores `.env` and `.env.*`. There is no tracked template any more (`.env.example` was removed 2026-07-29) — see `docs/ENVIRONMENT.md` for every key name. Never commit real values.
 
 **`.env` (repo root)** — CI/tooling tokens + public analytics keys:
 ```
@@ -416,7 +416,8 @@ EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 EXPO_PUBLIC_SENTRY_DSN=https://...ingest.sentry.io/...
 ```
 
-**`.env.staging` (repo root)** — everything the backend test harness + manual deploy read:
+**`.env` (repo root)** — everything the backend test harness + manual deploy read (this was
+`.env.staging` until 2026-07-29; the two files were consolidated into one):
 ```
 SUPABASE_STAGING_PROJECT_REF=rphtdgoggsldshtdbkaj
 SUPABASE_STAGING_DB_PASSWORD=...          # Supabase → Project Settings → Database
@@ -438,7 +439,7 @@ EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 EXPO_PUBLIC_SENTRY_DSN=https://...ingest.sentry.io/...
 ```
 
-> Key format: `sb_publishable_…` = client-safe anon key; `sb_secret_…` = server-only service-role key (Edge Functions inject it automatically when deployed; it only needs to be in local `.env.staging` for tests/scripts). **Never put `sb_secret_…` or `GEMINI_API_KEY` in `app/.env`** — that ships to devices.
+> Key format: `sb_publishable_…` = client-safe anon key; `sb_secret_…` = server-only service-role key (Edge Functions inject it automatically when deployed; it only needs to be in the local root `.env` for tests/scripts). **Never put `sb_secret_…` or `GEMINI_API_KEY` in `app/.env`** — that ships to devices.
 
 ### The commands
 
@@ -496,7 +497,7 @@ C:/Users/leheh/.deno/bin/deno.exe test --allow-read --allow-env    # 130 tests p
 
 ### Backend — DB / RLS tests (Docker-free harness against staging, from `supabase/tests`)
 
-Runs migrations + RLS proofs against the **real staging** Postgres inside transactions that are **always rolled back** — real platform (auth schema, `auth.uid()`, roles) with zero persistent change. Reads the DB password from `.env.staging`.
+Runs migrations + RLS proofs against the **real staging** Postgres inside transactions that are **always rolled back** — real platform (auth schema, `auth.uid()`, roles) with zero persistent change. Reads the DB password from `.env`.
 
 ```bash
 cd supabase/tests
@@ -554,7 +555,7 @@ Use the **Supabase MCP** (`.mcp.json`, read-only against staging) — `mcp__supa
 
 Do **not** use a globally-installed `supabase` (an older pinned CLI cannot parse the newer `config.toml`).
 
-**1. Push database migrations** (direct staging DB URL from `.env.staging`):
+**1. Push database migrations** (direct staging DB URL from `.env`):
 ```bash
 cd C:/Users/leheh/.Projects/Palmly
 npx supabase@latest db push \

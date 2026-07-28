@@ -16,11 +16,19 @@ How to go from a fresh clone to a running app + backend. Env/secret details live
 
 ## Env files (git-ignored — never commit)
 
-Create these from the placeholders in `.env.example` (see ENVIRONMENT.md for every key):
+See ENVIRONMENT.md for every key name and where it comes from.
 
-- `.env.staging` — Supabase **staging** url/publishable/`sb_secret_`/db-password + `GEMINI_API_KEY` + `EXPO_TOKEN`
-- `.env.prod` — same for **prod**
-- `app/.env` — the client `EXPO_PUBLIC_*` keys the Expo app reads in local dev (points at staging)
+- `.env` (repo root) — **everything the tooling reads**: Supabase project ref, db password,
+  `sb_secret_` service-role key, `SUPABASE_ACCESS_TOKEN`, `GEMINI_API_KEY`, `EXPO_TOKEN`.
+  Read by `supabase/tests/lib/db.mjs`, `eval/*.ts`, and the Supabase / EAS CLIs.
+- `app/.env` — the client `EXPO_PUBLIC_*` keys the Expo app reads in local dev (points at staging).
+  This is the ONLY env file Expo loads, and only `EXPO_PUBLIC_*` is ever inlined into the bundle —
+  so server secrets in the root `.env` cannot reach a device.
+
+> **Consolidated 2026-07-29.** There used to be a `.env.staging` / `.env.prod` split; both are gone
+> and everything lives in the single root `.env`. Pre-launch there is only one Supabase project
+> anyway. At launch (P12), when prod is recreated, whoever does it must re-establish a way to hold
+> both projects' credentials without overwriting one with the other.
 
 ## App (Expo, in `app/`)
 
@@ -101,7 +109,7 @@ npm test          # node:test — applies migrations + runs RLS proofs, all tran
 ```
 
 - Test harness: `supabase/tests/lib/db.mjs` (pure-JS `pg`; reads the staging DB password from the
-  git-ignored `.env.staging`; connects to `db.<ref>.supabase.co`). Helpers: `withRollback`,
+  git-ignored root `.env`; connects to `db.<ref>.supabase.co`). Helpers: `withRollback`,
   `applyMigrations`, `asRole`/`resetRole` (impersonate `authenticated`/`anon` + JWT claims),
   `seedUser`.
 - Migrations are versioned files in `supabase/migrations/` — **never edit an applied migration**;
