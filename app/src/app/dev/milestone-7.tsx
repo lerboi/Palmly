@@ -8,6 +8,10 @@ import type { StreakMilestone } from '@/features/pulse/streak';
 export default function MilestonePreview() {
   const [day, setDay] = useState<StreakMilestone | null>(7);
   const [premium, setPremium] = useState(false);
+  // Toggles the measured half of the copy. Off is the DEFAULT state for most readers (the ritual is
+  // never a gate), and off is where the sheet used to claim "your lines holding" at someone whose
+  // hand had never been re-checked — so it is the variant worth looking at first.
+  const [palmHeld, setPalmHeld] = useState(false);
   return (
     <Screen scroll>
       <View style={{ gap: 12 }}>
@@ -15,9 +19,22 @@ export default function MilestonePreview() {
           <Button key={d} label={`Day ${d}`} variant="secondary" size="md" onPress={() => setDay(d)} />
         ))}
         <Button label={premium ? 'Premium' : 'Free'} variant="ghost" size="md" onPress={() => setPremium((p) => !p)} />
+        <Button
+          label={palmHeld ? 'Sealed with palm' : 'Tapped only'}
+          variant="ghost"
+          size="md"
+          onPress={() => setPalmHeld((p) => !p)}
+        />
       </View>
       {day ? (
-        <MilestoneMoment visible day={day} premium={premium} onShare={() => setDay(null)} onDismiss={() => setDay(null)} />
+        <MilestoneMoment
+          visible
+          day={day}
+          premium={premium}
+          palmHeld={palmHeld}
+          onShare={() => setDay(null)}
+          onDismiss={() => setDay(null)}
+        />
       ) : null}
     </Screen>
   );

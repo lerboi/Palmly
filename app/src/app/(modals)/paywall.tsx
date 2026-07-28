@@ -160,9 +160,20 @@ export default function Paywall() {
   useEffect(() => {
     let active = true;
     loadHistory()
-      .then((rows) => (rows[0] ? loadReading({ readingId: rows[0].id }) : null))
+      .then((rows) => {
+        // The newest PALM, not merely the newest reading — the same bug `usePulse` was fixed for on
+        // the S20+ (2026-07-27) and this call site never was. A FACE reading's `feature_set` has no
+        // `line_geometry`, so `rows[0]` on a face-latest reader resolved to an empty geometry and the
+        // paywall hero drew a bare silhouette. Found live on device 2026-07-28.
+        const palm = rows.find((r) => r.kind === 'palm') ?? rows[0];
+        return palm ? loadReading({ readingId: palm.id }) : null;
+      })
       .then((res) => {
-        if (active && res) setOwnGeometry(res.geometry);
+        // An EMPTY geometry is not "their palm". Setting it anyway also flipped `ownGeometry` true,
+        // so the copy kept the possessive ("your fate line") over a hand with no lines on it —
+        // which is precisely the SH-7 failure this block was written to fix, arriving by a
+        // different door. No lines ⇒ stay null ⇒ abstract motif + non-possessive copy.
+        if (active && res && Object.keys(res.geometry).length > 0) setOwnGeometry(res.geometry);
       })
       .catch(() => {
         /* no stored reading → the abstract hero, which is the honest default */

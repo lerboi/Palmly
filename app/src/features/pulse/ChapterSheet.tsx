@@ -1,5 +1,6 @@
 import { Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import Animated, { SlideInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Icon, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
@@ -29,6 +30,7 @@ export interface ChapterSheetProps {
  */
 export function ChapterSheet({ visible, chapter, featureKey, geometryHash, premium, locale, onClose, onUnlock }: ChapterSheetProps) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
   if (!visible) return null;
@@ -45,8 +47,14 @@ export function ChapterSheet({ visible, chapter, featureKey, geometryHash, premi
         onPress={onClose}
         style={{ flex: 1, backgroundColor: theme.colors.scrim, justifyContent: 'flex-end' }}
       >
-        {/* Taps inside the sheet must not dismiss it. */}
-        <Pressable onPress={() => {}}>
+        {/* Taps inside the sheet must not dismiss it.
+            `maxHeight` lives HERE, on the direct child of the `flex: 1` scrim, and not on the
+            Animated.View below. Found on the S20+: a percentage max-height resolves against the
+            parent's height, and this wrapper had none — so the bound was indefinite, the ScrollView
+            sized to its content instead of to the screen, and everything past the fold fell off the
+            bottom with nothing to scroll. The free reader could see "This chapter's full reading is
+            Premium." and could not reach the Unlock button under it: a paywall path that dead-ends. */}
+        <Pressable onPress={() => {}} style={{ maxHeight: '80%' }}>
           <Animated.View
             entering={shouldAnimate ? SlideInDown.duration(theme.motion.duration.base) : undefined}
             style={{
@@ -54,8 +62,9 @@ export function ChapterSheet({ visible, chapter, featureKey, geometryHash, premi
               borderTopLeftRadius: theme.radii.xl,
               borderTopRightRadius: theme.radii.xl,
               padding: theme.spacing.lg,
-              paddingBottom: theme.spacing.xxl,
-              maxHeight: '80%',
+              // Clear the gesture bar / navigation inset as well as the sheet's own breathing room,
+              // so the last control is never sitting under a system affordance.
+              paddingBottom: theme.spacing.xxl + insets.bottom,
             }}
           >
             <View

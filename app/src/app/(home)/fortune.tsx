@@ -8,6 +8,7 @@ import { useEntitlement } from '@/lib/entitlements';
 import { hasFirstReadingComplete, setBirthDateSkipped, wasBirthDateSkipped } from '@/lib/session';
 import { migrateLocalOpens, recordDay } from '@/lib/dailyLedger';
 import { homeState, shouldAskBirthDate } from '@/features/fortune/fortune';
+import { palmHeldInRun } from '@/features/fortune/openHistory';
 import { track } from '@/lib/analytics';
 import { PULSE_ENABLED } from '@/lib/capabilities';
 import { usePulse } from '@/features/pulse/usePulse';
@@ -252,6 +253,9 @@ export default function FortuneScreen() {
           day={pulse.milestone}
           onShown={(day) => track('milestone_reached', { day })}
           premium={premium}
+          // Same honesty rule as the week strip's line: only claim the lines held if the ritual
+          // actually ran inside this run.
+          palmHeld={palmHeldInRun(new Date(), pulse.sealedDates, pulse.palmSealedDates)}
           onShare={() => {
             pulse.clearMilestone();
             router.push('/share?source=home' as Href);

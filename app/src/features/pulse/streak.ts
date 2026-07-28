@@ -106,3 +106,21 @@ export function sealLineText(streak: number, palmHeld: boolean): string | null {
   // No run, no claim (SH-9). A single tapped day is not a rhythm worth naming.
   return null;
 }
+
+/**
+ * The milestone sheet's copy, under the SAME honesty rule as {@link sealLineText}.
+ *
+ * Found on the S20+ walking the real flow: the sheet hardcoded "{n} days of your lines holding."
+ * and "Same palm, same lines — {n} mornings running." and fired them at a reader who had tap-sealed
+ * every one of those days and never once held their palm to the camera. Nothing about that hand had
+ * been measured, so both sentences were claims about an act that never happened — the exact
+ * pseudo-measurement 05 §5 forbids, one component away from where RF6.T3 had just fixed it.
+ *
+ * Congratulating someone is not a licence to overstate what you know about them.
+ */
+export function milestoneCopy(day: number, palmHeld: boolean): { title: string; body: string } {
+  if (palmHeld) {
+    return { title: `${day} days of your lines holding.`, body: `Same palm, same lines — ${day} mornings running.` };
+  }
+  return { title: `${day} days running.`, body: `${day} mornings, and the rhythm is holding.` };
+}

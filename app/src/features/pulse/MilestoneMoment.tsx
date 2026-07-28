@@ -5,13 +5,18 @@ import Animated, { SlideInDown } from 'react-native-reanimated';
 import { Button, Text } from '@/components/ui';
 import { useReducedMotion, useTheme } from '@/theme';
 import { PulseSeal } from './PulseSeal';
-import type { StreakMilestone } from './streak';
+import { milestoneCopy, type StreakMilestone } from './streak';
 
 export interface MilestoneMomentProps {
   visible: boolean;
   /** The day the run just reached — 3, 7, 14 or 30. */
   day: StreakMilestone;
   premium: boolean;
+  /**
+   * Did the current run include a real camera seal? Gates the measured half of the copy — a reader
+   * who only ever tapped has had nothing about their hand measured (see `milestoneCopy`).
+   */
+  palmHeld: boolean;
   /** Fired once, when the sheet actually appears — the moment the milestone was REACHED. */
   onShown?: (day: StreakMilestone) => void;
   onShare: () => void;
@@ -30,10 +35,11 @@ export interface MilestoneMomentProps {
  * (01 §7). And it fires on the server's `first_seal_today` only, so a second device or an offline
  * estimate can never re-congratulate the same day.
  */
-export function MilestoneMoment({ visible, day, premium, onShown, onShare, onDismiss }: MilestoneMomentProps) {
+export function MilestoneMoment({ visible, day, premium, palmHeld, onShown, onShare, onDismiss }: MilestoneMomentProps) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = !reduceMotion && Platform.OS !== 'web';
+  const copy = milestoneCopy(day, palmHeld);
 
   // Emitted on APPEARANCE, not on dismissal: the event means "this run reached day N", and a user
   // who swipes the sheet away has still reached it.
@@ -78,10 +84,10 @@ export function MilestoneMoment({ visible, day, premium, onShown, onShare, onDis
                 receipt for a gesture they have made `day` times, so it should look like that gesture. */}
             <PulseSeal compact stamped onComplete={() => {}} accessibilityLabel={`${day} days sealed`} />
             <Text variant="editorialTitle" style={{ textAlign: 'center' }}>
-              {day} days of your lines holding.
+              {copy.title}
             </Text>
             <Text variant="body" tone="secondary" style={{ textAlign: 'center', maxWidth: 300 }}>
-              Same palm, same lines — {day} mornings running.
+              {copy.body}
             </Text>
             <Button label="Share your week" variant="primary" fullWidth style={{ marginTop: theme.spacing.sm }} onPress={onShare} />
             <Button label="Keep going" variant="ghost" size="md" onPress={onDismiss} />

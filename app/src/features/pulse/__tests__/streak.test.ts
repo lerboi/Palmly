@@ -1,4 +1,4 @@
-import { currentRun, longestRun, mergeSealed, milestoneReached, sealLineText, STREAK_MILESTONES } from '../streak';
+import { currentRun, longestRun, mergeSealed, milestoneCopy, milestoneReached, sealLineText, STREAK_MILESTONES } from '../streak';
 
 /**
  * RF2.T1 — the ledger's pure half (`features/pulse/streak.ts`). The streak the user SEES offline is computed here, and the one
@@ -129,6 +129,38 @@ describe('sealLineText — the measured claim, and the honesty rule under it (RF
         const line = sealLineText(n, palmHeld);
         if (line) expect(line).not.toMatch(/-day streak/);
       }
+    }
+  });
+});
+
+describe('milestoneCopy — the congratulation cannot overstate what was measured', () => {
+  it('makes the measured claim only when the ritual ran in this run', () => {
+    expect(milestoneCopy(7, true)).toEqual({
+      title: '7 days of your lines holding.',
+      body: 'Same palm, same lines — 7 mornings running.',
+    });
+  });
+
+  it('says nothing about the lines for a run of taps', () => {
+    // Caught on the S20+ walking the real flow: the sheet congratulated a tap-only reader with
+    // "3 days of your lines holding" and "Same palm, same lines". Nothing about that hand had been
+    // measured. Being celebratory is not a licence to claim a measurement that never happened.
+    const c = milestoneCopy(3, false);
+    expect(c.title).toBe('3 days running.');
+    expect(c.body).toBe('3 mornings, and the rhythm is holding.');
+    for (const d of [3, 7, 14, 30]) {
+      const m = milestoneCopy(d, false);
+      expect(`${m.title} ${m.body}`).not.toMatch(/lines holding|same lines|same palm/i);
+    }
+  });
+
+  it('agrees with the week strip’s rule — both gate on the same fact', () => {
+    for (const d of [3, 7, 14, 30]) {
+      const claimsInSheet = /lines holding/.test(milestoneCopy(d, true).title);
+      const claimsInStrip = /lines hold/.test(sealLineText(d, true) ?? '');
+      expect(claimsInSheet).toBe(claimsInStrip);
+      expect(/lines holding/.test(milestoneCopy(d, false).title)).toBe(false);
+      expect(/lines hold/.test(sealLineText(d, false) ?? '')).toBe(false);
     }
   });
 });
